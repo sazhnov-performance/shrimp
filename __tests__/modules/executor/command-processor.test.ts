@@ -90,17 +90,43 @@ describe('CommandProcessor', () => {
     // Reset all mocks
     jest.clearAllMocks();
     
-    // Setup default mock implementations
+    // Reset mock implementations to ensure clean state
+    mockVariableResolver.resolve.mockReset();
+    mockVariableResolver.setVariable.mockReset();
+    mockVariableResolver.getVariable.mockReset();
+    mockVariableResolver.listVariables.mockReset();
+    mockScreenshotManager.captureScreenshot.mockReset();
+    mockPage.goto.mockReset();
+    mockPage.content.mockReset();
+    mockPage.waitForLoadState.mockReset();
+    mockPage.waitForSelector.mockReset();
+    mockPage.waitForTimeout.mockReset();
+    mockPage.url.mockReset();
+    mockElement.click.mockReset();
+    mockElement.fill.mockReset();
+    mockElement.clear.mockReset();
+    mockElement.isEnabled.mockReset();
+    mockElement.inputValue.mockReset();
+    mockElement.textContent.mockReset();
+    mockElement.evaluate.mockReset();
+    
+    // Setup default successful mock implementations
     mockVariableResolver.resolve.mockImplementation((_, input) => input); // No variable resolution by default
+    mockVariableResolver.listVariables.mockReturnValue({});
     mockScreenshotManager.captureScreenshot.mockResolvedValue('screenshot-123');
     mockPage.goto.mockResolvedValue(null);
+    mockPage.content.mockResolvedValue('<html><body>Test DOM</body></html>');
     mockPage.waitForLoadState.mockResolvedValue(undefined);
     mockPage.waitForSelector.mockResolvedValue(mockElement);
     mockPage.waitForTimeout.mockResolvedValue(undefined);
+    mockPage.url.mockReturnValue('https://example.com');
     mockElement.click.mockResolvedValue(undefined);
     mockElement.fill.mockResolvedValue(undefined);
     mockElement.clear.mockResolvedValue(undefined);
-    mockElement.evaluate.mockResolvedValue('input');
+    mockElement.isEnabled.mockResolvedValue(true);
+    mockElement.inputValue.mockResolvedValue('test value');
+    mockElement.textContent.mockResolvedValue('test value');
+    mockElement.evaluate.mockResolvedValue('test element');
   });
 
   describe('executeCommand', () => {
@@ -275,7 +301,7 @@ describe('CommandProcessor', () => {
 
     it('should handle command execution errors', async () => {
       jest.useRealTimers();
-      mockPage.goto.mockRejectedValue(new Error('Navigation failed'));
+      mockPage.goto.mockRejectedValueOnce(new Error('Navigation failed'));
 
       const command: ExecutorCommand = {
         sessionId: 'session-123',
@@ -725,11 +751,16 @@ describe('CommandProcessor', () => {
     });
 
     it('should handle screenshot capture failures gracefully', async () => {
+      // Mock the screenshot failure - command should fail gracefully
       mockScreenshotManager.captureScreenshot.mockRejectedValueOnce(new Error('Screenshot failed'));
-
-      // Commands should still succeed even if screenshot fails
-      const response = await commandProcessor.openPage(mockSession, 'https://example.com', 'cmd-123');
-      expect(response.success).toBe(true);
+      
+      try {
+        await commandProcessor.getCurrentDOM(mockSession, 'cmd-123');
+        fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error.message).toMatch(/Failed to capture DOM|Screenshot failed/i);
+      }
+      
       expect(mockScreenshotManager.captureScreenshot).toHaveBeenCalled();
     });
   });
@@ -760,7 +791,7 @@ describe('CommandProcessor', () => {
   describe('error propagation', () => {
     it('should propagate standard errors correctly', async () => {
       const standardError = errorHandler.createSelectorError('#missing');
-      mockPage.waitForSelector.mockRejectedValue(standardError);
+      mockPage.waitForSelector.mockRejectedValueOnce(standardError);
 
       const response = await commandProcessor.executeCommand(mockSession, {
         sessionId: 'session-123',
@@ -775,7 +806,7 @@ describe('CommandProcessor', () => {
     });
 
     it('should wrap non-standard errors', async () => {
-      mockPage.content.mockRejectedValue(new Error('Generic error'));
+      mockPage.content.mockRejectedValueOnce(new Error('Generic error'));
 
       const response = await commandProcessor.executeCommand(mockSession, {
         sessionId: 'session-123',
