@@ -41,6 +41,9 @@ const mockElement = {
   isEnabled: jest.fn(() => Promise.resolve(true)),
   inputValue: jest.fn(() => Promise.resolve('test value')),
   textContent: jest.fn(() => Promise.resolve('test text')),
+  innerText: jest.fn(() => Promise.resolve('test inner text')),
+  innerHTML: jest.fn(() => Promise.resolve('<span>test html</span>')),
+  getAttribute: jest.fn(() => Promise.resolve('test attribute')),
   evaluate: jest.fn()
 };
 
@@ -51,7 +54,9 @@ const mockPage = {
   waitForLoadState: jest.fn(),
   waitForSelector: jest.fn(() => Promise.resolve(mockElement)),
   waitForTimeout: jest.fn(),
-  url: jest.fn(() => 'https://example.com')
+  url: jest.fn(() => 'https://example.com'),
+  $: jest.fn(() => Promise.resolve(mockElement)),
+  $$: jest.fn(() => Promise.resolve([mockElement]))
 };
 
 // Mock browser
@@ -102,12 +107,17 @@ describe('CommandProcessor', () => {
     mockPage.waitForSelector.mockReset();
     mockPage.waitForTimeout.mockReset();
     mockPage.url.mockReset();
+    mockPage.$.mockReset();
+    mockPage.$$.mockReset();
     mockElement.click.mockReset();
     mockElement.fill.mockReset();
     mockElement.clear.mockReset();
     mockElement.isEnabled.mockReset();
     mockElement.inputValue.mockReset();
     mockElement.textContent.mockReset();
+    mockElement.innerText.mockReset();
+    mockElement.innerHTML.mockReset();
+    mockElement.getAttribute.mockReset();
     mockElement.evaluate.mockReset();
     
     // Setup default successful mock implementations
@@ -120,12 +130,17 @@ describe('CommandProcessor', () => {
     mockPage.waitForSelector.mockResolvedValue(mockElement);
     mockPage.waitForTimeout.mockResolvedValue(undefined);
     mockPage.url.mockReturnValue('https://example.com');
+    mockPage.$.mockResolvedValue(mockElement);
+    mockPage.$$.mockResolvedValue([mockElement]);
     mockElement.click.mockResolvedValue(undefined);
     mockElement.fill.mockResolvedValue(undefined);
     mockElement.clear.mockResolvedValue(undefined);
     mockElement.isEnabled.mockResolvedValue(true);
     mockElement.inputValue.mockResolvedValue('test value');
     mockElement.textContent.mockResolvedValue('test value');
+    mockElement.innerText.mockResolvedValue('test inner text');
+    mockElement.innerHTML.mockResolvedValue('<span>test html</span>');
+    mockElement.getAttribute.mockResolvedValue('test attribute');
     mockElement.evaluate.mockResolvedValue('test element');
   });
 
@@ -243,6 +258,76 @@ describe('CommandProcessor', () => {
       expect(response.metadata?.domLength).toBe(response.dom.length);
     });
 
+    it('should execute GET_CONTENT command successfully for single element', async () => {
+      mockElement.textContent.mockResolvedValue('test content');
+      mockElement.evaluate.mockResolvedValue('div');
+
+      const command: ExecutorCommand = {
+        sessionId: 'session-123',
+        action: CommandAction.GET_CONTENT,
+        parameters: { selector: '#content' },
+        commandId: 'cmd-123',
+        timestamp: new Date()
+      };
+
+      const response = await commandProcessor.executeCommand(mockSession, command);
+
+      expect(response.success).toBe(true);
+      expect(response.metadata?.content).toBe('test content');
+      expect(response.metadata?.contentType).toBe('string');
+      expect(response.metadata?.elementsFound).toBe(1);
+    });
+
+    it('should execute GET_CONTENT command successfully for multiple elements', async () => {
+      const mockElements = [
+        { textContent: jest.fn(() => Promise.resolve('content 1')), evaluate: jest.fn(() => Promise.resolve('div')) },
+        { textContent: jest.fn(() => Promise.resolve('content 2')), evaluate: jest.fn(() => Promise.resolve('div')) }
+      ];
+      mockPage.$$.mockResolvedValue(mockElements);
+
+      const command: ExecutorCommand = {
+        sessionId: 'session-123',
+        action: CommandAction.GET_CONTENT,
+        parameters: { selector: '.items', multiple: true },
+        commandId: 'cmd-123',
+        timestamp: new Date()
+      };
+
+      const response = await commandProcessor.executeCommand(mockSession, command);
+
+      expect(response.success).toBe(true);
+      expect(response.metadata?.content).toEqual(['content 1', 'content 2']);
+      expect(response.metadata?.contentType).toBe('array');
+      expect(response.metadata?.elementsFound).toBe(2);
+    });
+
+    it('should execute GET_SUBDOM command successfully', async () => {
+      const mockElements = [
+        { evaluate: jest.fn(() => Promise.resolve('<div class="item">Item 1</div>')) },
+        { evaluate: jest.fn(() => Promise.resolve('<div class="item">Item 2</div>')) }
+      ];
+      mockPage.$$.mockResolvedValue(mockElements);
+
+      const command: ExecutorCommand = {
+        sessionId: 'session-123',
+        action: CommandAction.GET_SUBDOM,
+        parameters: { selector: '.items', maxDomSize: 1000 },
+        commandId: 'cmd-123',
+        timestamp: new Date()
+      };
+
+      const response = await commandProcessor.executeCommand(mockSession, command);
+
+      expect(response.success).toBe(true);
+      expect(response.metadata?.subDOM).toEqual([
+        '<div class="item">Item 1</div>',
+        '<div class="item">Item 2</div>'
+      ]);
+      expect(response.metadata?.elementsFound).toBe(2);
+      expect(response.metadata?.totalSize).toBe(60);
+      expect(response.metadata?.maxSize).toBe(1000);
+    });
+
     it('should handle unsupported commands', async () => {
       const command: ExecutorCommand = {
         sessionId: 'session-123',
@@ -280,6 +365,16 @@ describe('CommandProcessor', () => {
           action: CommandAction.SAVE_VARIABLE,
           parameters: { selector: '#element' }, // Missing variableName
           expectedError: 'Selector and variableName parameters are required'
+        },
+        {
+          action: CommandAction.GET_CONTENT,
+          parameters: {}, // Missing selector
+          expectedError: 'Selector parameter is required'
+        },
+        {
+          action: CommandAction.GET_SUBDOM,
+          parameters: {}, // Missing selector
+          expectedError: 'Selector parameter is required'
         }
       ];
 
@@ -685,6 +780,515 @@ describe('CommandProcessor', () => {
     });
   });
 
+  describe('getContent', () => {
+    beforeEach(() => {
+      // Setup mock element methods for content extraction
+      mockElement.textContent.mockResolvedValue('test content');
+      mockElement.innerText.mockResolvedValue('test inner text');
+      mockElement.innerHTML.mockResolvedValue('<span>test html</span>');
+      mockElement.inputValue.mockResolvedValue('test input value');
+      mockElement.getAttribute.mockResolvedValue('test attribute');
+      mockElement.evaluate.mockResolvedValue('div');
+    });
+
+    it('should extract text content from single element by default', async () => {
+      const response = await commandProcessor.getContent(mockSession, '#content');
+
+      expect(response.success).toBe(true);
+      expect(response.metadata?.content).toBe('test content');
+      expect(response.metadata?.contentType).toBe('string');
+      expect(response.metadata?.elementsFound).toBe(1);
+      expect(mockElement.textContent).toHaveBeenCalled();
+    });
+
+    it('should extract content from multiple elements when multiple=true', async () => {
+      const mockElements = [
+        { 
+          textContent: jest.fn(() => Promise.resolve('content 1')), 
+          evaluate: jest.fn(() => Promise.resolve('div')),
+          getAttribute: jest.fn(),
+          innerText: jest.fn(),
+          innerHTML: jest.fn(),
+          inputValue: jest.fn()
+        },
+        { 
+          textContent: jest.fn(() => Promise.resolve('content 2')), 
+          evaluate: jest.fn(() => Promise.resolve('div')),
+          getAttribute: jest.fn(),
+          innerText: jest.fn(),
+          innerHTML: jest.fn(),
+          inputValue: jest.fn()
+        }
+      ];
+      mockPage.$$.mockResolvedValue(mockElements);
+
+      const response = await commandProcessor.getContent(mockSession, '.items', undefined, true);
+
+      expect(response.success).toBe(true);
+      expect(response.metadata?.content).toEqual(['content 1', 'content 2']);
+      expect(response.metadata?.contentType).toBe('array');
+      expect(response.metadata?.elementsFound).toBe(2);
+    });
+
+    it('should extract specific attributes when specified', async () => {
+      const attributes = [
+        { attr: 'textContent', method: 'textContent', value: 'text content' },
+        { attr: 'innerText', method: 'innerText', value: 'inner text' },
+        { attr: 'innerHTML', method: 'innerHTML', value: '<span>html</span>' },
+        { attr: 'value', method: 'inputValue', value: 'input value' },
+        { attr: 'id', method: 'getAttribute', value: 'element-id' }
+      ];
+
+      for (const { attr, method, value } of attributes) {
+        mockElement[method as keyof typeof mockElement] = jest.fn(() => Promise.resolve(value));
+        
+        const response = await commandProcessor.getContent(mockSession, '#element', attr);
+        
+        expect(response.success).toBe(true);
+        expect(response.metadata?.content).toBe(value);
+        expect(response.metadata?.attribute).toBe(attr);
+      }
+    });
+
+    it('should handle input elements appropriately', async () => {
+      mockElement.evaluate.mockResolvedValue('input');
+      
+      const response = await commandProcessor.getContent(mockSession, '#input');
+      
+      expect(response.success).toBe(true);
+      expect(mockElement.inputValue).toHaveBeenCalled();
+    });
+
+    it('should handle textarea elements appropriately', async () => {
+      mockElement.evaluate.mockResolvedValue('textarea');
+      
+      const response = await commandProcessor.getContent(mockSession, '#textarea');
+      
+      expect(response.success).toBe(true);
+      expect(mockElement.inputValue).toHaveBeenCalled();
+    });
+
+    it('should handle select elements appropriately', async () => {
+      mockElement.evaluate.mockResolvedValue('select');
+      
+      const response = await commandProcessor.getContent(mockSession, '#select');
+      
+      expect(response.success).toBe(true);
+      expect(mockElement.inputValue).toHaveBeenCalled();
+    });
+
+    it('should resolve variables in selector', async () => {
+      mockVariableResolver.resolve.mockReturnValue('#resolved-content');
+
+      await commandProcessor.getContent(mockSession, '#${contentId}');
+
+      expect(mockVariableResolver.resolve).toHaveBeenCalledWith('workflow-456', '#${contentId}');
+      expect(mockPage.waitForSelector).toHaveBeenCalledWith('#resolved-content', {
+        timeout: 10000,
+        state: 'attached'
+      });
+    });
+
+    it('should handle empty content gracefully', async () => {
+      mockElement.textContent.mockResolvedValue(null);
+      
+      const response = await commandProcessor.getContent(mockSession, '#empty');
+      
+      expect(response.success).toBe(true);
+      expect(response.metadata?.content).toBe('');
+    });
+
+    it('should handle multiple elements with empty content', async () => {
+      const mockElements = [
+        { 
+          textContent: jest.fn(() => Promise.resolve('')), 
+          evaluate: jest.fn(() => Promise.resolve('div')),
+          getAttribute: jest.fn(),
+          innerText: jest.fn(),
+          innerHTML: jest.fn(),
+          inputValue: jest.fn()
+        },
+        { 
+          textContent: jest.fn(() => Promise.resolve(null)), 
+          evaluate: jest.fn(() => Promise.resolve('div')),
+          getAttribute: jest.fn(),
+          innerText: jest.fn(),
+          innerHTML: jest.fn(),
+          inputValue: jest.fn()
+        }
+      ];
+      mockPage.$$.mockResolvedValue(mockElements);
+
+      const response = await commandProcessor.getContent(mockSession, '.empty', undefined, true);
+
+      expect(response.success).toBe(true);
+      expect(response.metadata?.content).toEqual(['', '']);
+    });
+
+    it('should capture screenshot after content extraction', async () => {
+      await commandProcessor.getContent(mockSession, '#content');
+
+      expect(mockScreenshotManager.captureScreenshot).toHaveBeenCalledWith(
+        'workflow-456',
+        CommandAction.GET_CONTENT,
+        mockPage,
+        expect.objectContaining({
+          selector: '#content',
+          originalSelector: '#content'
+        })
+      );
+    });
+
+    it('should handle element not found errors', async () => {
+      mockPage.waitForSelector.mockRejectedValueOnce(new Error('Element not found'));
+
+      try {
+        await commandProcessor.getContent(mockSession, '#missing');
+        fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error.message).toMatch(/Cannot get content element with selector/);
+      }
+    });
+
+    it('should handle multiple elements when none found', async () => {
+      mockPage.$$.mockResolvedValue([]);
+
+      try {
+        await commandProcessor.getContent(mockSession, '.missing', undefined, true);
+        fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error.message).toMatch(/Cannot get content element with selector/);
+      }
+    });
+
+    it('should handle element evaluation errors', async () => {
+      mockElement.textContent.mockRejectedValueOnce(new Error('Content access failed'));
+
+      try {
+        await commandProcessor.getContent(mockSession, '#content');
+        fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error.message).toMatch(/Cannot get content element with selector/);
+      }
+    });
+
+    it('should log variable interpolation', async () => {
+      mockVariableResolver.resolve.mockReturnValue('#resolved-content');
+      mockVariableResolver.listVariables.mockReturnValue({ contentId: 'resolved-content' });
+
+      await commandProcessor.getContent(mockSession, '#${contentId}');
+
+      expect(mockLogger.logVariableInterpolation).toHaveBeenCalledWith(
+        'workflow-456',
+        '#${contentId}',
+        '#resolved-content',
+        { contentId: 'resolved-content' }
+      );
+    });
+
+    it('should log content extraction details', async () => {
+      await commandProcessor.getContent(mockSession, '#content');
+
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        'Content extracted from selector: #content',
+        'workflow-456',
+        expect.objectContaining({
+          selector: '#content',
+          originalSelector: '#content',
+          contentType: 'string'
+        })
+      );
+    });
+
+    it('should include comprehensive metadata in response', async () => {
+      mockVariableResolver.resolve.mockReturnValue('#resolved-content');
+      
+      const response = await commandProcessor.getContent(
+        mockSession, 
+        '#${contentId}', 
+        'textContent'
+      );
+
+      expect(response.metadata).toMatchObject({
+        selector: '#resolved-content',
+        originalSelector: '#${contentId}',
+        attribute: 'textContent',
+        multiple: undefined,
+        content: 'test content',
+        contentType: 'string',
+        elementsFound: 1
+      });
+    });
+
+    it('should generate command ID when not provided', async () => {
+      const response = await commandProcessor.getContent(mockSession, '#content');
+
+      expect(response.commandId).toMatch(/^get_content_\d+$/);
+    });
+
+    it('should use provided command ID when given', async () => {
+      const response = await commandProcessor.getContent(
+        mockSession, 
+        '#content', 
+        undefined, 
+        false, 
+        'custom-cmd-123'
+      );
+
+      expect(response.commandId).toBe('custom-cmd-123');
+    });
+  });
+
+  describe('getSubDOM', () => {
+    beforeEach(() => {
+      // Setup mock elements for sub-DOM extraction
+      const mockElements = [
+        { evaluate: jest.fn(() => Promise.resolve('<div class="item" id="item1">Item 1</div>')) },
+        { evaluate: jest.fn(() => Promise.resolve('<div class="item" id="item2">Item 2</div>')) }
+      ];
+      mockPage.$$.mockResolvedValue(mockElements);
+    });
+
+    it('should extract sub-DOM from multiple elements successfully', async () => {
+      const response = await commandProcessor.getSubDOM(mockSession, '.items', 1000);
+
+      expect(response.success).toBe(true);
+      expect(response.metadata?.subDOM).toEqual([
+        '<div class="item" id="item1">Item 1</div>',
+        '<div class="item" id="item2">Item 2</div>'
+      ]);
+      expect(response.metadata?.elementsFound).toBe(2);
+      expect(response.metadata?.totalSize).toBe(82); // Corrected size
+      expect(response.metadata?.maxSize).toBe(1000);
+      expect(response.metadata?.sizeUtilization).toBe('8.20%'); // Corrected percentage
+    });
+
+    it('should use default max size when not specified', async () => {
+      const response = await commandProcessor.getSubDOM(mockSession, '.items');
+
+      expect(response.success).toBe(true);
+      expect(response.metadata?.maxSize).toBe(100000); // Default
+    });
+
+    it('should resolve variables in selector', async () => {
+      mockVariableResolver.resolve.mockReturnValue('.resolved-items');
+
+      await commandProcessor.getSubDOM(mockSession, '.${itemClass}', 1000);
+
+      expect(mockVariableResolver.resolve).toHaveBeenCalledWith('workflow-456', '.${itemClass}');
+      expect(mockPage.waitForSelector).toHaveBeenCalledWith('.resolved-items', {
+        timeout: 10000,
+        state: 'attached'
+      });
+    });
+
+    it('should enforce size limits and throw error when exceeded', async () => {
+      const largeElement = '<div class="large">' + 'x'.repeat(100) + '</div>';
+      const mockElements = [
+        { evaluate: jest.fn(() => Promise.resolve(largeElement)) },
+        { evaluate: jest.fn(() => Promise.resolve(largeElement)) }
+      ];
+      mockPage.$$.mockResolvedValue(mockElements);
+
+      try {
+        await commandProcessor.getSubDOM(mockSession, '.large', 150); // Smaller than 2 elements
+        fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error.message).toMatch(/Sub-DOM size would exceed limit of 150 characters/);
+        expect(error.details.totalElementsFound).toBe(2);
+        expect(error.details.elementsProcessed).toBe(1); // Only processed first element
+      }
+    });
+
+    it('should handle single element within size limit', async () => {
+      const mockElements = [
+        { evaluate: jest.fn(() => Promise.resolve('<span>Small element</span>')) }
+      ];
+      mockPage.$$.mockResolvedValue(mockElements);
+
+      const response = await commandProcessor.getSubDOM(mockSession, 'span', 100);
+
+      expect(response.success).toBe(true);
+      expect(response.metadata?.subDOM).toEqual(['<span>Small element</span>']);
+      expect(response.metadata?.elementsFound).toBe(1);
+      expect(response.metadata?.totalSize).toBe(26); // Corrected size
+    });
+
+    it('should handle empty elements gracefully', async () => {
+      const mockElements = [
+        { evaluate: jest.fn(() => Promise.resolve('<div></div>')) },
+        { evaluate: jest.fn(() => Promise.resolve('<span></span>')) }
+      ];
+      mockPage.$$.mockResolvedValue(mockElements);
+
+      const response = await commandProcessor.getSubDOM(mockSession, 'div,span');
+
+      expect(response.success).toBe(true);
+      expect(response.metadata?.subDOM).toEqual(['<div></div>', '<span></span>']);
+      expect(response.metadata?.totalSize).toBe(24);
+    });
+
+    it('should wait for elements to be attached', async () => {
+      await commandProcessor.getSubDOM(mockSession, '.items');
+
+      expect(mockPage.waitForSelector).toHaveBeenCalledWith('.items', {
+        timeout: 10000,
+        state: 'attached'
+      });
+    });
+
+    it('should capture screenshot after sub-DOM extraction', async () => {
+      await commandProcessor.getSubDOM(mockSession, '.items');
+
+      expect(mockScreenshotManager.captureScreenshot).toHaveBeenCalledWith(
+        'workflow-456',
+        CommandAction.GET_SUBDOM,
+        mockPage,
+        expect.objectContaining({
+          selector: '.items',
+          originalSelector: '.items',
+          elementsFound: 2
+        })
+      );
+    });
+
+    it('should handle element not found errors', async () => {
+      mockPage.waitForSelector.mockRejectedValueOnce(new Error('Element not found'));
+
+      try {
+        await commandProcessor.getSubDOM(mockSession, '.missing');
+        fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error.message).toMatch(/Cannot get sub-DOM element with selector/);
+      }
+    });
+
+    it('should handle no elements found', async () => {
+      mockPage.$$.mockResolvedValue([]);
+
+      try {
+        await commandProcessor.getSubDOM(mockSession, '.missing');
+        fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error.message).toMatch(/Element not found with selector/);
+      }
+    });
+
+    it('should handle element evaluation errors', async () => {
+      const mockElements = [
+        { evaluate: jest.fn(() => Promise.reject(new Error('Evaluation failed'))) }
+      ];
+      mockPage.$$.mockResolvedValue(mockElements);
+
+      try {
+        await commandProcessor.getSubDOM(mockSession, '.items');
+        fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error.message).toMatch(/Cannot get sub-DOM element with selector/);
+      }
+    });
+
+    it('should log variable interpolation', async () => {
+      mockVariableResolver.resolve.mockReturnValue('.resolved-items');
+      mockVariableResolver.listVariables.mockReturnValue({ itemClass: 'resolved-items' });
+
+      await commandProcessor.getSubDOM(mockSession, '.${itemClass}');
+
+      expect(mockLogger.logVariableInterpolation).toHaveBeenCalledWith(
+        'workflow-456',
+        '.${itemClass}',
+        '.resolved-items',
+        { itemClass: 'resolved-items' }
+      );
+    });
+
+    it('should log sub-DOM extraction details', async () => {
+      await commandProcessor.getSubDOM(mockSession, '.items');
+
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        'Sub-DOM extracted from selector: .items',
+        'workflow-456',
+        expect.objectContaining({
+          selector: '.items',
+          originalSelector: '.items',
+          elementsFound: 2,
+          totalSize: 82, // Corrected size
+          maxSize: 100000
+        })
+      );
+    });
+
+    it('should include comprehensive metadata in response', async () => {
+      mockVariableResolver.resolve.mockReturnValue('.resolved-items');
+      
+      const response = await commandProcessor.getSubDOM(
+        mockSession, 
+        '.${itemClass}', 
+        500
+      );
+
+      expect(response.metadata).toMatchObject({
+        selector: '.resolved-items',
+        originalSelector: '.${itemClass}',
+        subDOM: [
+          '<div class="item" id="item1">Item 1</div>',
+          '<div class="item" id="item2">Item 2</div>'
+        ],
+        elementsFound: 2,
+        totalSize: 82, // Corrected size
+        maxSize: 500,
+        sizeUtilization: '16.40%' // Corrected percentage
+      });
+    });
+
+    it('should generate command ID when not provided', async () => {
+      const response = await commandProcessor.getSubDOM(mockSession, '.items');
+
+      expect(response.commandId).toMatch(/^get_subdom_\d+$/);
+    });
+
+    it('should use provided command ID when given', async () => {
+      const response = await commandProcessor.getSubDOM(
+        mockSession, 
+        '.items', 
+        1000, 
+        'custom-subdom-123'
+      );
+
+      expect(response.commandId).toBe('custom-subdom-123');
+    });
+
+    it('should handle complex nested HTML structures', async () => {
+      const complexHtml = '<div class="container"><h2>Title</h2><ul><li>Item 1</li><li>Item 2</li></ul></div>';
+      const mockElements = [
+        { evaluate: jest.fn(() => Promise.resolve(complexHtml)) }
+      ];
+      mockPage.$$.mockResolvedValue(mockElements);
+
+      const response = await commandProcessor.getSubDOM(mockSession, '.container');
+
+      expect(response.success).toBe(true);
+      expect(response.metadata?.subDOM).toEqual([complexHtml]);
+      expect(response.metadata?.totalSize).toBe(complexHtml.length);
+    });
+
+    it('should provide accurate size calculations', async () => {
+      const element1 = '<div>Test 1</div>'; // 17 chars
+      const element2 = '<span>Test 2</span>'; // 19 chars
+      const mockElements = [
+        { evaluate: jest.fn(() => Promise.resolve(element1)) },
+        { evaluate: jest.fn(() => Promise.resolve(element2)) }
+      ];
+      mockPage.$$.mockResolvedValue(mockElements);
+
+      const response = await commandProcessor.getSubDOM(mockSession, 'div,span');
+
+      expect(response.success).toBe(true);
+      expect(response.metadata?.totalSize).toBe(36); // String lengths: 17 + 19 = 36
+      expect(response.metadata?.sizeUtilization).toBe('0.04%'); // 36/100000 * 100 = 0.036%
+    });
+  });
+
   describe('variable resolution integration', () => {
     it('should resolve complex variable patterns', async () => {
       mockVariableResolver.resolve.mockImplementation((_, input) => {
@@ -727,7 +1331,9 @@ describe('CommandProcessor', () => {
         { action: CommandAction.CLICK_ELEMENT, params: { selector: '#button' } },
         { action: CommandAction.INPUT_TEXT, params: { selector: '#input', text: 'text' } },
         { action: CommandAction.SAVE_VARIABLE, params: { selector: '#value', variableName: 'var' } },
-        { action: CommandAction.GET_DOM, params: {} }
+        { action: CommandAction.GET_DOM, params: {} },
+        { action: CommandAction.GET_CONTENT, params: { selector: '#content' } },
+        { action: CommandAction.GET_SUBDOM, params: { selector: '.items' } }
       ];
 
       for (const { action, params } of commands) {

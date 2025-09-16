@@ -103,6 +103,37 @@ export class CommandProcessor implements ICommandProcessor {
           response = await this.getCurrentDOM(session, command.commandId);
           break;
 
+        case CommandAction.GET_CONTENT:
+          if (!command.parameters.selector) {
+            throw this.errorHandler.createInvalidCommandError(
+              command,
+              'Selector parameter is required for GET_CONTENT action'
+            );
+          }
+          response = await this.getContent(
+            session, 
+            command.parameters.selector, 
+            command.parameters.attribute,
+            command.parameters.multiple,
+            command.commandId
+          );
+          break;
+
+        case CommandAction.GET_SUBDOM:
+          if (!command.parameters.selector) {
+            throw this.errorHandler.createInvalidCommandError(
+              command,
+              'Selector parameter is required for GET_SUBDOM action'
+            );
+          }
+          response = await this.getSubDOM(
+            session, 
+            command.parameters.selector, 
+            command.parameters.maxDomSize,
+            command.commandId
+          );
+          break;
+
         default:
           throw this.errorHandler.createInvalidCommandError(
             command,
@@ -505,6 +536,296 @@ export class CommandProcessor implements ICommandProcessor {
         'DOM_CAPTURE_FAILED',
         `Failed to capture DOM: ${error instanceof Error ? error.message : String(error)}`,
         { commandId },
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Gets content from element(s) matching the selector
+   */
+  async getContent(
+    session: ExecutorSession, 
+    selector: string, 
+    attribute?: string, 
+    multiple?: boolean,
+    commandId?: string
+  ): Promise<CommandResponse> {
+    const startTime = Date.now();
+    const finalCommandId = commandId || `get_content_${Date.now()}`;
+
+    try {
+      // Resolve variables in selector
+      const resolvedSelector = this.variableResolver.resolve(session.linkedWorkflowSessionId, selector);
+      
+      this.logger.logVariableInterpolation(
+        session.linkedWorkflowSessionId,
+        selector,
+        resolvedSelector,
+        this.variableResolver.listVariables(session.linkedWorkflowSessionId)
+      );
+
+      // Wait for at least one element to exist
+      await session.page.waitForSelector(resolvedSelector, { 
+        timeout: 10000,
+        state: 'attached'
+      });
+
+      let content: string | string[];
+
+      if (multiple) {
+        // Get all matching elements
+        const elements = await session.page.$$(resolvedSelector);
+        
+        if (elements.length === 0) {
+          throw this.errorHandler.createSelectorError(resolvedSelector);
+        }
+
+        // Extract content from all elements
+        const contentArray: string[] = [];
+        for (const element of elements) {
+          let value: string;
+          
+          if (attribute) {
+            if (attribute === 'textContent' || attribute === 'text') {
+              value = await element.textContent() || '';
+            } else if (attribute === 'innerText') {
+              value = await element.innerText() || '';
+            } else if (attribute === 'innerHTML') {
+              value = await element.innerHTML() || '';
+            } else if (attribute === 'value') {
+              value = await element.inputValue() || '';
+            } else {
+              // Custom attribute
+              value = await element.getAttribute(attribute) || '';
+            }
+          } else {
+            // Default to text content
+            const tagName = await element.evaluate(el => el.tagName.toLowerCase());
+            if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') {
+              value = await element.inputValue() || '';
+            } else {
+              value = await element.textContent() || '';
+            }
+          }
+          
+          contentArray.push(value);
+        }
+        
+        content = contentArray;
+        
+      } else {
+        // Get first matching element
+        const element = await session.page.$(resolvedSelector);
+        
+        if (!element) {
+          throw this.errorHandler.createSelectorError(resolvedSelector);
+        }
+
+        if (attribute) {
+          if (attribute === 'textContent' || attribute === 'text') {
+            content = await element.textContent() || '';
+          } else if (attribute === 'innerText') {
+            content = await element.innerText() || '';
+          } else if (attribute === 'innerHTML') {
+            content = await element.innerHTML() || '';
+          } else if (attribute === 'value') {
+            content = await element.inputValue() || '';
+          } else {
+            // Custom attribute
+            content = await element.getAttribute(attribute) || '';
+          }
+        } else {
+          // Default behavior - extract value based on element type
+          const tagName = await element.evaluate(el => el.tagName.toLowerCase());
+          if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') {
+            content = await element.inputValue() || '';
+          } else {
+            content = await element.textContent() || '';
+          }
+        }
+      }
+
+      this.logger.debug(
+        `Content extracted from selector: ${resolvedSelector}`,
+        session.linkedWorkflowSessionId,
+        { 
+          selector: resolvedSelector, 
+          originalSelector: selector,
+          attribute,
+          multiple,
+          contentType: Array.isArray(content) ? 'array' : 'string',
+          contentLength: Array.isArray(content) ? content.length : (content as string).length
+        }
+      );
+
+      // Get DOM and capture screenshot
+      const dom = await session.page.content();
+      const screenshotId = await this.screenshotManager.captureScreenshot(
+        session.linkedWorkflowSessionId,
+        CommandAction.GET_CONTENT,
+        session.page,
+        { 
+          selector: resolvedSelector, 
+          originalSelector: selector,
+          attribute,
+          multiple,
+          contentType: Array.isArray(content) ? 'array' : 'string'
+        }
+      );
+
+      const duration = Date.now() - startTime;
+
+      return {
+        success: true,
+        commandId: finalCommandId,
+        dom,
+        screenshotId,
+        duration,
+        metadata: { 
+          selector: resolvedSelector, 
+          originalSelector: selector,
+          attribute,
+          multiple,
+          content,
+          contentType: Array.isArray(content) ? 'array' : 'string',
+          elementsFound: Array.isArray(content) ? content.length : 1
+        }
+      };
+
+    } catch (error) {
+      if (error instanceof Error && 'code' in error) {
+        throw error;
+      }
+      
+      throw this.errorHandler.createElementError(
+        selector,
+        'get content',
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Gets sub-DOM elements matching the selector
+   */
+  async getSubDOM(
+    session: ExecutorSession, 
+    selector: string, 
+    maxDomSize?: number,
+    commandId?: string
+  ): Promise<CommandResponse> {
+    const startTime = Date.now();
+    const finalCommandId = commandId || `get_subdom_${Date.now()}`;
+    const maxSize = maxDomSize || 100000; // Default 100KB limit
+
+    try {
+      // Resolve variables in selector
+      const resolvedSelector = this.variableResolver.resolve(session.linkedWorkflowSessionId, selector);
+      
+      this.logger.logVariableInterpolation(
+        session.linkedWorkflowSessionId,
+        selector,
+        resolvedSelector,
+        this.variableResolver.listVariables(session.linkedWorkflowSessionId)
+      );
+
+      // Wait for at least one element to exist
+      await session.page.waitForSelector(resolvedSelector, { 
+        timeout: 10000,
+        state: 'attached'
+      });
+
+      // Get all matching elements
+      const elements = await session.page.$$(resolvedSelector);
+      
+      if (elements.length === 0) {
+        throw this.errorHandler.createSelectorError(resolvedSelector);
+      }
+
+      // Extract HTML from all matching elements
+      const subDomElements: string[] = [];
+      let totalSize = 0;
+
+      for (const element of elements) {
+        const outerHTML = await element.evaluate(el => el.outerHTML);
+        const elementSize = outerHTML.length;
+        
+        // Check size limit before adding
+        if (totalSize + elementSize > maxSize) {
+          throw this.errorHandler.createStandardError(
+            'SUBDOM_SIZE_EXCEEDED',
+            `Sub-DOM size would exceed limit of ${maxSize} characters. Found ${elements.length} elements with total size ${totalSize + elementSize} characters.`,
+            { 
+              maxSize, 
+              currentSize: totalSize, 
+              elementSize, 
+              elementsProcessed: subDomElements.length,
+              totalElementsFound: elements.length,
+              selector: resolvedSelector 
+            }
+          );
+        }
+        
+        subDomElements.push(outerHTML);
+        totalSize += elementSize;
+      }
+
+      this.logger.debug(
+        `Sub-DOM extracted from selector: ${resolvedSelector}`,
+        session.linkedWorkflowSessionId,
+        { 
+          selector: resolvedSelector, 
+          originalSelector: selector,
+          elementsFound: elements.length,
+          totalSize,
+          maxSize
+        }
+      );
+
+      // Get current DOM and capture screenshot
+      const dom = await session.page.content();
+      const screenshotId = await this.screenshotManager.captureScreenshot(
+        session.linkedWorkflowSessionId,
+        CommandAction.GET_SUBDOM,
+        session.page,
+        { 
+          selector: resolvedSelector, 
+          originalSelector: selector,
+          elementsFound: elements.length,
+          totalSize,
+          maxSize
+        }
+      );
+
+      const duration = Date.now() - startTime;
+
+      return {
+        success: true,
+        commandId: finalCommandId,
+        dom,
+        screenshotId,
+        duration,
+        metadata: { 
+          selector: resolvedSelector, 
+          originalSelector: selector,
+          subDOM: subDomElements,
+          elementsFound: elements.length,
+          totalSize,
+          maxSize,
+          sizeUtilization: (totalSize / maxSize * 100).toFixed(2) + '%'
+        }
+      };
+
+    } catch (error) {
+      // Check if it's a StandardError (like SUBDOM_SIZE_EXCEEDED)
+      if (error && typeof error === 'object' && 'code' in error && 'moduleId' in error) {
+        throw error;
+      }
+      
+      throw this.errorHandler.createElementError(
+        selector,
+        'get sub-DOM',
         error instanceof Error ? error : undefined
       );
     }

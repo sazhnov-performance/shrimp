@@ -195,14 +195,19 @@ export enum CommandAction {
   CLICK_ELEMENT = 'CLICK_ELEMENT', 
   INPUT_TEXT = 'INPUT_TEXT',
   SAVE_VARIABLE = 'SAVE_VARIABLE',
-  GET_DOM = 'GET_DOM'
+  GET_DOM = 'GET_DOM',
+  GET_CONTENT = 'GET_CONTENT',
+  GET_SUBDOM = 'GET_SUBDOM'
 }
 
 export interface CommandParameters {
   url?: string;           // For OPEN_PAGE
-  selector?: string;      // For CLICK_ELEMENT, INPUT_TEXT, SAVE_VARIABLE
+  selector?: string;      // For CLICK_ELEMENT, INPUT_TEXT, SAVE_VARIABLE, GET_CONTENT, GET_SUBDOM
   text?: string;          // For INPUT_TEXT
   variableName?: string;  // For SAVE_VARIABLE
+  attribute?: string;     // For GET_CONTENT - which attribute to extract (default: textContent)
+  multiple?: boolean;     // For GET_CONTENT - return array of values from all matching elements
+  maxDomSize?: number;    // For GET_SUBDOM - maximum size of returned DOM in characters (default: 100000)
 }
 
 // AI generates commands without session IDs

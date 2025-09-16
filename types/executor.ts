@@ -172,6 +172,8 @@ export interface IExecutor extends ISessionManager {
   inputText(workflowSessionId: string, selector: string, text: string): Promise<CommandResponse>;
   saveVariable(workflowSessionId: string, selector: string, variableName: string): Promise<CommandResponse>;
   getCurrentDOM(workflowSessionId: string): Promise<CommandResponse>;
+  getContent(workflowSessionId: string, selector: string, attribute?: string, multiple?: boolean): Promise<CommandResponse>;
+  getSubDOM(workflowSessionId: string, selector: string, maxDomSize?: number): Promise<CommandResponse>;
   
   // Variable Management (uses workflowSessionId consistently)
   setVariable(workflowSessionId: string, name: string, value: string): Promise<void>;

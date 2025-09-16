@@ -226,4 +226,6 @@ export interface ICommandProcessor {
   inputText(session: ExecutorSession, selector: string, text: string, commandId: string): Promise<CommandResponse>;
   saveVariable(session: ExecutorSession, selector: string, variableName: string, commandId: string): Promise<CommandResponse>;
   getCurrentDOM(session: ExecutorSession, commandId: string): Promise<CommandResponse>;
+  getContent(session: ExecutorSession, selector: string, attribute?: string, multiple?: boolean, commandId?: string): Promise<CommandResponse>;
+  getSubDOM(session: ExecutorSession, selector: string, maxDomSize?: number, commandId?: string): Promise<CommandResponse>;
 }

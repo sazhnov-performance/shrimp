@@ -53,6 +53,8 @@ export interface IExecutor {
   inputText(workflowSessionId: string, selector: string, text: string): Promise<CommandResponse>;
   saveVariable(workflowSessionId: string, selector: string, variableName: string): Promise<CommandResponse>;
   getCurrentDOM(workflowSessionId: string): Promise<CommandResponse>;
+  getContent(workflowSessionId: string, selector: string, attribute?: string, multiple?: boolean): Promise<CommandResponse>;
+  getSubDOM(workflowSessionId: string, selector: string, maxDomSize?: number): Promise<CommandResponse>;
   
   // Variable Management
   setVariable(workflowSessionId: string, name: string, value: string): Promise<void>;
@@ -249,6 +251,52 @@ export class Executor implements IExecutor {
     await this.recordActivity(workflowSessionId);
 
     return await this.commandProcessor.getCurrentDOM(session, commandId);
+  }
+
+  async getContent(workflowSessionId: string, selector: string, attribute?: string, multiple?: boolean): Promise<CommandResponse> {
+    const session = this.sessionManager.getExecutorSession(workflowSessionId);
+    if (!session) {
+      throw this.errorHandler.createSessionNotFoundError(workflowSessionId);
+    }
+
+    if (!selector || selector.trim() === '') {
+      throw this.errorHandler.createInvalidCommandError(
+        { action: 'GET_CONTENT' } as any,
+        'Selector parameter is required and cannot be empty'
+      );
+    }
+
+    const commandId = this.generateCommandId();
+    await this.recordActivity(workflowSessionId);
+
+    return await this.commandProcessor.getContent(session, selector, attribute, multiple, commandId);
+  }
+
+  async getSubDOM(workflowSessionId: string, selector: string, maxDomSize?: number): Promise<CommandResponse> {
+    const session = this.sessionManager.getExecutorSession(workflowSessionId);
+    if (!session) {
+      throw this.errorHandler.createSessionNotFoundError(workflowSessionId);
+    }
+
+    if (!selector || selector.trim() === '') {
+      throw this.errorHandler.createInvalidCommandError(
+        { action: 'GET_SUBDOM' } as any,
+        'Selector parameter is required and cannot be empty'
+      );
+    }
+
+    // Validate maxDomSize if provided
+    if (maxDomSize !== undefined && (maxDomSize <= 0 || !Number.isInteger(maxDomSize))) {
+      throw this.errorHandler.createInvalidCommandError(
+        { action: 'GET_SUBDOM' } as any,
+        'maxDomSize parameter must be a positive integer'
+      );
+    }
+
+    const commandId = this.generateCommandId();
+    await this.recordActivity(workflowSessionId);
+
+    return await this.commandProcessor.getSubDOM(session, selector, maxDomSize, commandId);
   }
 
   // Variable Management
