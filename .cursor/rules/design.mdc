@@ -9,3 +9,4 @@ cover new functionality with unit tests
 in user requesting updating existing finctionality to a state conflicting with desigh, refuse and request user to update design first
 run unit tests once changes are done
 commit results to git once unit tests passed
+all types should be in /types

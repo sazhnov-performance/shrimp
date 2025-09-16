@@ -14,7 +14,10 @@ import {
   SessionLifecycleCallbacks,
   ModuleSessionConfig,
   SessionManagerHealth,
-  StandardError
+  StandardError,
+  CommandAction,
+  CommandParameters,
+  LogLevel
 } from './shared-types';
 
 // STANDARDIZED: Executor Session extends ModuleSessionInfo
@@ -40,21 +43,7 @@ export interface IExecutorSessionManager extends ISessionManager {
   listActiveSessions(): string[];
 }
 
-// Command System Types
-export enum CommandAction {
-  OPEN_PAGE = 'OPEN_PAGE',
-  CLICK_ELEMENT = 'CLICK_ELEMENT',
-  INPUT_TEXT = 'INPUT_TEXT',
-  SAVE_VARIABLE = 'SAVE_VARIABLE',
-  GET_DOM = 'GET_DOM'
-}
-
-export interface CommandParameters {
-  url?: string;           // For OPEN_PAGE
-  selector?: string;      // For CLICK_ELEMENT, INPUT_TEXT, SAVE_VARIABLE
-  text?: string;          // For INPUT_TEXT
-  variableName?: string;  // For SAVE_VARIABLE
-}
+// Command System Types (imported from shared-types)
 
 export interface ExecutorCommand {
   sessionId: string;
@@ -74,33 +63,9 @@ export interface CommandResponse {
   metadata?: Record<string, any>; // FIXED: Added for extensibility
 }
 
-// Error Handling Types
-export enum ErrorType {
-  PLAYWRIGHT_ERROR = 'PLAYWRIGHT_ERROR',
-  SELECTOR_ERROR = 'SELECTOR_ERROR',
-  TIMEOUT_ERROR = 'TIMEOUT_ERROR',
-  SESSION_ERROR = 'SESSION_ERROR',
-  VARIABLE_ERROR = 'VARIABLE_ERROR',
-  NETWORK_ERROR = 'NETWORK_ERROR'
-}
+// Error Handling Types (use StandardError from shared-types)
 
-export interface ErrorContext {
-  type: ErrorType;
-  message: string;
-  selector?: string;
-  originalError: any;
-  timestamp: Date;
-  sessionId: string;
-  details?: Record<string, any>;
-}
-
-// Logging Types
-export enum LogLevel {
-  DEBUG = 'DEBUG',
-  INFO = 'INFO',
-  WARN = 'WARN',
-  ERROR = 'ERROR'
-}
+// Logging Types (imported from shared-types)
 
 export interface LogEntry {
   level: LogLevel;
@@ -246,7 +211,7 @@ export interface ExecutorMetrics {
   commandsExecuted: number;
   averageCommandDuration: number;
   errorRate: number;
-  lastError?: ErrorContext;
+  lastError?: StandardError;
   uptime: number;
 }
 

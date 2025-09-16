@@ -30,7 +30,7 @@ interface SchemaOptions {
 }
 ```
 
-### Response Schema Structure (FIXED: Multiple Commands Support)
+### Response Schema Structure (UPDATED: Single Command Only)
 ```typescript
 // Import shared types for consistency
 import { AIResponse, AIGeneratedCommand, DecisionAction } from './shared-types';
@@ -41,7 +41,7 @@ interface ResponseSchema {
   properties: {
     decision: DecisionSchema;
     reasoning: ReasoningSchema;
-    commands: CommandArraySchema;  // FIXED: Changed from single command to commands array
+    command?: CommandSchema;  // UPDATED: Single optional command (not array)
     context?: ContextSchema;
   };
   required: string[];
@@ -87,23 +87,14 @@ interface ReasoningSchema {
 }
 ```
 
-### Command Array Schema (FIXED)
+### Command Schema (UPDATED: Single Command)
 ```typescript
-interface CommandArraySchema {
-  type: 'array';
-  items: CommandSchema;
-  minItems: 0;              // Allow empty command arrays
-  maxItems: 10;             // Reasonable limit for single step
-  description: 'Array of automation commands to execute in sequence';
-}
-
 interface CommandSchema {
   type: 'object';
   properties: {
     action: CommandActionSchema;
     parameters: CommandParametersSchema;
     reasoning?: { type: 'string'; description: 'Explanation for this specific command' };
-    priority?: { type: 'number'; minimum: 1; description: 'Execution priority (1 = highest)' };
   };
   required: ['action', 'parameters'];
   additionalProperties: false;
@@ -114,7 +105,7 @@ interface CommandSchema {
 Based on the executor module design and shared types:
 
 #### Session Management
-Session management is handled externally. The AI generates `AIGeneratedCommand[]` without session IDs, and the Task Loop injects session IDs to create `ExecutorCommand[]` before sending to the executor.
+Session management is handled externally. The AI generates `AIGeneratedCommand` without session IDs, and the Task Loop injects session IDs to create `ExecutorCommand` before sending to the executor.
 
 #### Web Automation Command Schemas (FIXED: Uses shared CommandAction enum)
 ```typescript
@@ -279,7 +270,7 @@ async validateAIResponse(response: any, schema: ResponseSchema): Promise<Validat
 ```
 - Validate AI response structure against generated schema
 - Check decision logic and result validation
-- Verify command parameter completeness (when present)
+- Verify single command parameter completeness (when present)
 - Verify reasoning field requirements
 - Return detailed validation errors
 
@@ -301,7 +292,7 @@ The AI must evaluate the current state and choose one of three actions:
 #### 3. ABORT
 - **When**: Unrecoverable state detected (e.g., essential element missing, critical error)
 - **Behavior**: Stop execution and report failure
-- **Command**: Not allowed - execution should halt
+- **Command**: Not allowed - execution should halt, no command provided
 
 ### Result Validation Structure
 ```typescript
@@ -333,7 +324,7 @@ interface AIResponseReasoning {
 
 ### Example AI Response Structures
 
-#### Example 1: RETRY - Previous Action Failed (FIXED: Multiple Commands)
+#### Example 1: RETRY - Previous Action Failed (UPDATED: Single Command)
 ```json
 {
   "decision": {
@@ -348,33 +339,22 @@ interface AIResponseReasoning {
   },
   "reasoning": {
     "analysis": "Previous OPEN_PAGE command executed but the expected login form is not visible on the page.",
-    "rationale": "The form might be hidden or use different selectors. Attempting multiple strategies to reveal the form.",
-    "expectedOutcome": "Login form will become visible after trying alternative selectors or actions.",
+    "rationale": "The form might be hidden or use different selectors. Attempting to reveal the form by clicking a login button.",
+    "expectedOutcome": "Login form will become visible after clicking the login button.",
     "confidence": 0.7,
     "alternatives": "Could try different page URL or wait for dynamic content to load."
   },
-  "commands": [
-    {
-      "action": "CLICK_ELEMENT",
-      "parameters": {
-        "selector": "button[data-test='login-btn']"
-      },
-      "reasoning": "Try clicking login button to reveal form",
-      "priority": 1
+  "command": {
+    "action": "CLICK_ELEMENT",
+    "parameters": {
+      "selector": "button[data-test='login-btn']"
     },
-    {
-      "action": "CLICK_ELEMENT", 
-      "parameters": {
-        "selector": ".login-toggle, #login-form-toggle"
-      },
-      "reasoning": "Alternative selector for form toggle",
-      "priority": 2
-    }
-  ]
+    "reasoning": "Try clicking login button to reveal form"
+  }
 }
 ```
 
-#### Example 2: PROCEED - Success, Next Step (FIXED: Multiple Commands)
+#### Example 2: PROCEED - Success, Next Step (UPDATED: Single Command)
 ```json
 {
   "decision": {
@@ -384,47 +364,27 @@ interface AIResponseReasoning {
       "expectedElements": ["input[name='username']", "input[name='password']", "button[type='submit']"],
       "actualState": "Login page loaded successfully with all required form elements visible"
     },
-    "message": "Login page ready, proceeding to enter credentials"
+    "message": "Login page ready, proceeding to enter username"
   },
   "reasoning": {
     "analysis": "Login page has loaded successfully and all required form elements are present and accessible.",
-    "rationale": "Form is ready for input, proceeding with complete login workflow.",
-    "expectedOutcome": "User credentials will be entered and login will be attempted.",
+    "rationale": "Form is ready for input, starting with username entry as the first step in the login workflow.",
+    "expectedOutcome": "Username will be entered into the form field successfully.",
     "confidence": 0.9,
     "alternatives": "Could validate form fields first, but they appear functional."
   },
-  "commands": [
-    {
-      "action": "INPUT_TEXT",
-      "parameters": {
-        "selector": "input[name='username']",
-        "text": "${saved_username}"
-      },
-      "reasoning": "Enter username into the login form",
-      "priority": 1
+  "command": {
+    "action": "INPUT_TEXT",
+    "parameters": {
+      "selector": "input[name='username']",
+      "text": "${saved_username}"
     },
-    {
-      "action": "INPUT_TEXT",
-      "parameters": {
-        "selector": "input[name='password']", 
-        "text": "${saved_password}"
-      },
-      "reasoning": "Enter password into the login form",
-      "priority": 2
-    },
-    {
-      "action": "CLICK_ELEMENT",
-      "parameters": {
-        "selector": "button[type='submit'], .login-submit"
-      },
-      "reasoning": "Submit the login form",
-      "priority": 3
-    }
-  ]
+    "reasoning": "Enter username into the login form as the first step"
+  }
 }
 ```
 
-#### Example 3: ABORT - Unrecoverable State (FIXED: Consistent Format)
+#### Example 3: ABORT - Unrecoverable State (UPDATED: No Command)
 ```json
 {
   "decision": {
@@ -443,8 +403,7 @@ interface AIResponseReasoning {
     "expectedOutcome": "Execution halted due to invalid URL.",
     "confidence": 0.95,
     "alternatives": "Could try different URLs, but without valid login page, authentication is impossible."
-  },
-  "commands": []
+  }
 }
 ```
 
@@ -522,7 +481,7 @@ interface ValidationResult {
 - Response validation with valid and invalid inputs
 - Reasoning field requirement enforcement
 - Variable interpolation pattern validation
-- Command parameter validation edge cases
+- Single command parameter validation edge cases
 - Schema caching and performance tests
 
 ## Security Considerations

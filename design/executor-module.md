@@ -37,7 +37,7 @@ interface IExecutorSessionManager extends ISessionManager {
   readonly moduleId: 'executor';
   
   // Standardized session management (inherited)
-  createSession(workflowSessionId: string, config?: ExecutorConfig): Promise<string>;
+  createSession(workflowSessionId: string, config?: ModuleSessionConfig): Promise<string>;
   destroySession(workflowSessionId: string): Promise<void>;
   getSession(workflowSessionId: string): ModuleSessionInfo | null;
   sessionExists(workflowSessionId: string): boolean;
