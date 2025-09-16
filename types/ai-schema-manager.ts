@@ -221,6 +221,7 @@ export interface AIResponseReasoning {
 export interface ExecutorCommand {
   action: CommandAction;
   parameters: Omit<CommandParameters, 'sessionId'>;
+  commandId?: string;              // For tracking consistency (optional in AI response, injected by Task Loop)
 }
 
 // Context in AI Response
