@@ -23,7 +23,7 @@ import {
 } from '../../../types/shared-types';
 
 // Re-export shared types for convenience
-export {
+export type {
   CommandAction,
   CommandParameters,
   StandardError,
@@ -185,13 +185,15 @@ export interface LogEntry {
 
 // Interfaces
 export interface IScreenshotManager {
-  captureScreenshot(sessionId: string, actionType: CommandAction, metadata?: Record<string, any>): Promise<string>;
+  captureScreenshot(sessionId: string, actionType: CommandAction, page: any, metadata?: Record<string, any>): Promise<string>;
   getScreenshot(screenshotId: string): Promise<ScreenshotInfo | null>;
   getScreenshotPath(screenshotId: string): Promise<string | null>;
   listScreenshots(sessionId: string): Promise<ScreenshotInfo[]>;
   deleteScreenshot(screenshotId: string): Promise<void>;
   cleanupScreenshots(sessionId?: string): Promise<CleanupResult>;
   validateScreenshotDirectory(): Promise<boolean>;
+  updateConfig(config: ScreenshotConfig): void;
+  getStatistics(): { totalScreenshots: number; totalSessions: number; totalFileSize: number; averageFileSize: number; oldestScreenshot?: Date; newestScreenshot?: Date; };
 }
 
 export interface IVariableResolver {
@@ -199,6 +201,7 @@ export interface IVariableResolver {
   setVariable(sessionId: string, name: string, value: string): void;
   getVariable(sessionId: string, name: string): string | null;
   listVariables(sessionId: string): Record<string, string>;
+  getStatistics(): { totalSessions: number; totalVariables: number; averageVariablesPerSession: number; sessionsWithVariables: number; };
 }
 
 export interface IExecutorLogger {
@@ -208,6 +211,11 @@ export interface IExecutorLogger {
   error(message: string, sessionId?: string, context?: Record<string, any>): void;
   getEntries(level?: LogLevel, sessionId?: string): LogEntry[];
   logSessionEvent(sessionId: string, event: string, details?: Record<string, any>): void;
+  logCommandExecution(sessionId: string, action: string, duration: number, success: boolean, details?: Record<string, any>): void;
+  logVariableInterpolation(sessionId: string, original: string, resolved: string, context?: Record<string, any>): void;
+  logScreenshotCapture(sessionId: string, screenshotId: string, actionType: string, success: boolean, details?: Record<string, any>): void;
+  getLogStats(): { total: number; byLevel: Record<string, number>; bySessions: number; };
+  setLogLevel(level: LogLevel): void;
 }
 
 // Command Processor Interface

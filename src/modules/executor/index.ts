@@ -376,14 +376,17 @@ export class Executor implements IExecutor {
 export { Executor as default };
 
 // Export types and components for testing
-export {
+export type {
   ExecutorSession,
   ExecutorCommand,
   CommandResponse,
   ExecutorConfig,
-  DEFAULT_EXECUTOR_CONFIG,
   CleanupResult,
   ScreenshotInfo
+} from './types';
+
+export {
+  DEFAULT_EXECUTOR_CONFIG
 } from './types';
 
 export {

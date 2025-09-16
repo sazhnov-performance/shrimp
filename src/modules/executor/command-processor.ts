@@ -323,7 +323,7 @@ export class CommandProcessor implements ICommandProcessor {
       }
 
       // Clear existing text and input new text
-      await element.clear();
+      await element.fill(''); // Clear first
       await element.fill(resolvedText);
 
       // Wait for any changes

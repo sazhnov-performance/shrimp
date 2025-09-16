@@ -5,7 +5,7 @@
 
 import { LogLevel } from '../../../types/shared-types';
 import { LogEntry, IExecutorLogger } from './types';
-import winston from 'winston';
+import * as winston from 'winston';
 
 export class ExecutorLogger implements IExecutorLogger {
   private entries: LogEntry[] = [];

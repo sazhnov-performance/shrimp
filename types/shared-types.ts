@@ -8,6 +8,7 @@
 export enum SessionStatus {
   INITIALIZING = 'INITIALIZING',
   ACTIVE = 'ACTIVE', 
+  BUSY = 'BUSY',
   PAUSED = 'PAUSED',
   COMPLETED = 'COMPLETED',
   FAILED = 'FAILED',

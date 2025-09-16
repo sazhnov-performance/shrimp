@@ -269,7 +269,7 @@ export class ExecutorSessionManager implements IExecutorSessionManager {
     let activeSessions = 0;
 
     // Check each session
-    for (const [workflowSessionId, session] of this.sessions) {
+    for (const [workflowSessionId, session] of Array.from(this.sessions)) {
       try {
         // Check if browser is still connected
         if (session.browser.isConnected()) {
@@ -312,7 +312,7 @@ export class ExecutorSessionManager implements IExecutorSessionManager {
     const now = Date.now();
     const expiredSessions: string[] = [];
 
-    for (const [workflowSessionId, session] of this.sessions) {
+    for (const [workflowSessionId, session] of Array.from(this.sessions)) {
       const age = now - session.lastActivity.getTime();
       if (age > this.config.browser.sessionTTL) {
         expiredSessions.push(workflowSessionId);

@@ -148,7 +148,7 @@ export class ScreenshotManager implements IScreenshotManager {
   async listScreenshots(sessionId: string): Promise<ScreenshotInfo[]> {
     const sessionScreenshots: ScreenshotInfo[] = [];
     
-    for (const screenshot of this.screenshots.values()) {
+    for (const screenshot of Array.from(this.screenshots.values())) {
       if (screenshot.sessionId === sessionId) {
         // Verify file still exists
         try {
