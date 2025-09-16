@@ -204,8 +204,8 @@ describe('CommandProcessor', () => {
       const response = await commandProcessor.executeCommand(mockSession, command);
 
       expect(response.success).toBe(true);
-      expect(mockElement.clear).toHaveBeenCalled();
-      expect(mockElement.fill).toHaveBeenCalledWith('test text');
+      expect(mockElement.fill).toHaveBeenCalledWith(''); // Clear first
+      expect(mockElement.fill).toHaveBeenCalledWith('test text'); // Then fill
     });
 
     it('should execute SAVE_VARIABLE command successfully', async () => {
@@ -493,8 +493,8 @@ describe('CommandProcessor', () => {
     it('should clear existing text before filling', async () => {
       await commandProcessor.inputText(mockSession, '#input', 'new text', 'cmd-123');
 
-      expect(mockElement.clear).toHaveBeenCalled();
-      expect(mockElement.fill).toHaveBeenCalledWith('new text');
+      expect(mockElement.fill).toHaveBeenCalledWith(''); // Clear first
+      expect(mockElement.fill).toHaveBeenCalledWith('new text'); // Then fill
     });
 
     it('should handle disabled input elements', async () => {
