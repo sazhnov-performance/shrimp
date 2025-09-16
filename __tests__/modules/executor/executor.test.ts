@@ -7,12 +7,12 @@ import { Executor } from '../../../src/modules/executor/index';
 import { 
   SessionStatus, 
   SessionLifecycleCallbacks,
-  ModuleSessionConfig 
+  ModuleSessionConfig,
+  CommandAction 
 } from '../../../types/shared-types';
 import { 
   ExecutorConfig, 
-  DEFAULT_EXECUTOR_CONFIG,
-  CommandAction 
+  DEFAULT_EXECUTOR_CONFIG
 } from '../../../src/modules/executor/types';
 
 // Mock Playwright
