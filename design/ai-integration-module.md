@@ -13,6 +13,9 @@ The AI Integration module provides a comprehensive interface for connecting to a
 - Support multiple AI models and configuration options
 - Log all interactions for debugging and monitoring
 - Store raw AI requests and responses to dedicated log files in `/log` directory
+- Support multimodal requests with screenshots and images
+- Provide screenshot analysis and content summarization capabilities
+- Handle vision-capable AI models for image understanding
 
 ## Module Interface
 
@@ -103,6 +106,10 @@ interface IAIIntegrationManager extends ISessionManager {
   disableRawLogging(workflowSessionId: string): Promise<void>;
   getRawLogFiles(workflowSessionId: string, dateRange?: [Date, Date]): Promise<string[]>;
   cleanupRawLogs(workflowSessionId: string, olderThan: Date): Promise<void>;
+  
+  // Screenshot Analysis (uses workflowSessionId for tracking)
+  analyzeScreenshot(workflowSessionId: string, request: ScreenshotAnalysisRequest): Promise<ScreenshotAnalysisResponse>;
+  analyzeScreenshotStream(workflowSessionId: string, request: ScreenshotAnalysisRequest): AsyncGenerator<AIStreamChunk>;
 }
 ```
 
@@ -177,8 +184,17 @@ interface AIRequest {
 
 interface AIMessage {
   role: 'system' | 'user' | 'assistant';
-  content: string;
+  content: string | MultimodalContent[];
   timestamp?: Date;
+}
+
+interface MultimodalContent {
+  type: 'text' | 'image_url';
+  text?: string;
+  image_url?: {
+    url: string;
+    detail?: 'low' | 'high' | 'auto';
+  };
 }
 
 interface AIRequestParameters {
@@ -208,6 +224,170 @@ interface AIStreamChunk {
   isComplete: boolean;
   usage?: TokenUsage;
   timestamp: Date;
+}
+
+### Screenshot Analysis Types
+```typescript
+interface ScreenshotAnalysisRequest {
+  image: ImageInput;
+  analysisType: ScreenshotAnalysisType;
+  options?: ScreenshotAnalysisOptions;
+  metadata?: Record<string, any>;
+}
+
+interface ImageInput {
+  type: 'base64' | 'url' | 'buffer';
+  data: string | Buffer;
+  format: 'png' | 'jpeg' | 'webp';
+  quality?: 'low' | 'high' | 'auto';
+}
+
+enum ScreenshotAnalysisType {
+  CONTENT_SUMMARY = 'CONTENT_SUMMARY',
+  ELEMENT_DETECTION = 'ELEMENT_DETECTION', 
+  UI_STRUCTURE = 'UI_STRUCTURE',
+  TEXT_EXTRACTION = 'TEXT_EXTRACTION',
+  ACCESSIBILITY_AUDIT = 'ACCESSIBILITY_AUDIT',
+  COMPARISON = 'COMPARISON'
+}
+
+interface ScreenshotAnalysisOptions {
+  includeCoordinates?: boolean;
+  includeElementDetails?: boolean;
+  includeTextContent?: boolean;
+  includeColors?: boolean;
+  includeLayout?: boolean;
+  focusAreas?: BoundingBox[];
+  comparisonImage?: ImageInput;
+  customPrompt?: string;
+}
+
+interface BoundingBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface ScreenshotAnalysisResponse {
+  id: string;
+  analysisType: ScreenshotAnalysisType;
+  summary: string;
+  elements?: DetectedElement[];
+  structure?: UIStructure;
+  textContent?: ExtractedText[];
+  accessibility?: AccessibilityAudit;
+  comparison?: ComparisonResult;
+  confidence: number;
+  processingTime: number;
+  usage: TokenUsage;
+  timestamp: Date;
+  metadata?: Record<string, any>;
+}
+
+interface DetectedElement {
+  type: string;
+  confidence: number;
+  boundingBox: BoundingBox;
+  attributes?: Record<string, string>;
+  text?: string;
+  interactable: boolean;
+  selector?: string;
+}
+
+interface UIStructure {
+  layout: 'grid' | 'flex' | 'absolute' | 'table' | 'mixed';
+  sections: UISection[];
+  navigation?: NavigationElement[];
+  forms?: FormElement[];
+  interactive?: InteractiveElement[];
+}
+
+interface UISection {
+  type: 'header' | 'footer' | 'sidebar' | 'main' | 'content' | 'navigation';
+  boundingBox: BoundingBox;
+  elements: DetectedElement[];
+}
+
+interface NavigationElement {
+  type: 'menu' | 'breadcrumb' | 'pagination' | 'tabs';
+  items: NavigationItem[];
+  boundingBox: BoundingBox;
+}
+
+interface NavigationItem {
+  text: string;
+  href?: string;
+  active: boolean;
+  boundingBox: BoundingBox;
+}
+
+interface FormElement {
+  action?: string;
+  method?: string;
+  fields: FormField[];
+  submitButtons: DetectedElement[];
+  boundingBox: BoundingBox;
+}
+
+interface FormField {
+  type: 'input' | 'textarea' | 'select' | 'checkbox' | 'radio';
+  name?: string;
+  label?: string;
+  placeholder?: string;
+  required: boolean;
+  value?: string;
+  boundingBox: BoundingBox;
+}
+
+interface InteractiveElement {
+  type: 'button' | 'link' | 'input' | 'dropdown' | 'toggle';
+  text?: string;
+  action?: string;
+  state?: 'enabled' | 'disabled' | 'loading';
+  boundingBox: BoundingBox;
+}
+
+interface ExtractedText {
+  content: string;
+  type: 'heading' | 'paragraph' | 'link' | 'button' | 'label' | 'error' | 'success';
+  boundingBox: BoundingBox;
+  fontSize?: number;
+  fontWeight?: string;
+  color?: string;
+}
+
+interface AccessibilityAudit {
+  score: number;
+  issues: AccessibilityIssue[];
+  recommendations: string[];
+  compliance: {
+    wcag_aa: boolean;
+    wcag_aaa: boolean;
+    section508: boolean;
+  };
+}
+
+interface AccessibilityIssue {
+  type: 'contrast' | 'alt_text' | 'keyboard_navigation' | 'aria_labels' | 'semantic_structure';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  description: string;
+  element?: DetectedElement;
+  recommendation: string;
+}
+
+interface ComparisonResult {
+  similarity: number;
+  differences: ImageDifference[];
+  summary: string;
+  significantChanges: boolean;
+}
+
+interface ImageDifference {
+  type: 'added' | 'removed' | 'modified' | 'moved';
+  description: string;
+  boundingBox: BoundingBox;
+  confidence: number;
 }
 ```
 
@@ -342,7 +522,53 @@ async listAvailableModels(connectionId: string): Promise<AIModel[]>
 - Provide model capabilities and pricing
 - Support model selection recommendations
 
-### 7. Raw Request/Response Logging
+### 7. Screenshot Analysis
+```typescript
+async analyzeScreenshot(workflowSessionId: string, request: ScreenshotAnalysisRequest): Promise<ScreenshotAnalysisResponse>
+```
+#### Process Flow:
+1. **Image Validation**: Verify image format, size, and quality
+2. **Image Preprocessing**: Convert to appropriate format, resize if needed
+3. **Vision Model Selection**: Choose appropriate vision-capable model
+4. **Prompt Construction**: Build analysis prompt based on analysis type
+5. **API Request**: Send multimodal request to OpenAI Vision API
+6. **Response Processing**: Parse and structure the analysis results
+7. **Post-processing**: Extract structured data (elements, coordinates, etc.)
+8. **Return Analysis**: Formatted screenshot analysis response
+
+#### Supported Analysis Types:
+- **CONTENT_SUMMARY**: General description of page content and purpose
+- **ELEMENT_DETECTION**: Identify and locate interactive elements
+- **UI_STRUCTURE**: Analyze layout, navigation, and page structure
+- **TEXT_EXTRACTION**: Extract and categorize all visible text
+- **ACCESSIBILITY_AUDIT**: Evaluate accessibility compliance
+- **COMPARISON**: Compare with reference image for changes
+
+### 8. Streaming Screenshot Analysis
+```typescript
+async analyzeScreenshotStream(workflowSessionId: string, request: ScreenshotAnalysisRequest): AsyncGenerator<AIStreamChunk>
+```
+- Real-time streaming analysis for large or complex screenshots
+- Incremental result delivery for better user experience
+- Support for cancellation and partial results
+- Optimized for processing time-sensitive analysis
+
+### 9. Image Processing
+```typescript
+class ImageProcessor {
+  async preprocessImage(image: ImageInput): Promise<ProcessedImage>;
+  async resizeImage(image: ImageInput, maxSize: number): Promise<ImageInput>;
+  async compressImage(image: ImageInput, quality: number): Promise<ImageInput>;
+  async convertFormat(image: ImageInput, targetFormat: string): Promise<ImageInput>;
+  async validateImage(image: ImageInput): Promise<ImageValidationResult>;
+}
+```
+- Automatic image optimization for AI processing
+- Format conversion and compression
+- Size validation and automatic resizing
+- Quality assessment and enhancement
+
+### 10. Raw Request/Response Logging
 ```typescript
 class RawLogger {
   async logRequest(connectionId: string, requestId: string, request: AIRequest): Promise<void>;
@@ -420,6 +646,9 @@ class RawLogger {
   ├── error-handler.ts            # Error categorization and recovery
   ├── logger.ts                   # Structured logging
   ├── raw-logger.ts               # Raw request/response logging
+  ├── screenshot-analyzer.ts      # Screenshot analysis and processing
+  ├── image-processor.ts          # Image preprocessing and optimization
+  ├── vision-handler.ts           # Vision model integration and handling
   └── types.ts                    # TypeScript type definitions
 ```
 
@@ -434,11 +663,13 @@ interface AIIntegrationConfig extends BaseModuleConfig {
   // AI Integration specific configuration
   ai: {
     defaultModel: string;
+    defaultVisionModel: string;
     defaultRateLimit: RateLimitConfig;
     retryPolicy: RetryPolicy;
     securityConfig: SecurityConfig;
     cachingConfig: CachingConfig;
     rawLoggingConfig: RawLoggingConfig;
+    imageProcessingConfig: ImageProcessingConfig;
   };
   
   // Inherits from BaseModuleConfig:
@@ -455,6 +686,7 @@ const DEFAULT_AI_INTEGRATION_CONFIG: AIIntegrationConfig = {
   
   ai: {
     defaultModel: 'gpt-4',
+    defaultVisionModel: 'gpt-4-vision-preview',
     defaultRateLimit: {
       requestsPerMinute: 60,
       tokensPerMinute: 40000,
@@ -490,6 +722,18 @@ const DEFAULT_AI_INTEGRATION_CONFIG: AIIntegrationConfig = {
       compression: { enabled: true, algorithm: 'gzip', compressAfterDays: 1 },
       encryption: { enabled: false, algorithm: 'aes-256-gcm' },
       retention: { enabled: true, retentionDays: 30, autoCleanup: true }
+    },
+    imageProcessingConfig: {
+      maxImageSize: 20971520,        // 20MB
+      maxImageDimensions: 2048,      // 2048x2048 pixels
+      supportedFormats: ['png', 'jpeg', 'webp'],
+      defaultQuality: 'high',
+      autoResize: true,
+      autoCompress: true,
+      preserveAspectRatio: true,
+      compressionQuality: 0.85,
+      cacheProcessedImages: true,
+      cacheTTLMs: 300000             // 5 minutes
     }
   },
   
@@ -535,6 +779,38 @@ interface SecurityConfig {
   requestValidation: boolean;
   sanitizeResponses: boolean;
 }
+
+interface ImageProcessingConfig {
+  maxImageSize: number;              // Maximum file size in bytes
+  maxImageDimensions: number;        // Maximum width/height in pixels
+  supportedFormats: string[];        // Supported image formats
+  defaultQuality: 'low' | 'high' | 'auto';
+  autoResize: boolean;               // Automatically resize large images
+  autoCompress: boolean;             // Automatically compress images
+  preserveAspectRatio: boolean;      // Maintain aspect ratio during resize
+  compressionQuality: number;        // Compression quality (0.0-1.0)
+  cacheProcessedImages: boolean;     // Cache processed images
+  cacheTTLMs: number;               // Cache time-to-live in milliseconds
+}
+
+interface ProcessedImage {
+  data: string | Buffer;
+  format: string;
+  width: number;
+  height: number;
+  size: number;
+  quality: string;
+  processingTime: number;
+}
+
+interface ImageValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+  originalSize: number;
+  suggestedSize?: number;
+  supportedFormat: boolean;
+}
 ```
 
 ## Integration with Other Modules
@@ -545,6 +821,8 @@ interface ExecutorAIIntegration {
   analyzePageContext(connectionId: string, dom: string, screenshot: string): Promise<AIResponse>;
   generateAutomationSteps(connectionId: string, objective: string, context: string): Promise<string[]>;
   troubleshootError(connectionId: string, error: string, context: string): Promise<string>;
+  analyzePageScreenshot(connectionId: string, screenshot: ImageInput, analysisType: ScreenshotAnalysisType): Promise<ScreenshotAnalysisResponse>;
+  comparePageStates(connectionId: string, beforeImage: ImageInput, afterImage: ImageInput): Promise<ComparisonResult>;
 }
 ```
 
@@ -554,6 +832,33 @@ interface ContextAIIntegration {
   analyzeExecutionHistory(connectionId: string, context: AIContextJson): Promise<AIResponse>;
   optimizeSteps(connectionId: string, executionHistory: ExecutionFlowItem[]): Promise<string[]>;
   predictNextAction(connectionId: string, currentState: string): Promise<string>;
+  analyzePageProgression(connectionId: string, screenshots: ImageInput[], stepContexts: string[]): Promise<ProgressionAnalysis>;
+  generateVisualSummary(connectionId: string, executionHistory: ExecutionFlowItem[], screenshots: ImageInput[]): Promise<VisualExecutionSummary>;
+}
+
+interface ProgressionAnalysis {
+  overallProgress: number;
+  completedSteps: string[];
+  currentState: string;
+  nextRecommendedAction: string;
+  potentialIssues: string[];
+  visualChanges: ImageDifference[];
+}
+
+interface VisualExecutionSummary {
+  executionOverview: string;
+  keyVisualMilestones: VisualMilestone[];
+  errorScreenshots: ImageInput[];
+  successIndicators: string[];
+  recommendations: string[];
+}
+
+interface VisualMilestone {
+  stepIndex: number;
+  description: string;
+  screenshot: ImageInput;
+  significance: 'low' | 'medium' | 'high';
+  changesSincePrevious: string[];
 }
 ```
 
@@ -779,7 +1084,13 @@ interface AIIntegrationConfig {
 - Real-time collaboration features
 - Advanced analytics and insights
 - Cost optimization recommendations
-- Multi-modal support (images, audio)
+- ✅ Multi-modal support (images, audio) - **IMPLEMENTED: Screenshot analysis with vision models**
+- Advanced image analysis with OCR and element detection
+- Video analysis for dynamic page interactions
+- Audio processing for voice-controlled automation
 - Plugin system for custom AI workflows
 - Integration with vector databases for enhanced context
 - Automated prompt optimization and testing
+- Machine learning-based image preprocessing optimization
+- Real-time collaborative screenshot annotation
+- Integration with accessibility testing tools

@@ -92,6 +92,7 @@ export interface ExecutionEvent {
   executorMethod: string;
   pageDom: string;
   eventId: string;
+  screenshotId?: string;
   metadata?: Record<string, any>;
 }
 
@@ -125,6 +126,7 @@ export interface ExecutionFlowItem {
   timestamp: Date;
   status: ExecutionStatus;
   eventId: string;
+  screenshotId?: string;
 }
 
 // STANDARDIZED: Core Interface for AI Context Manager (extends ISessionManager)
@@ -160,7 +162,7 @@ export interface IAIContextManager extends ISessionManager {
   markStepFailed(workflowSessionId: string, stepIndex: number, error?: string): Promise<void>;
   
   // Event Management
-  addExecutionEvent(workflowSessionId: string, stepIndex: number, event: Omit<ExecutionEvent, 'eventId'>): Promise<string>;
+  addExecutionEvent(workflowSessionId: string, stepIndex: number, event: Omit<ExecutionEvent, 'eventId'>, screenshotId?: string): Promise<string>;
   getExecutionEvents(workflowSessionId: string, stepIndex: number): ExecutionEvent[];
   getLatestEvent(workflowSessionId: string, stepIndex: number): ExecutionEvent | null;
   
@@ -325,6 +327,7 @@ export interface ExecutorIntegration {
     executorMethod: string;
     pageDom: string;
     timestamp: Date;
+    screenshotId?: string;
     metadata?: Record<string, any>;
   }): Promise<void>;
   

@@ -45,8 +45,6 @@ interface StepExecution {
   startTime: Date;
   endTime?: Date;
   status: SessionStatus;          // FIXED: Uses shared enum
-  executedCommands?: ExecutorCommand[];  // FIXED: Track executed commands
-  commandResults?: CommandResponse[];    // FIXED: Track command results
 }
 
 interface ExecutionEvent {
@@ -57,6 +55,7 @@ interface ExecutionEvent {
   executorCommand?: ExecutorCommand;     // FIXED: Full command context
   commandResult?: CommandResponse;       // FIXED: Full result context
   pageDom: string;
+  screenshotId?: string;
   metadata?: Record<string, any>;
 }
 ```
@@ -91,7 +90,7 @@ interface IAIContextManager extends ISessionManager {
   getStepExecution(workflowSessionId: string, stepIndex: number): StepExecution | null;
   
   // Event Management (uses workflowSessionId consistently)
-  addExecutionEvent(workflowSessionId: string, stepIndex: number, command: ExecutorCommand, result: CommandResponse, reasoning?: string): Promise<string>;
+  addExecutionEvent(workflowSessionId: string, stepIndex: number, command: ExecutorCommand, result: CommandResponse, reasoning?: string, screenshotId?: string): Promise<string>;
   addExecutionEventFromStream(workflowSessionId: string, stepIndex: number, streamEvent: StreamEvent): Promise<string>;
   getExecutionEvents(workflowSessionId: string, stepIndex: number): ExecutionEvent[];
   
@@ -142,6 +141,7 @@ interface ExecutionFlowItem {
   executorMethod: string;
   timestamp: Date;
   status: ExecutionStatus;
+  screenshotId?: string;
 }
 ```
 
@@ -176,12 +176,13 @@ async addStepExecution(sessionId: string, stepExecution: StepExecution): Promise
 
 ### 4. Event Logging
 ```typescript
-async addExecutionEvent(sessionId: string, stepIndex: number, event: ExecutionEvent): Promise<void>
+async addExecutionEvent(sessionId: string, stepIndex: number, command: ExecutorCommand, result: CommandResponse, reasoning?: string, screenshotId?: string): Promise<string>
 ```
 - Add execution event to specific step
 - Maintain chronological order
-- Store reasoning, executor method, and page DOM
+- Store reasoning, executor method, page DOM, and screenshot ID
 - Generate unique event IDs
+- Link screenshots to execution events for visual context
 
 ### 5. Context Generation
 ```typescript
@@ -199,10 +200,11 @@ The core method that produces AI-consumable context:
 5. **Format Output**: Structure data for AI consumption
 
 #### Data Aggregation Rules:
-- **Execution Flow**: Include all events from step 0 to targetStep
+- **Execution Flow**: Include all events from step 0 to targetStep with screenshot IDs
 - **Previous DOM**: Last DOM from step (targetStep - 1)
 - **Current DOM**: Last DOM from targetStep
 - **Chronological Order**: Maintain temporal sequence of all events
+- **Screenshot References**: Include screenshot IDs for visual context linkage
 
 ## Implementation Structure
 
@@ -244,6 +246,7 @@ interface ExecutorIntegration {
     executorMethod: string;
     pageDom: string;
     timestamp: Date;
+    screenshotId?: string;
   }): Promise<void>;
 }
 ```

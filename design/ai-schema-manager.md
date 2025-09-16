@@ -11,6 +11,10 @@ The AI Schema Manager provides dynamic schema construction for AI responses that
 - Support all executor module commands (session management handled externally)
 - Provide schema versioning and compatibility
 - Support command transformation from AI format to executor format
+- Generate schemas for screenshot analysis responses
+- Define visual analysis result structures and validation rules
+- Support multimodal response schemas with visual data
+- Provide schema templates for screenshot comparison results
 
 ## Module Interface
 
@@ -18,8 +22,12 @@ The AI Schema Manager provides dynamic schema construction for AI responses that
 ```typescript
 interface AISchemaManager {
   generateResponseSchema(options?: SchemaOptions): ResponseSchema;
+  generateScreenshotAnalysisSchema(analysisType: ScreenshotAnalysisType, options?: ScreenshotSchemaOptions): ScreenshotAnalysisSchema;
+  generateScreenshotComparisonSchema(options?: ComparisonSchemaOptions): ScreenshotComparisonSchema;
   validateAIResponse(response: any, schema: ResponseSchema): ValidationResult;
+  validateScreenshotAnalysisResponse(response: any, schema: ScreenshotAnalysisSchema): ValidationResult;
   getExecutorMethodSchemas(): ExecutorMethodSchemas;
+  getScreenshotAnalysisSchemas(): ScreenshotAnalysisSchemas;
   updateSchemaVersion(version: string): void;
 }
 
@@ -27,6 +35,31 @@ interface SchemaOptions {
   includeOptionalFields?: boolean;
   requireReasoning?: boolean;
   validationMode?: 'strict' | 'lenient';
+}
+
+interface ScreenshotSchemaOptions {
+  includeCoordinates?: boolean;
+  includeConfidenceScores?: boolean;
+  requireDetectedElements?: boolean;
+  includeAccessibilityInfo?: boolean;
+  validationMode?: 'strict' | 'lenient';
+}
+
+interface ComparisonSchemaOptions {
+  includePixelDifferences?: boolean;
+  includeSimilarityScore?: boolean;
+  requireChangeDescription?: boolean;
+  includeCoordinates?: boolean;
+  validationMode?: 'strict' | 'lenient';
+}
+
+enum ScreenshotAnalysisType {
+  CONTENT_SUMMARY = 'CONTENT_SUMMARY',
+  ELEMENT_DETECTION = 'ELEMENT_DETECTION',
+  UI_STRUCTURE = 'UI_STRUCTURE',
+  TEXT_EXTRACTION = 'TEXT_EXTRACTION',
+  ACCESSIBILITY_AUDIT = 'ACCESSIBILITY_AUDIT',
+  COMPARISON = 'COMPARISON'
 }
 ```
 
@@ -223,6 +256,278 @@ interface AutomationCommandSchemas {
     required: ['action', 'parameters'];
   };
 }
+
+### Screenshot Analysis Schema Structure
+```typescript
+interface ScreenshotAnalysisSchema {
+  $schema: string;
+  type: 'object';
+  properties: {
+    analysisType: AnalysisTypeSchema;
+    summary: StringSchema;
+    confidence: NumberSchema;
+    visualElements?: VisualElementsSchema;
+    textContent?: TextContentSchema;
+    uiStructure?: UIStructureSchema;
+    accessibility?: AccessibilitySchema;
+    metadata?: MetadataSchema;
+  };
+  required: string[];
+  additionalProperties: boolean;
+}
+
+interface ScreenshotComparisonSchema {
+  $schema: string;
+  type: 'object';
+  properties: {
+    similarity: NumberSchema;
+    differences: DifferencesSchema;
+    summary: StringSchema;
+    significantChanges: BooleanSchema;
+    changeAreas?: ChangeAreasSchema;
+    metadata?: MetadataSchema;
+  };
+  required: string[];
+  additionalProperties: boolean;
+}
+
+interface ScreenshotAnalysisSchemas {
+  CONTENT_SUMMARY: ScreenshotAnalysisSchema;
+  ELEMENT_DETECTION: ScreenshotAnalysisSchema;
+  UI_STRUCTURE: ScreenshotAnalysisSchema;
+  TEXT_EXTRACTION: ScreenshotAnalysisSchema;
+  ACCESSIBILITY_AUDIT: ScreenshotAnalysisSchema;
+  COMPARISON: ScreenshotComparisonSchema;
+}
+
+interface AnalysisTypeSchema {
+  enum: ['CONTENT_SUMMARY', 'ELEMENT_DETECTION', 'UI_STRUCTURE', 'TEXT_EXTRACTION', 'ACCESSIBILITY_AUDIT', 'COMPARISON'];
+  type: 'string';
+  description: 'Type of screenshot analysis performed';
+}
+
+interface VisualElementsSchema {
+  type: 'array';
+  items: {
+    type: 'object';
+    properties: {
+      type: StringSchema;
+      confidence: NumberSchema;
+      boundingBox: BoundingBoxSchema;
+      attributes?: ObjectSchema;
+      text?: StringSchema;
+      interactable: BooleanSchema;
+      selector?: StringSchema;
+    };
+    required: ['type', 'confidence', 'boundingBox', 'interactable'];
+  };
+}
+
+interface BoundingBoxSchema {
+  type: 'object';
+  properties: {
+    x: { type: 'number'; minimum: 0 };
+    y: { type: 'number'; minimum: 0 };
+    width: { type: 'number'; minimum: 0 };
+    height: { type: 'number'; minimum: 0 };
+  };
+  required: ['x', 'y', 'width', 'height'];
+  additionalProperties: false;
+}
+
+interface TextContentSchema {
+  type: 'array';
+  items: {
+    type: 'object';
+    properties: {
+      content: StringSchema;
+      type: {
+        enum: ['heading', 'paragraph', 'link', 'button', 'label', 'error', 'success'];
+        type: 'string';
+      };
+      boundingBox: BoundingBoxSchema;
+      fontSize?: NumberSchema;
+      fontWeight?: StringSchema;
+      color?: StringSchema;
+    };
+    required: ['content', 'type', 'boundingBox'];
+  };
+}
+
+interface UIStructureSchema {
+  type: 'object';
+  properties: {
+    layout: {
+      enum: ['grid', 'flex', 'absolute', 'table', 'mixed'];
+      type: 'string';
+    };
+    sections: {
+      type: 'array';
+      items: {
+        type: 'object';
+        properties: {
+          type: {
+            enum: ['header', 'footer', 'sidebar', 'main', 'content', 'navigation'];
+            type: 'string';
+          };
+          boundingBox: BoundingBoxSchema;
+          elementCount: { type: 'number'; minimum: 0 };
+        };
+        required: ['type', 'boundingBox'];
+      };
+    };
+    navigation?: {
+      type: 'array';
+      items: {
+        type: 'object';
+        properties: {
+          type: {
+            enum: ['menu', 'breadcrumb', 'pagination', 'tabs'];
+            type: 'string';
+          };
+          itemCount: { type: 'number'; minimum: 0 };
+          boundingBox: BoundingBoxSchema;
+        };
+        required: ['type', 'itemCount', 'boundingBox'];
+      };
+    };
+    forms?: {
+      type: 'array';
+      items: {
+        type: 'object';
+        properties: {
+          fieldCount: { type: 'number'; minimum: 0 };
+          submitButtonCount: { type: 'number'; minimum: 0 };
+          boundingBox: BoundingBoxSchema;
+        };
+        required: ['fieldCount', 'boundingBox'];
+      };
+    };
+  };
+  required: ['layout', 'sections'];
+}
+
+interface AccessibilitySchema {
+  type: 'object';
+  properties: {
+    score: { type: 'number'; minimum: 0; maximum: 100 };
+    issues: {
+      type: 'array';
+      items: {
+        type: 'object';
+        properties: {
+          type: {
+            enum: ['contrast', 'alt_text', 'keyboard_navigation', 'aria_labels', 'semantic_structure'];
+            type: 'string';
+          };
+          severity: {
+            enum: ['low', 'medium', 'high', 'critical'];
+            type: 'string';
+          };
+          description: StringSchema;
+          recommendation: StringSchema;
+          element?: VisualElementsSchema['items'];
+        };
+        required: ['type', 'severity', 'description', 'recommendation'];
+      };
+    };
+    recommendations: {
+      type: 'array';
+      items: StringSchema;
+    };
+    compliance: {
+      type: 'object';
+      properties: {
+        wcag_aa: BooleanSchema;
+        wcag_aaa: BooleanSchema;
+        section508: BooleanSchema;
+      };
+      required: ['wcag_aa', 'wcag_aaa', 'section508'];
+    };
+  };
+  required: ['score', 'issues', 'recommendations', 'compliance'];
+}
+
+interface DifferencesSchema {
+  type: 'array';
+  items: {
+    type: 'object';
+    properties: {
+      type: {
+        enum: ['added', 'removed', 'modified', 'moved'];
+        type: 'string';
+      };
+      description: StringSchema;
+      boundingBox: BoundingBoxSchema;
+      confidence: { type: 'number'; minimum: 0; maximum: 1 };
+    };
+    required: ['type', 'description', 'boundingBox', 'confidence'];
+  };
+}
+
+interface ChangeAreasSchema {
+  type: 'array';
+  items: {
+    type: 'object';
+    properties: {
+      area: BoundingBoxSchema;
+      changeType: StringSchema;
+      significance: {
+        enum: ['minor', 'moderate', 'major'];
+        type: 'string';
+      };
+    };
+    required: ['area', 'changeType', 'significance'];
+  };
+}
+
+// Basic schema types for screenshot analysis
+interface StringSchema {
+  type: 'string';
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+  description?: string;
+}
+
+interface NumberSchema {
+  type: 'number';
+  minimum?: number;
+  maximum?: number;
+  description?: string;
+}
+
+interface BooleanSchema {
+  type: 'boolean';
+  description?: string;
+}
+
+interface ArraySchema {
+  type: 'array';
+  items?: any;
+  minItems?: number;
+  maxItems?: number;
+  description?: string;
+}
+
+interface ObjectSchema {
+  type: 'object';
+  properties?: Record<string, any>;
+  required?: string[];
+  additionalProperties?: boolean;
+  description?: string;
+}
+
+interface MetadataSchema {
+  type: 'object';
+  properties: {
+    processingTime?: NumberSchema;
+    imageSize?: ObjectSchema;
+    analysisVersion?: StringSchema;
+    timestamp?: StringSchema;
+  };
+  additionalProperties: true;
+}
 ```
 
 ## Core Functionality
@@ -273,6 +578,36 @@ async validateAIResponse(response: any, schema: ResponseSchema): Promise<Validat
 - Verify single command parameter completeness (when present)
 - Verify reasoning field requirements
 - Return detailed validation errors
+
+### 6. Screenshot Analysis Schema Generation
+```typescript
+async generateScreenshotAnalysisSchema(analysisType: ScreenshotAnalysisType, options: ScreenshotSchemaOptions = {}): Promise<ScreenshotAnalysisSchema>
+```
+- Create specialized schemas for different screenshot analysis types
+- Include appropriate validation rules for visual data
+- Support coordinate-based element detection schemas
+- Generate accessibility audit schemas with compliance checks
+- Allow customization through analysis-specific options
+
+### 7. Screenshot Comparison Schema Generation
+```typescript
+async generateScreenshotComparisonSchema(options: ComparisonSchemaOptions = {}): Promise<ScreenshotComparisonSchema>
+```
+- Create schemas for screenshot comparison results
+- Include similarity score validation rules
+- Support difference detection and classification
+- Define change area schema structures
+- Allow customization for different comparison types
+
+### 8. Visual Response Validation
+```typescript
+async validateScreenshotAnalysisResponse(response: any, schema: ScreenshotAnalysisSchema): Promise<ValidationResult>
+```
+- Validate screenshot analysis responses against generated schemas
+- Check coordinate and bounding box validity
+- Verify confidence score ranges and requirements
+- Validate visual element detection results
+- Ensure accessibility audit completeness
 
 ## Decision Making Process
 
@@ -407,6 +742,123 @@ interface AIResponseReasoning {
 }
 ```
 
+### Example Screenshot Analysis Response Structures
+
+#### Example 1: Content Summary Analysis
+```json
+{
+  "analysisType": "CONTENT_SUMMARY",
+  "summary": "Login page with username/password form, company logo header, and forgot password link. Clean, professional design with blue and white color scheme.",
+  "confidence": 0.92,
+  "metadata": {
+    "processingTime": 1.2,
+    "imageSize": {
+      "width": 1920,
+      "height": 1080
+    },
+    "analysisVersion": "1.0.0",
+    "timestamp": "2023-12-01T10:30:00.000Z"
+  }
+}
+```
+
+#### Example 2: Element Detection Analysis
+```json
+{
+  "analysisType": "ELEMENT_DETECTION",
+  "summary": "Detected 8 interactive elements including 2 input fields, 1 submit button, and 3 navigation links.",
+  "confidence": 0.89,
+  "visualElements": [
+    {
+      "type": "input",
+      "confidence": 0.95,
+      "boundingBox": {
+        "x": 100,
+        "y": 200,
+        "width": 300,
+        "height": 40
+      },
+      "attributes": {
+        "placeholder": "Username",
+        "type": "text"
+      },
+      "text": "",
+      "interactable": true,
+      "selector": "input[name='username']"
+    },
+    {
+      "type": "button",
+      "confidence": 0.91,
+      "boundingBox": {
+        "x": 100,
+        "y": 300,
+        "width": 300,
+        "height": 40
+      },
+      "text": "Login",
+      "interactable": true,
+      "selector": "button[type='submit']"
+    }
+  ],
+  "metadata": {
+    "processingTime": 2.1,
+    "imageSize": {
+      "width": 1920,
+      "height": 1080
+    }
+  }
+}
+```
+
+#### Example 3: Screenshot Comparison Result
+```json
+{
+  "similarity": 0.78,
+  "summary": "Significant changes detected in the main content area. Login form has been replaced with a success message.",
+  "significantChanges": true,
+  "differences": [
+    {
+      "type": "removed",
+      "description": "Login form with username and password fields",
+      "boundingBox": {
+        "x": 100,
+        "y": 200,
+        "width": 300,
+        "height": 120
+      },
+      "confidence": 0.94
+    },
+    {
+      "type": "added",
+      "description": "Success message with green checkmark",
+      "boundingBox": {
+        "x": 100,
+        "y": 200,
+        "width": 300,
+        "height": 60
+      },
+      "confidence": 0.89
+    }
+  ],
+  "changeAreas": [
+    {
+      "area": {
+        "x": 80,
+        "y": 180,
+        "width": 340,
+        "height": 140
+      },
+      "changeType": "content_replacement",
+      "significance": "major"
+    }
+  ],
+  "metadata": {
+    "processingTime": 3.5,
+    "comparisonMethod": "structural_diff"
+  }
+}
+```
+
 ## Implementation Guidelines
 
 ### Modular Structure
@@ -416,6 +868,8 @@ interface AIResponseReasoning {
   ├── schema-generator.ts         # Core schema generation logic
   ├── command-schema-builder.ts   # Executor command schema construction
   ├── reasoning-schema-builder.ts # Reasoning field schema construction
+  ├── screenshot-schema-builder.ts # Screenshot analysis schema construction
+  ├── visual-validator.ts         # Visual response validation logic
   ├── validator.ts                # Response validation logic
   ├── schema-cache.ts             # Schema caching and optimization
   └── types.ts                    # TypeScript type definitions
@@ -441,12 +895,23 @@ interface AISchemaManagerConfig extends BaseModuleConfig {
     cacheEnabled: boolean;
     validationMode: 'strict' | 'lenient';
     reasoningRequired: boolean;
+    screenshotAnalysisConfig: ScreenshotAnalysisConfig;
   };
   
   // Inherits from BaseModuleConfig:
   // - logging: LoggingConfig
   // - performance: PerformanceConfig
   // - timeouts: TimeoutConfig
+}
+
+interface ScreenshotAnalysisConfig {
+  enableCoordinateValidation: boolean;
+  requireConfidenceScores: boolean;
+  minConfidenceThreshold: number;
+  maxBoundingBoxSize: number;
+  enableAccessibilityValidation: boolean;
+  strictElementDetection: boolean;
+  cacheAnalysisSchemas: boolean;
 }
 ```
 
@@ -483,6 +948,13 @@ interface ValidationResult {
 - Variable interpolation pattern validation
 - Single command parameter validation edge cases
 - Schema caching and performance tests
+- Screenshot analysis schema generation for all analysis types
+- Visual element detection validation with coordinate bounds
+- Accessibility audit schema validation and compliance checks
+- Screenshot comparison schema with difference detection
+- Confidence score validation and threshold testing
+- Bounding box coordinate validation and edge cases
+- Performance testing with large visual analysis responses
 
 ## Security Considerations
 - Validate all selector patterns to prevent injection
@@ -490,6 +962,12 @@ interface ValidationResult {
 - Ensure variable name patterns are safe
 - Validate command parameter types strictly
 - Prevent schema manipulation attacks
+- Validate coordinate bounds to prevent overflow attacks
+- Ensure confidence scores are within valid ranges (0-1)
+- Sanitize element text content in visual analysis results
+- Validate bounding box dimensions against reasonable limits
+- Prevent malicious metadata injection in analysis responses
+- Ensure accessibility audit results cannot contain harmful content
 
 ## Performance Requirements
 - Schema generation should complete within 100ms
@@ -497,6 +975,11 @@ interface ValidationResult {
 - Support schema caching for repeated requests
 - Memory-efficient schema storage
 - Lazy loading of unused command schemas
+- Screenshot analysis schema generation should complete within 150ms
+- Visual response validation should complete within 100ms
+- Support caching of complex visual analysis schemas
+- Efficient handling of large coordinate arrays
+- Optimized validation for accessibility audit results
 
 ## Future Enhancements
 - Support for conditional command execution schemas
@@ -505,3 +988,11 @@ interface ValidationResult {
 - Schema evolution and backward compatibility
 - Integration with AI model fine-tuning data
 - Automated schema optimization based on usage patterns
+- ✅ Screenshot analysis response schemas - **IMPLEMENTED**
+- Advanced visual analysis schema templates
+- Machine learning-based schema optimization for visual data
+- Support for video analysis response schemas
+- Integration with advanced computer vision models
+- Dynamic schema adaptation based on visual analysis accuracy
+- Support for multi-modal response schemas (text + visual + audio)
+- Advanced accessibility compliance schema generation
