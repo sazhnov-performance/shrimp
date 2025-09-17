@@ -7565,3 +7565,18 @@
 2025-09-17T13:31:14.840Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
 2025-09-17T13:31:19.809Z [Executor][INFO] [session-1758115874930-t5qhkq8oh] Session created {"sessionId":"93bcb61a-d750-4ffb-bb6c-ce4994c4c36b","browserType":"chromium"}
 2025-09-17T13:31:52.464Z [Executor][INFO] [session-1758115874930-t5qhkq8oh] Session destroyed {"sessionId":"93bcb61a-d750-4ffb-bb6c-ce4994c4c36b"}
+2025-09-17T13:43:36.672Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
+2025-09-17T13:43:41.660Z [Executor][INFO] [session-1758116616677-uheirpzq4] Session created {"sessionId":"fbc1e6d5-5aa9-4c52-8f05-d4dc82683c27","browserType":"chromium"}
+2025-09-17T13:43:44.942Z [Executor][INFO] [session-1758116616677-uheirpzq4] Executing command: OPEN_PAGE {"commandId":"taskloop_1758116624940_1zfpykroz","action":"OPEN_PAGE","parameters":{"url":"https://www.google.com"}}
+2025-09-17T13:43:50.713Z [Executor][INFO] [session-1758116616677-uheirpzq4] Command OPEN_PAGE completed in 5771ms {"action":"OPEN_PAGE","duration":5771,"success":true,"commandId":"taskloop_1758116624940_1zfpykroz"}
+2025-09-17T13:43:54.205Z [Executor][INFO] [session-1758116616677-uheirpzq4] Executing command: GET_SUBDOM {"commandId":"taskloop_1758116634204_pa344ek1f","action":"GET_SUBDOM","parameters":{"selector":"body"}}
+2025-09-17T13:43:54.423Z [Executor][ERROR] [session-1758116616677-uheirpzq4] Command GET_SUBDOM failed in 217ms {"action":"GET_SUBDOM","duration":217,"success":false,"commandId":"taskloop_1758116634204_pa344ek1f","error":"[object Object]"}
+2025-09-17T13:43:57.981Z [Executor][INFO] [session-1758116616677-uheirpzq4] Executing command: GET_SUBDOM {"commandId":"taskloop_1758116637981_o60zp65x3","action":"GET_SUBDOM","parameters":{"selector":"body"}}
+2025-09-17T13:43:58.168Z [Executor][ERROR] [session-1758116616677-uheirpzq4] Command GET_SUBDOM failed in 187ms {"action":"GET_SUBDOM","duration":187,"success":false,"commandId":"taskloop_1758116637981_o60zp65x3","error":"[object Object]"}
+2025-09-17T13:44:01.078Z [Executor][INFO] [session-1758116616677-uheirpzq4] Executing command: GET_SUBDOM {"commandId":"taskloop_1758116641061_i2637jf7o","action":"GET_SUBDOM","parameters":{"selector":"body"}}
+2025-09-17T13:44:01.492Z [Executor][ERROR] [session-1758116616677-uheirpzq4] Command GET_SUBDOM failed in 414ms {"action":"GET_SUBDOM","duration":414,"success":false,"commandId":"taskloop_1758116641061_i2637jf7o","error":"[object Object]"}
+2025-09-17T13:44:04.885Z [Executor][INFO] [session-1758116616677-uheirpzq4] Executing command: GET_SUBDOM {"commandId":"taskloop_1758116644884_vbiqudp1e","action":"GET_SUBDOM","parameters":{"selector":"#searchform"}}
+2025-09-17T13:44:14.907Z [Executor][ERROR] [session-1758116616677-uheirpzq4] Command GET_SUBDOM failed in 10022ms {"action":"GET_SUBDOM","duration":10022,"success":false,"commandId":"taskloop_1758116644884_vbiqudp1e","error":"[object Object]"}
+2025-09-17T13:44:19.085Z [Executor][INFO] [session-1758116616677-uheirpzq4] Executing command: GET_SUBDOM {"commandId":"taskloop_1758116659084_pd7r6age5","action":"GET_SUBDOM","parameters":{"selector":"input[name='q']"}}
+2025-09-17T13:44:29.098Z [Executor][ERROR] [session-1758116616677-uheirpzq4] Command GET_SUBDOM failed in 10013ms {"action":"GET_SUBDOM","duration":10013,"success":false,"commandId":"taskloop_1758116659084_pd7r6age5","error":"[object Object]"}
+2025-09-17T13:44:36.677Z [Executor][INFO] [session-1758116616677-uheirpzq4] Session destroyed {"sessionId":"fbc1e6d5-5aa9-4c52-8f05-d4dc82683c27"}

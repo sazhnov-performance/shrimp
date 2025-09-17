@@ -33,8 +33,8 @@ export function validateAIResponse(
   // Validate reasoning field
   validateReasoning(data.reasoning, sessionId, stepId);
   
-  // Validate confidence field
-  validateConfidence(data.confidence, sessionId, stepId);
+  // Validate confidence field (and normalize if numeric)
+  const normalizedConfidence = validateConfidence(data.confidence, sessionId, stepId);
   
   // Validate flowControl field
   validateFlowControl(data.flowControl, sessionId, stepId);
@@ -56,7 +56,7 @@ export function validateAIResponse(
 
   return {
     reasoning: data.reasoning,
-    confidence: data.confidence,
+    confidence: normalizedConfidence,
     flowControl: data.flowControl,
     ...(data.action && { action: data.action })
   };
@@ -115,10 +115,21 @@ function validateReasoning(reasoning: any, sessionId: string, stepId: number): v
 /**
  * Validates the confidence field
  */
-function validateConfidence(confidence: any, sessionId: string, stepId: number): void {
+function validateConfidence(confidence: any, sessionId: string, stepId: number): string {
+  // Handle numeric confidence values from AI (convert to string enum)
+  if (typeof confidence === 'number') {
+    if (confidence >= 80) {
+      return 'HIGH';
+    } else if (confidence >= 50) {
+      return 'MEDIUM';
+    } else {
+      return 'LOW';
+    }
+  }
+  
   if (typeof confidence !== 'string') {
     throw createValidationError(
-      'Confidence field must be a string',
+      'Confidence field must be a string or number',
       sessionId,
       stepId,
       { receivedType: typeof confidence, receivedValue: confidence }
@@ -135,6 +146,8 @@ function validateConfidence(confidence: any, sessionId: string, stepId: number):
       { receivedValue: confidence, validValues }
     );
   }
+  
+  return confidence;
 }
 
 /**

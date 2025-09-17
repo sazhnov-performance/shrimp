@@ -200,7 +200,20 @@ RESPONSE FORMAT:
         const legacyParameters = log?.action?.parameters || log?.parameters;
         const legacyParametersText = legacyParameters ? JSON.stringify(legacyParameters, null, 2) : 'No parameters';
         const legacyReasoning = log?.reasoning || 'No reasoning provided'; // Show full reasoning, no truncation
-        const legacyConfidence = log?.confidence || 'LOW';
+        
+        // Handle both numeric and string confidence in legacy format
+        let legacyConfidence: string;
+        if (typeof log?.confidence === 'number') {
+          if (log.confidence >= 80) {
+            legacyConfidence = 'HIGH';
+          } else if (log.confidence >= 50) {
+            legacyConfidence = 'MEDIUM';
+          } else {
+            legacyConfidence = 'LOW';
+          }
+        } else {
+          legacyConfidence = log?.confidence || 'LOW';
+        }
         
         // Format legacy attempt with full details
         let legacyAttemptDetails = `  Attempt ${attemptNumber}: ${legacyAction} (Confidence: ${legacyConfidence})\n`;
@@ -235,7 +248,21 @@ RESPONSE FORMAT:
       const action = aiResponse?.action?.command || 'Unknown';
       const actionParameters = aiResponse?.action?.parameters ? JSON.stringify(aiResponse.action.parameters, null, 2) : 'No parameters';
       const reasoning = aiResponse?.reasoning || 'No reasoning provided'; // Show full reasoning, no truncation
-      const confidence = aiResponse?.confidence !== undefined ? aiResponse.confidence : 'LOW';
+      
+      // Handle both numeric confidence (90) and string confidence ('HIGH')
+      let confidence: string;
+      if (typeof aiResponse?.confidence === 'number') {
+        // Convert numeric confidence to string representation
+        if (aiResponse.confidence >= 80) {
+          confidence = 'HIGH';
+        } else if (aiResponse.confidence >= 50) {
+          confidence = 'MEDIUM';
+        } else {
+          confidence = 'LOW';
+        }
+      } else {
+        confidence = aiResponse?.confidence || 'LOW';
+      }
       
       // Format the attempt with full details
       let attemptDetails = `  Attempt ${attemptNumber}: ${action} (Confidence: ${confidence})\n`;
