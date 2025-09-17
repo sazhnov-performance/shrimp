@@ -46,7 +46,16 @@ export class TaskLoop implements ITaskLoop {
     // Resolve dependencies internally using singleton instances
     this.contextManager = AIContextManager.getInstance();
     this.promptManager = AIPromptManager.getInstance();
-    this.aiIntegration = AIIntegrationManager.getInstance();
+    
+    // Initialize AI integration with API key from environment variables
+    const aiConfig = {
+      apiKey: process.env.OPENAI_API_KEY || '',
+      model: 'gpt-4o-mini',
+      baseUrl: 'https://api.openai.com/v1',
+      logFilePath: './ai-requests.log'
+    };
+    this.aiIntegration = AIIntegrationManager.getInstance(aiConfig);
+    
     this.schemaManager = AISchemaManager.getInstance();
     this.executor = new Executor(); // Executor is not a singleton in current implementation
     
