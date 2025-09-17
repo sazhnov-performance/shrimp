@@ -12,12 +12,12 @@ import {
   TaskLoopError,
   ValidationError,
   TaskExecutionContext,
-  IAIContextManager,
   IAIPromptManager,
   IAIIntegrationManager,
   IAISchemaManager,
   IExecutorSessionManager
 } from './types';
+import { IAIContextManager } from '../../../types/ai-context-manager-types';
 import { validateAIResponse, sanitizeAIResponse } from './validator';
 import { DEFAULT_CONFIG, ERROR_MESSAGES, LOG_PREFIX, FLOW_CONTROL } from './config';
 

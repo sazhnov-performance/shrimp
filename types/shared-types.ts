@@ -644,6 +644,29 @@ export const DEPENDENCY_TOKENS = {
   FILE_SYSTEM: 'FileSystem'
 } as const;
 
+// Task Loop Module Interfaces
+export interface ITaskLoop {
+  executeStep(sessionId: string, stepId: number): Promise<StepResult>;
+}
+
+export interface IAIIntegrationManager {
+  sendRequest(prompt: string): Promise<AIIntegrationResponse>;
+}
+
+export interface AIIntegrationResponse {
+  status: 'success' | 'error';
+  data?: any;
+  error?: string;
+}
+
+export interface IAIPromptManager {
+  getStepPrompt(sessionId: string, stepId: number): string;
+}
+
+export interface IAISchemaManager {
+  getAIResponseSchema(): object;
+}
+
 // Event-Driven Architecture
 export interface IEventPublisher {
   publishEvent(event: TaskLoopEvent): Promise<void>;

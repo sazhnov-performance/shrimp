@@ -1,277 +1,198 @@
 /**
  * AI Schema Manager Tests
- * Comprehensive unit tests for the AI Schema Manager module
+ * Unit tests for the AI Schema Manager module as per design document
+ * Based on design/ai-schema-manager.md specifications
  */
 
-import { AISchemaManagerImpl, createAISchemaManager } from '../../../src/modules/ai-schema-manager';
-import { ScreenshotAnalysisType } from '../../../src/modules/ai-schema-manager/types';
+import { AISchemaManager, createAISchemaManager } from '../../../src/modules/ai-schema-manager';
+import { EXAMPLE_RESPONSES } from '../../../src/modules/ai-schema-manager/types';
 
 describe('AI Schema Manager', () => {
-  let schemaManager: AISchemaManagerImpl;
+  let schemaManager: AISchemaManager;
 
   beforeEach(() => {
-    schemaManager = new AISchemaManagerImpl();
-  });
-
-  afterEach(async () => {
-    await schemaManager.destroy();
+    schemaManager = new AISchemaManager();
   });
 
   describe('Schema Generation', () => {
-    test('should generate response schema with default options', async () => {
-      const schema = await schemaManager.generateResponseSchema();
+    test('should generate AI response schema', () => {
+      const schema = schemaManager.getAIResponseSchema();
       
       expect(schema).toBeDefined();
       expect(schema.type).toBe('object');
+      expect(schema.required).toEqual(['reasoning', 'confidence', 'flowControl']);
       expect(schema.properties).toBeDefined();
-      expect(schema.properties.decision).toBeDefined();
+    });
+
+    test('should include action property in schema', () => {
+      const schema = schemaManager.getAIResponseSchema();
+      
+      expect(schema.properties.action).toBeDefined();
+      expect(schema.properties.action.description).toContain('required only when flowControl is');
+      expect(schema.properties.action.type).toBe('object');
+      expect(schema.properties.action.required).toEqual(['command', 'parameters']);
+    });
+
+    test('should include reasoning property in schema', () => {
+      const schema = schemaManager.getAIResponseSchema();
+      
       expect(schema.properties.reasoning).toBeDefined();
-      expect(schema.required).toContain('decision');
-      expect(schema.required).toContain('reasoning');
+      expect(schema.properties.reasoning.type).toBe('string');
+      expect(schema.properties.reasoning.description).toContain('decision-making process');
     });
 
-    test('should generate response schema with custom options', async () => {
-      const schema = await schemaManager.generateResponseSchema({
-        requireReasoning: false,
-        validationMode: 'lenient'
-      });
+    test('should include confidence property in schema', () => {
+      const schema = schemaManager.getAIResponseSchema();
       
-      expect(schema).toBeDefined();
-      expect(schema.additionalProperties).toBe(true);
-      expect(schema.required).not.toContain('reasoning');
-    });
-
-    test('should generate screenshot analysis schema', async () => {
-      const schema = await schemaManager.generateScreenshotAnalysisSchema(
-        ScreenshotAnalysisType.ELEMENT_DETECTION
-      );
-      
-      expect(schema).toBeDefined();
-      expect(schema.type).toBe('object');
-      expect(schema.properties).toBeDefined();
-      expect(schema.properties.analysisType).toBeDefined();
-      expect(schema.properties.summary).toBeDefined();
       expect(schema.properties.confidence).toBeDefined();
+      expect(schema.properties.confidence.type).toBe('integer');
+      expect(schema.properties.confidence.minimum).toBe(0);
+      expect(schema.properties.confidence.maximum).toBe(100);
     });
 
-    test('should generate screenshot comparison schema', async () => {
-      const schema = await schemaManager.generateScreenshotComparisonSchema();
+    test('should include flowControl property in schema', () => {
+      const schema = schemaManager.getAIResponseSchema();
       
-      expect(schema).toBeDefined();
-      expect(schema.type).toBe('object');
-      expect(schema.properties.similarity).toBeDefined();
-      expect(schema.properties.differences).toBeDefined();
-      expect(schema.properties.significantChanges).toBeDefined();
-    });
-  });
-
-  describe('Response Validation', () => {
-    test('should validate valid AI response', async () => {
-      const schema = await schemaManager.generateResponseSchema();
-      const response = {
-        decision: {
-          action: 'PROCEED',
-          message: 'Login form found, proceeding to enter credentials',
-          resultValidation: {
-            success: true,
-            expectedElements: ['input[name="username"]'],
-            actualState: 'Login page loaded successfully'
-          }
-        },
-        reasoning: {
-          analysis: 'The page has loaded successfully and contains the expected login form.',
-          rationale: 'All required elements are present and accessible.',
-          expectedOutcome: 'Username will be entered successfully.'
-        },
-        command: {
-          action: 'INPUT_TEXT',
-          parameters: {
-            selector: 'input[name="username"]',
-            text: 'testuser'
-          }
-        }
-      };
-
-      const result = await schemaManager.validateAIResponse(response, schema);
-      
-      expect(result.valid).toBe(true);
-      expect(result.errors).toHaveLength(0);
-      expect(result.executorCompatible).toBe(true);
-    });
-
-    test('should detect invalid decision action', async () => {
-      const schema = await schemaManager.generateResponseSchema();
-      const response = {
-        decision: {
-          action: 'INVALID_ACTION',
-          message: 'Test message'
-        },
-        reasoning: {
-          analysis: 'Test analysis',
-          rationale: 'Test rationale',
-          expectedOutcome: 'Test outcome'
-        }
-      };
-
-      const result = await schemaManager.validateAIResponse(response, schema);
-      
-      expect(result.valid).toBe(false);
-      expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors.some(error => error.field.includes('action'))).toBe(true);
-    });
-
-    test('should detect missing required fields', async () => {
-      const schema = await schemaManager.generateResponseSchema();
-      const response = {
-        decision: {
-          action: 'PROCEED'
-          // Missing message
-        }
-        // Missing reasoning
-      };
-
-      const result = await schemaManager.validateAIResponse(response, schema);
-      
-      expect(result.valid).toBe(false);
-      expect(result.errors.length).toBeGreaterThan(0);
-    });
-
-    test('should validate screenshot analysis response', async () => {
-      const schema = await schemaManager.generateScreenshotAnalysisSchema(
-        ScreenshotAnalysisType.ELEMENT_DETECTION
-      );
-      const response = {
-        analysisType: 'ELEMENT_DETECTION',
-        summary: 'Detected 5 interactive elements including buttons and input fields',
-        confidence: 0.92,
-        visualElements: [
-          {
-            type: 'button',
-            confidence: 0.95,
-            boundingBox: { x: 100, y: 200, width: 80, height: 30 },
-            interactable: true,
-            text: 'Submit'
-          }
-        ]
-      };
-
-      const result = await schemaManager.validateScreenshotAnalysisResponse(response, schema);
-      
-      expect(result.valid).toBe(true);
-      expect(result.errors).toHaveLength(0);
+      expect(schema.properties.flowControl).toBeDefined();
+      expect(schema.properties.flowControl.type).toBe('string');
+      expect(schema.properties.flowControl.enum).toEqual(['continue', 'stop_success', 'stop_failure']);
     });
   });
 
-  describe('Cache Management', () => {
-    test('should cache generated schemas', async () => {
-      // Generate same schema twice
-      const schema1 = await schemaManager.generateResponseSchema();
-      const schema2 = await schemaManager.generateResponseSchema();
+  describe('Executor Action Schema', () => {
+    test('should include all executor commands', () => {
+      const schema = schemaManager.getAIResponseSchema();
+      const actionSchema = schema.properties.action;
       
-      expect(schema1).toEqual(schema2);
-      
-      const stats = schemaManager.getCacheStats();
-      expect(stats.schemaCache).toBeDefined();
+      expect(actionSchema.properties.command.enum).toContain('OPEN_PAGE');
+      expect(actionSchema.properties.command.enum).toContain('CLICK_ELEMENT');
+      expect(actionSchema.properties.command.enum).toContain('INPUT_TEXT');
+      expect(actionSchema.properties.command.enum).toContain('GET_SUBDOM');
     });
 
-    test('should clear cache', async () => {
-      await schemaManager.generateResponseSchema();
-      let stats = schemaManager.getCacheStats();
-      expect(stats.schemaCache.totalEntries).toBeGreaterThan(0);
+    test('should include parameters property', () => {
+      const schema = schemaManager.getAIResponseSchema();
+      const actionSchema = schema.properties.action;
       
-      await schemaManager.clearCache();
-      stats = schemaManager.getCacheStats();
-      expect(stats.schemaCache.totalEntries).toBe(0);
-    });
-  });
-
-  describe('Configuration', () => {
-    test('should update configuration', () => {
-      const newConfig = {
-        schema: {
-          validationMode: 'lenient' as const,
-          reasoningRequired: false
-        }
-      };
-      
-      schemaManager.updateConfig(newConfig);
-      const config = schemaManager.getConfig();
-      
-      expect(config.schema.validationMode).toBe('lenient');
-      expect(config.schema.reasoningRequired).toBe(false);
+      expect(actionSchema.properties.parameters).toBeDefined();
+      expect(actionSchema.properties.parameters.type).toBe('object');
+      expect(actionSchema.properties.parameters.properties.url).toBeDefined();
+      expect(actionSchema.properties.parameters.properties.selector).toBeDefined();
+      expect(actionSchema.properties.parameters.properties.text).toBeDefined();
     });
 
-    test('should update schema version', () => {
-      schemaManager.updateSchemaVersion('2.0.0');
-      const config = schemaManager.getConfig();
+    test('should have proper parameter descriptions', () => {
+      const schema = schemaManager.getAIResponseSchema();
+      const paramSchema = schema.properties.action.properties.parameters.properties;
       
-      expect(config.schema.version).toBe('2.0.0');
+      expect(paramSchema.url.description).toContain('OPEN_PAGE');
+      expect(paramSchema.selector.description).toContain('CSS selector');
+      expect(paramSchema.text.description).toContain('INPUT_TEXT');
     });
   });
 
-  describe('Health Check', () => {
-    test('should pass health check', async () => {
-      const health = await schemaManager.healthCheck();
+  describe('Schema Structure Validation', () => {
+    test('should produce valid JSON schema structure', () => {
+      const schema = schemaManager.getAIResponseSchema();
       
-      if (!health.healthy) {
-        console.log('Health check issues:', health.issues);
-      }
+      // Test that schema has all required JSON Schema properties
+      expect(typeof schema.type).toBe('string');
+      expect(Array.isArray(schema.required)).toBe(true);
+      expect(typeof schema.properties).toBe('object');
       
-      expect(health.healthy).toBe(true);
-      expect(health.issues).toBeUndefined();
+      // Test nested structure
+      expect(typeof schema.properties.action.type).toBe('string');
+      expect(Array.isArray(schema.properties.action.required)).toBe(true);
+      expect(typeof schema.properties.action.properties).toBe('object');
+    });
+
+    test('should be serializable to JSON', () => {
+      const schema = schemaManager.getAIResponseSchema();
+      
+      expect(() => JSON.stringify(schema)).not.toThrow();
+      
+      const jsonString = JSON.stringify(schema);
+      const parsed = JSON.parse(jsonString);
+      
+      expect(parsed).toEqual(schema);
     });
   });
 
-  describe('Statistics', () => {
-    test('should provide module statistics', () => {
-      const stats = schemaManager.getStatistics();
+  describe('Example Response Compatibility', () => {
+    test('should be compatible with open page example', () => {
+      const schema = schemaManager.getAIResponseSchema();
+      const example = EXAMPLE_RESPONSES.openPage;
       
-      expect(stats).toBeDefined();
-      expect(stats.moduleId).toBe('ai-schema-manager');
-      expect(stats.version).toBeDefined();
-      expect(stats.cache).toBeDefined();
-      expect(stats.performance).toBeDefined();
+      // Basic structure checks - the schema should accommodate the example
+      expect(example.action).toBeDefined();
+      expect(example.reasoning).toBeDefined();
+      expect(example.confidence).toBeDefined();
+      expect(example.flowControl).toBeDefined();
+      
+      expect(schema.properties.flowControl.enum).toContain(example.flowControl);
+      expect(schema.properties.action.properties.command.enum).toContain(example.action.command);
     });
-  });
 
-  describe('Executor Method Schemas', () => {
-    test('should provide executor method schemas', () => {
-      const schemas = schemaManager.getExecutorMethodSchemas();
+    test('should be compatible with click element example', () => {
+      const schema = schemaManager.getAIResponseSchema();
+      const example = EXAMPLE_RESPONSES.clickElement;
       
-      expect(schemas).toBeDefined();
-      expect(schemas.commands).toBeDefined();
-      expect(schemas.parameters).toBeDefined();
-      expect(schemas.commands.OPEN_PAGE).toBeDefined();
-      expect(schemas.commands.CLICK_ELEMENT).toBeDefined();
-      expect(schemas.commands.INPUT_TEXT).toBeDefined();
+      expect(schema.properties.flowControl.enum).toContain(example.flowControl);
+      expect(schema.properties.action.properties.command.enum).toContain(example.action.command);
     });
-  });
 
-  describe('Screenshot Analysis Schemas', () => {
-    test('should provide screenshot analysis schemas', () => {
-      const schemas = schemaManager.getScreenshotAnalysisSchemas();
+    test('should be compatible with input text example', () => {
+      const schema = schemaManager.getAIResponseSchema();
+      const example = EXAMPLE_RESPONSES.inputText;
       
-      expect(schemas).toBeDefined();
-      expect(schemas.CONTENT_SUMMARY).toBeDefined();
-      expect(schemas.ELEMENT_DETECTION).toBeDefined();
-      expect(schemas.UI_STRUCTURE).toBeDefined();
-      expect(schemas.TEXT_EXTRACTION).toBeDefined();
-      expect(schemas.ACCESSIBILITY_AUDIT).toBeDefined();
-      expect(schemas.COMPARISON).toBeDefined();
+      expect(schema.properties.flowControl.enum).toContain(example.flowControl);
+      expect(schema.properties.action.properties.command.enum).toContain(example.action.command);
+    });
+
+    test('should be compatible with get subdom example', () => {
+      const schema = schemaManager.getAIResponseSchema();
+      const example = EXAMPLE_RESPONSES.getSubDom;
+      
+      expect(schema.properties.flowControl.enum).toContain(example.flowControl);
+      expect(schema.properties.action.properties.command.enum).toContain(example.action.command);
+    });
+
+    test('should be compatible with stop success example', () => {
+      const schema = schemaManager.getAIResponseSchema();
+      const example = EXAMPLE_RESPONSES.stopSuccess;
+      
+      expect(schema.properties.flowControl.enum).toContain(example.flowControl);
+      // Stop success should not have action
+      expect(example.action).toBeUndefined();
+    });
+
+    test('should be compatible with stop failure example', () => {
+      const schema = schemaManager.getAIResponseSchema();
+      const example = EXAMPLE_RESPONSES.stopFailure;
+      
+      expect(schema.properties.flowControl.enum).toContain(example.flowControl);
+      // Stop failure should not have action
+      expect(example.action).toBeUndefined();
     });
   });
 
   describe('Factory Function', () => {
     test('should create schema manager with factory', () => {
-      const manager = createAISchemaManager({
-        schema: {
-          validationMode: 'lenient',
-          reasoningRequired: false
-        }
-      });
+      const manager = createAISchemaManager();
       
       expect(manager).toBeDefined();
-      expect(manager.getConfig().schema.validationMode).toBe('lenient');
+      expect(manager).toBeInstanceOf(AISchemaManager);
+      expect(typeof manager.getAIResponseSchema).toBe('function');
+    });
+
+    test('should produce consistent schemas', () => {
+      const manager1 = createAISchemaManager();
+      const manager2 = createAISchemaManager();
+      
+      const schema1 = manager1.getAIResponseSchema();
+      const schema2 = manager2.getAIResponseSchema();
+      
+      expect(schema1).toEqual(schema2);
     });
   });
 });

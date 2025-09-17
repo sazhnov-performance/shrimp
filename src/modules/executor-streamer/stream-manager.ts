@@ -203,8 +203,10 @@ export class StreamManager implements IStreamManager {
       await this.createSession(workflowSessionId);
     }
 
-    if (this.streams.has(workflowSessionId)) {
-      throw new Error('Stream already exists for this session');
+    // Don't throw error if stream already exists, just return existing stream ID
+    const existingStream = this.streams.get(workflowSessionId);
+    if (existingStream) {
+      return existingStream.streamId;
     }
 
     const streamId = uuidv4();
@@ -300,7 +302,8 @@ export class StreamManager implements IStreamManager {
   }
 
   getConfig(): ExecutorStreamerConfig {
-    return { ...this.config }; // Return copy to prevent external modifications
+    // Return deep copy to prevent external modifications
+    return JSON.parse(JSON.stringify(this.config));
   }
 
   // Statistics

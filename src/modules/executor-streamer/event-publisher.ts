@@ -22,6 +22,12 @@ import {
 } from './types';
 
 export class EventPublisher implements IEventPublisher {
+  private eventCallback?: (event: StreamEvent) => Promise<void>;
+  
+  // Set callback for when events are published
+  setEventCallback(callback: (event: StreamEvent) => Promise<void>): void {
+    this.eventCallback = callback;
+  }
   
   // Core publishing methods
   async publishReasoning(
@@ -203,14 +209,16 @@ export class EventPublisher implements IEventPublisher {
 
   // Private helper to handle actual event publishing
   private async publishEvent(event: StreamEvent): Promise<void> {
-    // In a real implementation, this would:
-    // 1. Validate the event
-    // 2. Add to stream histories
-    // 3. Broadcast to connected clients
-    // 4. Handle persistence if enabled
+    // Validate the event
+    const validation = this.validateEvent(event);
+    if (!validation.isValid) {
+      throw new Error(`Invalid event: ${validation.errors.join(', ')}`);
+    }
     
-    // For now, this is a placeholder
-    console.log('Publishing event:', event.type, 'for session:', event.sessionId);
+    // Call the callback to handle storage and broadcasting
+    if (this.eventCallback) {
+      await this.eventCallback(event);
+    }
   }
 
   // Event validation
