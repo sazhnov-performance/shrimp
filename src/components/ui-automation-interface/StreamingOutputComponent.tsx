@@ -8,8 +8,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { Wifi, WifiOff, Activity, AlertCircle } from 'lucide-react';
-import { StreamEvent } from '../../../types/shared-types';
-import { SimpleLogEntry } from './types';
+import { StreamEvent, SimpleLogEntry } from './types';
 import { formatLogEntry, getLevelColor, getLevelBgColor } from './log-formatter';
 
 interface StreamingOutputComponentProps {
@@ -148,7 +147,7 @@ function LogEntry({ entry }: LogEntryProps) {
       <div className="flex items-start space-x-3">
         {/* Timestamp */}
         <span className="text-xs text-gray-500 font-mono min-w-[60px] mt-0.5">
-          {entry.timestamp}
+          {new Date(entry.timestamp).toLocaleTimeString()}
         </span>
         
         {/* Message */}

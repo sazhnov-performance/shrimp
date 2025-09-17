@@ -72,9 +72,10 @@ function sendMessage(ws: WebSocket, message: WebSocketMessage): void {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
-  const sessionId = params.sessionId;
+  const resolvedParams = await params;
+  const sessionId = resolvedParams.sessionId;
   
   console.log(`[Frontend API] WebSocket connection request for session: ${sessionId}`);
 

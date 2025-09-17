@@ -1,16 +1,96 @@
 /**
  * UI Automation Interface Types
- * Based on design/ui-automation-interface.md and shared types
+ * Based on design/ui-automation-interface.md
+ * Simplified local types - no shared-types dependency
  */
 
-import { 
-  StreamEvent, 
-  StreamEventType, 
-  StepProcessingRequest, 
-  APIResponse, 
-  APIError,
-  SessionStatus
-} from '../../../types/shared-types';
+// Simple Stream Event Types for UI
+export enum StreamEventType {
+  // Workflow events
+  WORKFLOW_STARTED = 'WORKFLOW_STARTED',
+  WORKFLOW_PROGRESS = 'WORKFLOW_PROGRESS',
+  WORKFLOW_COMPLETED = 'WORKFLOW_COMPLETED',
+  WORKFLOW_FAILED = 'WORKFLOW_FAILED',
+  
+  // Step events
+  STEP_STARTED = 'STEP_STARTED',
+  STEP_COMPLETED = 'STEP_COMPLETED',
+  STEP_FAILED = 'STEP_FAILED',
+  
+  // Investigation events
+  INVESTIGATION_STARTED = 'INVESTIGATION_STARTED',
+  INVESTIGATION_COMPLETED = 'INVESTIGATION_COMPLETED',
+  ELEMENT_DISCOVERED = 'ELEMENT_DISCOVERED',
+  
+  // AI events
+  AI_REASONING = 'AI_REASONING',
+  
+  // Command events
+  COMMAND_STARTED = 'COMMAND_STARTED',
+  COMMAND_COMPLETED = 'COMMAND_COMPLETED',
+  COMMAND_FAILED = 'COMMAND_FAILED',
+  
+  // Resource events
+  SCREENSHOT_CAPTURED = 'SCREENSHOT_CAPTURED',
+  VARIABLE_UPDATED = 'VARIABLE_UPDATED',
+  PAGE_NAVIGATED = 'PAGE_NAVIGATED',
+  
+  // System events
+  ERROR_OCCURRED = 'ERROR_OCCURRED',
+  WARNING_ISSUED = 'WARNING_ISSUED'
+}
+
+// Simplified Stream Event for UI
+export interface StreamEvent {
+  id: string;
+  type: StreamEventType;
+  timestamp: Date;
+  sessionId: string;
+  stepIndex?: number;
+  message: string;  // Simple string message instead of complex data object
+  level: 'info' | 'success' | 'warning' | 'error';
+}
+
+// Simple Session Status
+export enum SessionStatus {
+  INITIALIZING = 'INITIALIZING',
+  ACTIVE = 'ACTIVE',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  CANCELLED = 'CANCELLED'
+}
+
+// Simple API Types
+export interface APIResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: APIError;
+  metadata?: {
+    timestamp: string;
+    requestId: string;
+    version: string;
+    processingTimeMs: number;
+  };
+}
+
+export interface APIError {
+  code: string;
+  message: string;
+  details?: Record<string, any>;
+}
+
+// Simple Step Processing Request
+export interface StepProcessingRequest {
+  steps: string[];
+  config: {
+    maxExecutionTime: number;
+    enableStreaming: boolean;
+    enableReflection: boolean;
+    retryOnFailure: boolean;
+    maxRetries: number;
+    parallelExecution: boolean;
+  };
+}
 
 // Component Interfaces from design
 export interface SimpleStepInputComponent {
@@ -50,13 +130,8 @@ export interface UIActions {
   reset: () => void;
 }
 
-// Log Entry Format for UI display
-export interface SimpleLogEntry {
-  timestamp: string;
-  type: StreamEventType;
-  message: string;
-  level: 'info' | 'success' | 'warning' | 'error';
-}
+// Log Entry Format for UI display (now same as StreamEvent)
+export type SimpleLogEntry = StreamEvent;
 
 // Frontend API Integration Types
 export interface SimpleFrontendAPIIntegration {

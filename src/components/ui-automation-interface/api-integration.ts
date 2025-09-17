@@ -6,12 +6,8 @@
 
 import { 
   StepProcessingRequest, 
-  StreamEvent,
-  ProcessingConfig,
-  AIProcessingConfig,
-  ExecutorProcessingConfig,
-  StreamProcessingConfig
-} from '../../../types/shared-types';
+  StreamEvent
+} from './types';
 import { 
   ExecuteStepsResponse, 
   SimpleFrontendAPIIntegration,
@@ -206,31 +202,13 @@ export function buildExecuteRequest(stepText: string): StepProcessingRequest {
     .map(step => step.trim())
     .filter(step => step.length > 0);
 
-  const config: ProcessingConfig = {
+  const config = {
     maxExecutionTime: 300000,     // 5 minutes
     enableStreaming: true,
     enableReflection: true,
     retryOnFailure: false,
     maxRetries: 3,
-    parallelExecution: false,
-    aiConfig: {
-      connectionId: 'default',
-      model: 'gpt-4',
-      temperature: 0.1,
-      maxTokens: 4000,
-      timeoutMs: 30000
-    } as AIProcessingConfig,
-    executorConfig: {
-      browserType: 'chromium',
-      headless: true,
-      timeoutMs: 30000,
-      screenshotsEnabled: true
-    } as ExecutorProcessingConfig,
-    streamConfig: {
-      bufferSize: 1000,
-      maxHistorySize: 10000,
-      compressionEnabled: true
-    } as StreamProcessingConfig
+    parallelExecution: false
   };
 
   return {

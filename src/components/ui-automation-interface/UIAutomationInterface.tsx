@@ -7,8 +7,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { StreamEvent } from '../../../types/shared-types';
-import { SimpleUIState, ERROR_MESSAGES } from './types';
+import { StreamEvent, SimpleUIState, ERROR_MESSAGES } from './types';
 import { StepInputComponent } from './StepInputComponent';
 import { StreamingOutputComponent } from './StreamingOutputComponent';
 import { FrontendAPIIntegration, buildExecuteRequest, validateStepInput } from './api-integration';

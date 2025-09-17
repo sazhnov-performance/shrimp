@@ -173,6 +173,24 @@ const fullContext = contextManager.getFullContext("workflow-123");
 - Predictable behavior
 - Thread-safe operations (if applicable)
 
+## Implementation Structure
+
+```
+/src/modules/ai-context-manager/
+  ├── index.ts                    # Main module interface
+  ├── ai-context-manager.ts       # Core context management implementation
+  └── types.ts                    # TypeScript type definitions
+```
+
+## Dependencies
+- None (pure storage/retrieval layer)
+
+## Testing Requirements
+- Unit tests for context creation and retrieval
+- Session management lifecycle tests
+- Error handling scenarios
+- Data consistency validation
+
 ## Out of Scope
 
 - Data persistence to disk/database
