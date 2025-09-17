@@ -35,8 +35,27 @@ export class PromptBuilder {
         .replace('{contextualHistory}', history)
         .replace('{responseSchema}', schemaText);
 
-      // Check prompt length and truncate if necessary
+      // Check prompt length and handle DOM size limits
       if (prompt.length > this.maxPromptLength) {
+        // Check if the issue is caused by large DOM content from GET_SUBDOM
+        if (history.includes('DOM CONTENT:')) {
+          return `CRITICAL ERROR: GET_SUBDOM returned DOM content that exceeds context limits.
+
+The DOM content is too large (${prompt.length} characters, limit: ${this.maxPromptLength}) to fit in the AI context.
+
+This GET_SUBDOM operation must FAIL. Please:
+1. Use a more specific selector to get a smaller DOM section
+2. Target specific elements instead of large containers
+3. Consider using GET_CONTENT for specific data extraction
+
+RESPONSE FORMAT:
+{
+  "reasoning": "DOM content too large for context - need more specific selector",
+  "confidence": 0,
+  "flowControl": "stop_failure"
+}`;
+        }
+        
         return this.buildFallbackPrompt(stepName, '{"type": "object", "required": ["reasoning", "confidence", "flowControl"]}');
       }
 
@@ -182,7 +201,26 @@ export class PromptBuilder {
         const legacyReasoning = log?.reasoning ? log.reasoning.substring(0, 80) : 'No reasoning provided';
         const legacyConfidence = log?.confidence || 0;
         
-        return `  Attempt ${attemptNumber}: ${legacyAction} (Confidence: ${legacyConfidence}%) - ${legacyReasoning}${legacyReasoning.length >= 80 ? '...' : ''}`;
+        // Handle execution result in legacy format
+        let legacyResultText = '';
+        if (executionResult) {
+          if (executionResult.success) {
+            // For GET_SUBDOM, include full DOM content even in legacy format
+            if (legacyAction === 'GET_SUBDOM' && typeof executionResult.result === 'string') {
+              legacyResultText = ` → ✓ DOM retrieved successfully\n\nDOM CONTENT:\n${executionResult.result}`;
+            } else {
+              const result = typeof executionResult.result === 'string' 
+                ? executionResult.result.substring(0, 60)
+                : 'Success';
+              legacyResultText = ` → ✓ ${result}${typeof executionResult.result === 'string' && executionResult.result.length > 60 ? '...' : ''}`;
+            }
+          } else {
+            const error = executionResult.error ? executionResult.error.substring(0, 100) : 'Unknown error';
+            legacyResultText = ` → ✗ ${error}${executionResult.error && executionResult.error.length > 100 ? '...' : ''}`;
+          }
+        }
+        
+        return `  Attempt ${attemptNumber}: ${legacyAction} (Confidence: ${legacyConfidence}%) - ${legacyReasoning}${legacyReasoning.length >= 80 ? '...' : ''}${legacyResultText}`;
       }
       
       const action = aiResponse?.action?.command || 'Unknown';
@@ -192,13 +230,18 @@ export class PromptBuilder {
       let resultText = '';
       if (executionResult) {
         if (executionResult.success) {
-          const result = typeof executionResult.result === 'string' 
-            ? executionResult.result.substring(0, 60)
-            : 'Success';
-          resultText = ` → ✓ ${result}${typeof executionResult.result === 'string' && executionResult.result.length > 60 ? '...' : ''}`;
+          // For GET_SUBDOM, include full DOM content
+          if (action === 'GET_SUBDOM' && typeof executionResult.result === 'string') {
+            resultText = ` → ✓ DOM retrieved successfully\n\nDOM CONTENT:\n${executionResult.result}`;
+          } else {
+            const result = typeof executionResult.result === 'string' 
+              ? executionResult.result.substring(0, 60)
+              : 'Success';
+            resultText = ` → ✓ ${result}${typeof executionResult.result === 'string' && executionResult.result.length > 60 ? '...' : ''}`;
+          }
         } else {
-          const error = executionResult.error ? executionResult.error.substring(0, 60) : 'Unknown error';
-          resultText = ` → ✗ ${error}${executionResult.error && executionResult.error.length > 60 ? '...' : ''}`;
+          const error = executionResult.error ? executionResult.error.substring(0, 100) : 'Unknown error';
+          resultText = ` → ✗ ${error}${executionResult.error && executionResult.error.length > 100 ? '...' : ''}`;
         }
       }
       
