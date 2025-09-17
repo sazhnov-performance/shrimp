@@ -12,6 +12,8 @@ import { IExecutorStreamer } from '../executor-streamer/types';
 import getExecutorStreamer from '../executor-streamer/index';
 import { ITaskLoop } from '../task-loop/types';
 import TaskLoop from '../task-loop/index';
+import { IAIPromptManager } from '../ai-prompt-manager/types';
+import AIPromptManager from '../ai-prompt-manager/index';
 
 /**
  * StepProcessor - Singleton implementation of sequential step execution
@@ -21,6 +23,7 @@ export class StepProcessor implements IStepProcessor {
   private config: StepProcessorConfig;
   private executorStreamer: IExecutorStreamer;
   private taskLoop: ITaskLoop;
+  private promptManager: IAIPromptManager;
 
   private constructor(config: StepProcessorConfig = {}) {
     this.config = {
@@ -33,6 +36,7 @@ export class StepProcessor implements IStepProcessor {
     // Resolve dependencies internally using singleton instances
     this.executorStreamer = getExecutorStreamer();
     this.taskLoop = TaskLoop.getInstance();
+    this.promptManager = AIPromptManager.getInstance();
     
     if (this.config.enableLogging) {
       console.log('[StepProcessor] Step Processor module initialized', {
@@ -77,6 +81,13 @@ export class StepProcessor implements IStepProcessor {
     }
     
     try {
+      // Initialize AI context with steps - this is critical for task loop execution
+      this.promptManager.init(sessionId, steps);
+      
+      if (this.config.enableLogging) {
+        console.log(`[StepProcessor] Initialized AI context for session ${sessionId}`);
+      }
+      
       // Create stream - handle internally
       await this.executorStreamer.createStream(sessionId);
       
