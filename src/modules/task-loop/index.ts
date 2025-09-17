@@ -315,10 +315,19 @@ export class TaskLoop implements ITaskLoop {
       const response = await this.executor.executeCommand(command);
       
       if (!response.success && response.error) {
-        // Return error instead of throwing
+        // Return error instead of throwing - include original Playwright error if available
+        let errorMessage = `Executor command failed: ${response.error.message}`;
+        
+        // Check if there's a cause (original Playwright error) and include it
+        if (response.error.cause && response.error.cause.details?.originalMessage) {
+          errorMessage += ` (Original error: ${response.error.cause.details.originalMessage})`;
+        } else if (response.error.cause && response.error.cause.message) {
+          errorMessage += ` (Original error: ${response.error.cause.message})`;
+        }
+        
         return {
           success: false,
-          error: `Executor command failed: ${response.error.message}`
+          error: errorMessage
         };
       }
 
@@ -334,9 +343,22 @@ export class TaskLoop implements ITaskLoop {
       }
       
       // Return error instead of throwing for execution errors
+      let errorMessage = `Failed to execute action: ${error instanceof Error ? error.message : String(error)}`;
+      
+      // Check if it's a StandardError with cause (original Playwright error)
+      if (error && typeof error === 'object' && 'cause' in error && error.cause && 
+          typeof error.cause === 'object' && error.cause !== null) {
+        const cause = error.cause as any;
+        if (cause.details?.originalMessage) {
+          errorMessage += ` (Original error: ${cause.details.originalMessage})`;
+        } else if (cause.message) {
+          errorMessage += ` (Original error: ${cause.message})`;
+        }
+      }
+      
       return {
         success: false,
-        error: `Failed to execute action: ${error instanceof Error ? error.message : String(error)}`
+        error: errorMessage
       };
     }
   }
@@ -449,10 +471,12 @@ export class TaskLoop implements ITaskLoop {
         return CommandAction.GET_CONTENT;
       case 'GET_SUBDOM':
         return CommandAction.GET_SUBDOM;
+      case 'GET_TEXT':
+        return CommandAction.GET_TEXT;
       default:
         throw this.createTaskLoopError(
           TaskLoopErrorType.VALIDATION_FAILED,
-          `Unknown command: ${command}. Valid commands: OPEN_PAGE, CLICK_ELEMENT, INPUT_TEXT, SAVE_VARIABLE, GET_DOM, GET_CONTENT, GET_SUBDOM`,
+          `Unknown command: ${command}. Valid commands: OPEN_PAGE, CLICK_ELEMENT, INPUT_TEXT, SAVE_VARIABLE, GET_DOM, GET_CONTENT, GET_SUBDOM, GET_TEXT`,
           undefined,
           undefined,
           undefined,
