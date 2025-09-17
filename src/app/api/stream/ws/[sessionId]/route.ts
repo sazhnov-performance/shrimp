@@ -32,18 +32,21 @@ function initializeWebSocketServer(): WebSocketServer {
 }
 
 /**
- * Creates executor streamer instance
+ * Creates executor streamer instance  
+ * As per design: reads events using executorStreamer.getEvents(sessionId)
  */
 function createExecutorStreamer(): ExecutorStreamer {
-  // TODO: In a real implementation, this should be injected via DI
+  // TODO: Replace with proper dependency injection
   return new ExecutorStreamer();
 }
 
 /**
  * Polls for new events from executor streamer
+ * As per design: calls executorStreamer.getEvents(sessionId)
  */
 async function pollForEvents(sessionId: string, executorStreamer: ExecutorStreamer): Promise<StreamEvent[]> {
   try {
+    // Use getEventHistory as specified in the ExecutorStreamer interface
     return await executorStreamer.getEventHistory(sessionId);
   } catch (error) {
     console.error(`[Frontend API] Error polling events for session ${sessionId}:`, error);

@@ -12,6 +12,7 @@ import {
   StreamEventType,
   SessionStatus 
 } from '../../../../../types/shared-types';
+import { StepProcessor } from '../../../../../src/modules/step-processor';
 
 // Updated types to match UI integration
 interface ExecuteStepsResponse {
@@ -58,85 +59,51 @@ function validateRequest(body: any): { isValid: boolean; error?: string } {
 }
 
 /**
- * Creates a unique session ID for step processing
+ * Creates StepProcessor instance with dependencies
+ * TODO: Replace with proper dependency injection
  */
-function createSessionId(): string {
-  return `sess_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+function createStepProcessor(): StepProcessor {
+  // For now, we need to pass the required dependencies
+  // In a real implementation, these would be injected via DI container
+  const mockSessionCoordinator = {} as any;
+  const mockTaskLoop = {} as any;
+  const mockExecutorStreamer = {} as any;
+  
+  return new StepProcessor(
+    mockSessionCoordinator,
+    mockTaskLoop,
+    mockExecutorStreamer
+  );
 }
 
 /**
- * Initializes actual step processing with real feedback and logging
+ * Initializes step processing using the step processor module
+ * As per design: calls stepProcessor.init(steps) to get session ID
  */
 async function initializeStepProcessing(request: StepProcessingRequest): Promise<{sessionId: string, streamId?: string}> {
-  // Generate unique session ID
-  const sessionId = createSessionId();
-  const streamId = sessionId; // Use same ID for stream simplicity
-  
   console.log('[Frontend API] Initializing step processing for request:', {
     stepCount: request.steps.length,
-    steps: request.steps,
-    config: request.config ? 'provided' : 'not provided'
+    steps: request.steps
   });
-  console.log('[Frontend API] Generated session ID:', sessionId);
-  console.log('[Frontend API] Generated stream ID:', streamId);
-  
-  // Start background processing with proper logging
-  processStepsAsync(sessionId, request).catch(error => {
-    console.error(`[Frontend API] Background processing failed for session ${sessionId}:`, error);
-  });
-  
-  return { sessionId, streamId };
-}
-
-/**
- * Background step processing with comprehensive logging
- */
-async function processStepsAsync(sessionId: string, request: StepProcessingRequest): Promise<void> {
-  console.log(`[Frontend API] Starting background processing for session ${sessionId}`);
   
   try {
-    // Log workflow started
-    console.log(`[Frontend API] WORKFLOW_STARTED - Session ${sessionId} with ${request.steps.length} steps`);
+    // Create step processor instance
+    const stepProcessor = createStepProcessor();
     
-    // Process each step with simulated work and real logging
-    for (let stepIndex = 0; stepIndex < request.steps.length; stepIndex++) {
-      const step = request.steps[stepIndex];
-      
-      console.log(`[Frontend API] STEP_STARTED - Session ${sessionId}, Step ${stepIndex + 1}/${request.steps.length}: "${step}"`);
-      
-      // Simulate step processing with realistic timing
-      const stepStartTime = Date.now();
-      
-      // AI reasoning simulation
-      console.log(`[Frontend API] AI_REASONING - Session ${sessionId}, Step ${stepIndex + 1}: Analyzing step "${step}"`);
-      await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000)); // 0.5-1.5s
-      
-      // Command execution simulation
-      console.log(`[Frontend API] COMMAND_STARTED - Session ${sessionId}, Step ${stepIndex + 1}: Executing automation command`);
-      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000)); // 1-3s
-      
-      // Screenshot simulation
-      console.log(`[Frontend API] SCREENSHOT_CAPTURED - Session ${sessionId}, Step ${stepIndex + 1}: Screenshot saved`);
-      
-      // Command completion
-      const stepDuration = Date.now() - stepStartTime;
-      console.log(`[Frontend API] COMMAND_COMPLETED - Session ${sessionId}, Step ${stepIndex + 1}: Command executed successfully in ${stepDuration}ms`);
-      
-      // Step completion
-      console.log(`[Frontend API] STEP_COMPLETED - Session ${sessionId}, Step ${stepIndex + 1}: Step completed successfully`);
-      
-      // Progress update
-      const progress = Math.round(((stepIndex + 1) / request.steps.length) * 100);
-      console.log(`[Frontend API] WORKFLOW_PROGRESS - Session ${sessionId}: ${progress}% complete (${stepIndex + 1}/${request.steps.length} steps)`);
-    }
+    // Call stepProcessor.init(steps) as per design
+    const sessionId = await stepProcessor.init(request.steps);
+    const streamId = sessionId; // Use same ID for stream simplicity
     
-    // Workflow completion
-    console.log(`[Frontend API] WORKFLOW_COMPLETED - Session ${sessionId}: All ${request.steps.length} steps completed successfully`);
+    console.log('[Frontend API] Step processing initialized with session ID:', sessionId);
+    
+    return { sessionId, streamId };
     
   } catch (error) {
-    console.error(`[Frontend API] WORKFLOW_FAILED - Session ${sessionId}:`, error);
+    console.error('[Frontend API] Failed to initialize step processing:', error);
+    throw error;
   }
 }
+
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
