@@ -285,7 +285,7 @@ export const DEFAULT_EXECUTOR_CONFIG: ExecutorConfig = {
   
   browser: {
     type: 'chromium',
-    headless: true,
+    headless: false,
     sessionTTL: 1800000, // 30 minutes
     maxSessions: 10
   },
