@@ -210,10 +210,14 @@ RESPONSE FORMAT:
         // Handle execution result in legacy format
         if (executionResult) {
           if (executionResult.success) {
-            // For GET_SUBDOM, include full DOM content even in legacy format
+            // ONLY for GET_SUBDOM: include full DOM content
             if (legacyAction === 'GET_SUBDOM' && typeof executionResult.result === 'string') {
               legacyAttemptDetails += `\n    Result: ✓ DOM retrieved successfully\n\nDOM CONTENT:\n${executionResult.result}`;
+            } else if (legacyAction === 'OPEN_PAGE') {
+              // For OPEN_PAGE: just show success, don't include full page HTML
+              legacyAttemptDetails += `\n    Result: ✓ Page opened successfully`;
             } else {
+              // For other commands: show truncated result
               const result = typeof executionResult.result === 'string' 
                 ? executionResult.result.substring(0, 100)
                 : 'Success';
@@ -241,10 +245,14 @@ RESPONSE FORMAT:
       // Add execution result
       if (executionResult) {
         if (executionResult.success) {
-          // For GET_SUBDOM, include full DOM content
+          // ONLY for GET_SUBDOM: include full DOM content
           if (action === 'GET_SUBDOM' && typeof executionResult.result === 'string') {
             attemptDetails += `\n    Result: ✓ DOM retrieved successfully\n\nDOM CONTENT:\n${executionResult.result}`;
+          } else if (action === 'OPEN_PAGE') {
+            // For OPEN_PAGE: just show success, don't include full page HTML
+            attemptDetails += `\n    Result: ✓ Page opened successfully`;
           } else {
+            // For other commands: show truncated result
             const result = typeof executionResult.result === 'string' 
               ? executionResult.result.substring(0, 100)
               : 'Success';
