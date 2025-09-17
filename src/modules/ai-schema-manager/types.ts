@@ -4,7 +4,7 @@
 
 export interface IAISchemaManager {
   // Singleton instance access
-  getAIResponseSchema(): object;
+  getAIResponseSchema(): AIResponseSchema;
 }
 
 export interface AISchemaManagerConfig {

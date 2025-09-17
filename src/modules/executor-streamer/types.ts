@@ -48,6 +48,33 @@ export interface IExecutorStreamer {
   // Read-only access (for API endpoints)
   getEvents(streamId: string): Promise<string[]>;
   hasEvents(streamId: string): Promise<boolean>;
+
+  // Stream management operations
+  deleteStream(streamId: string): Promise<void>;
+  streamExists(streamId: string): boolean;
+  getActiveStreams(): string[];
+  getStreamCount(): number;
+
+  // Advanced event operations
+  putBatchEvents(streamId: string, events: string[]): Promise<void>;
+  putStructuredEvent(streamId: string, eventType: string, eventData: string, metadata?: Record<string, any>): Promise<void>;
+
+  // Statistics and monitoring
+  getStreamStats(streamId: string): Promise<{
+    eventCount: number;
+    createdAt: Date;
+    lastAccessedAt: Date;
+    hasEvents: boolean;
+  }>;
+  getSystemStats(): {
+    totalStreams: number;
+    maxStreams: number;
+    streamUtilization: number;
+    config: ExecutorStreamerConfig;
+  };
+
+  // Configuration access
+  getConfig(): ExecutorStreamerConfig;
 }
 
 /**

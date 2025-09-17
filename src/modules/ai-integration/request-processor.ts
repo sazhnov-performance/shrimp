@@ -15,12 +15,16 @@ export class RequestProcessor {
   private logger: Logger;
 
   constructor(config: AIConfig) {
-    this.config = {
+    const defaultConfig: Partial<AIConfig> = {
       model: 'gpt-4o-mini',
       baseUrl: 'https://api.openai.com/v1',
-      logFilePath: './ai-requests.log',
-      ...config
+      logFilePath: './ai-requests.log'
     };
+    
+    this.config = {
+      ...defaultConfig,
+      ...config
+    } as AIConfig;
     this.authHandler = new AuthHandler(this.config);
     this.imageHandler = new ImageHandler();
     this.logger = new Logger(this.config.logFilePath);

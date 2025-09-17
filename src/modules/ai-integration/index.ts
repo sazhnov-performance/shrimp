@@ -45,7 +45,7 @@ export class AIIntegrationManager implements IAIIntegrationManager {
 
 // Export types and interfaces
 export * from './types';
-export { IAIIntegrationManager };
+export type { IAIIntegrationManager };
 
 // Default export for convenience
 export default AIIntegrationManager;

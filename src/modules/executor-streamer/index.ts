@@ -232,11 +232,13 @@ class ExecutorStreamer implements IExecutorStreamer {
 // Export the main interface and types
 export {
   ExecutorStreamer,
-  IExecutorStreamer,
-  ExecutorStreamerConfig,
   ExecutorStreamerError,
   EXECUTOR_STREAMER_ERRORS,
   DEFAULT_CONFIG
+};
+export type {
+  IExecutorStreamer,
+  ExecutorStreamerConfig
 };
 
 // Export default singleton access function

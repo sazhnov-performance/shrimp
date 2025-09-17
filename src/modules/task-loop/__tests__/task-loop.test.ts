@@ -89,7 +89,7 @@ describe('TaskLoop', () => {
   });
 
   describe('Input Validation', () => {
-    let instance: TaskLoop;
+    let instance: any;
 
     beforeEach(() => {
       instance = TaskLoop.getInstance();
@@ -107,7 +107,7 @@ describe('TaskLoop', () => {
   });
 
   describe('executeStep - Success Scenarios', () => {
-    let instance: TaskLoop;
+    let instance: any;
     let mockContextManager: any;
     let mockPromptManager: any;
     let mockAIIntegration: any;
@@ -255,7 +255,7 @@ describe('TaskLoop', () => {
   });
 
   describe('executeStep - Error Scenarios', () => {
-    let instance: TaskLoop;
+    let instance: any;
     let mockContextManager: any;
     let mockPromptManager: any;
     let mockAIIntegration: any;

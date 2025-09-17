@@ -13,7 +13,7 @@ import getExecutorStreamer from '@/modules/executor-streamer';
 jest.mock('@/modules/step-processor');
 jest.mock('@/modules/executor-streamer');
 
-const mockStepProcessor = StepProcessor as jest.MockedClass<typeof StepProcessor>;
+const mockStepProcessor = StepProcessor as any;
 const mockExecutorStreamer = getExecutorStreamer as jest.MockedFunction<typeof getExecutorStreamer>;
 
 describe('Frontend API Tests', () => {
@@ -142,7 +142,7 @@ describe('Frontend API Tests', () => {
         method: 'GET'
       });
 
-      const response = await streamGet(request, { params: { sessionId: '' } });
+      const response = await streamGet(request, { params: Promise.resolve({ sessionId: '' }) });
       expect(response.status).toBe(400);
     });
 
@@ -156,7 +156,7 @@ describe('Frontend API Tests', () => {
         method: 'GET'
       });
 
-      const response = await streamGet(request, { params: { sessionId: 'nonexistent' } });
+      const response = await streamGet(request, { params: Promise.resolve({ sessionId: 'nonexistent' }) });
       expect(response.status).toBe(404);
     });
 
@@ -171,7 +171,7 @@ describe('Frontend API Tests', () => {
         method: 'GET'
       });
 
-      const response = await streamGet(request, { params: { sessionId: 'valid-session' } });
+      const response = await streamGet(request, { params: Promise.resolve({ sessionId: 'valid-session' }) });
       
       expect(response.status).toBe(200);
       expect(response.headers.get('Content-Type')).toBe('text/event-stream');
@@ -191,7 +191,7 @@ describe('Frontend API Tests', () => {
         method: 'GET'
       });
 
-      const response = await streamGet(request, { params: { sessionId: 'error-session' } });
+      const response = await streamGet(request, { params: Promise.resolve({ sessionId: 'error-session' }) });
       
       // Should still return 200 because the stream exists, errors are handled within the stream
       expect(response.status).toBe(200);

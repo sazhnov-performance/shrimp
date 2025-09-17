@@ -87,7 +87,7 @@ describe('StepProcessor', () => {
   });
 
   describe('processSteps - Success Scenarios', () => {
-    let instance: StepProcessor;
+    let instance: any;
 
     beforeEach(() => {
       instance = StepProcessor.getInstance({
@@ -207,7 +207,7 @@ describe('StepProcessor', () => {
   });
 
   describe('processSteps - Error Scenarios', () => {
-    let instance: StepProcessor;
+    let instance: any;
 
     beforeEach(() => {
       instance = StepProcessor.getInstance({

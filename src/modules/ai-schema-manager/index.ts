@@ -3,7 +3,7 @@
  * Provides standardized JSON schemas for AI responses in the automation system.
  */
 
-import { IAISchemaManager, AISchemaManagerConfig } from './types';
+import { IAISchemaManager, AISchemaManagerConfig, AIResponseSchema } from './types';
 import { AI_RESPONSE_SCHEMA, EXECUTOR_ACTION_SCHEMA } from './schemas';
 
 /**
@@ -38,13 +38,16 @@ class AISchemaManager implements IAISchemaManager {
    * Get the complete AI response schema including action, reasoning, confidence, and flow control
    * @returns JSON schema object for AI responses
    */
-  getAIResponseSchema(): object {
+  getAIResponseSchema(): AIResponseSchema {
+    const executorActionSchema = this.getExecutorActionSchema();
     return {
       type: "object",
       required: ["reasoning", "confidence", "flowControl"],
       properties: {
         action: {
-          ...this.getExecutorActionSchema(),
+          type: "object",
+          required: ["command", "parameters"],
+          properties: (executorActionSchema as any).properties,
           description: "Executor command to execute (required only when flowControl is 'continue')"
         },
         reasoning: {

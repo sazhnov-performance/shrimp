@@ -3,7 +3,7 @@
  */
 
 import AISchemaManager from '../index';
-import { IAISchemaManager, AISchemaManagerConfig } from '../types';
+import { IAISchemaManager, AISchemaManagerConfig, AIResponseSchema } from '../types';
 import { AI_RESPONSE_SCHEMA, EXECUTOR_ACTION_SCHEMA } from '../schemas';
 
 describe('AISchemaManager', () => {
@@ -39,7 +39,7 @@ describe('AISchemaManager', () => {
   });
 
   describe('getAIResponseSchema', () => {
-    let schema: any;
+    let schema: AIResponseSchema;
 
     beforeEach(() => {
       schema = schemaManager.getAIResponseSchema();
@@ -84,7 +84,7 @@ describe('AISchemaManager', () => {
   });
 
   describe('Executor Action Schema Validation', () => {
-    let actionSchema: any;
+    let actionSchema: AIResponseSchema['properties']['action'];
 
     beforeEach(() => {
       const fullSchema = schemaManager.getAIResponseSchema();
@@ -143,7 +143,7 @@ describe('AISchemaManager', () => {
   });
 
   describe('Usage Examples Validation', () => {
-    let schema: any;
+    let schema: AIResponseSchema;
 
     beforeEach(() => {
       schema = schemaManager.getAIResponseSchema();
@@ -230,7 +230,12 @@ describe('AISchemaManager', () => {
     });
 
     it('should validate stop_success example structure (no action required)', () => {
-      const stopSuccessExample = {
+      const stopSuccessExample: {
+        reasoning: string;
+        confidence: number;
+        flowControl: string;
+        action?: any;
+      } = {
         reasoning: 'Successfully completed all automation steps. Login form filled and submitted, confirmation page loaded.',
         confidence: 92,
         flowControl: 'stop_success'
@@ -242,7 +247,12 @@ describe('AISchemaManager', () => {
     });
 
     it('should validate stop_failure example structure (no action required)', () => {
-      const stopFailureExample = {
+      const stopFailureExample: {
+        reasoning: string;
+        confidence: number;
+        flowControl: string;
+        action?: any;
+      } = {
         reasoning: 'Unable to locate expected elements after multiple attempts. Page structure may have changed.',
         confidence: 78,
         flowControl: 'stop_failure'
