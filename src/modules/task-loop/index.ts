@@ -264,9 +264,16 @@ export class TaskLoop implements ITaskLoop {
    */
   private async executeAction(sessionId: string, action: any): Promise<void> {
     try {
-      // Ensure session exists in executor
+      // Session should already be created by StepProcessor
       if (!this.executor.sessionExists(sessionId)) {
-        await this.executor.createSession(sessionId);
+        throw this.createTaskLoopError(
+          TaskLoopErrorType.EXECUTOR_FAILED,
+          `Executor session not found: ${sessionId}. Session should be created by StepProcessor.`,
+          sessionId,
+          undefined,
+          undefined,
+          { sessionId }
+        );
       }
 
       // Execute the command through the executor

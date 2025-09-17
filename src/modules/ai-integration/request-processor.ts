@@ -143,9 +143,27 @@ export class RequestProcessor {
         return this.createErrorResponse('API_ERROR', response.error.message || 'OpenAI API error');
       }
 
+      // Extract the content from the OpenAI response
+      if (!response.choices || !response.choices[0] || !response.choices[0].message) {
+        return this.createErrorResponse('INVALID_RESPONSE', 'Invalid OpenAI response structure');
+      }
+
+      const content = response.choices[0].message.content;
+      if (!content) {
+        return this.createErrorResponse('EMPTY_RESPONSE', 'Empty response content from OpenAI');
+      }
+
+      // Parse the JSON content
+      let parsedContent;
+      try {
+        parsedContent = JSON.parse(content);
+      } catch (parseError) {
+        return this.createErrorResponse('INVALID_JSON', `Failed to parse AI response as JSON: ${content}`);
+      }
+
       return {
         status: 'success',
-        data: response
+        data: parsedContent
       };
     } catch (error) {
       return this.createErrorResponse('REQUEST_ERROR', 'Failed to parse response');

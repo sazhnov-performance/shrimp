@@ -14,6 +14,8 @@ import { ITaskLoop } from '../task-loop/types';
 import TaskLoop from '../task-loop/index';
 import { IAIPromptManager } from '../ai-prompt-manager/types';
 import AIPromptManager from '../ai-prompt-manager/index';
+import { IExecutor } from '../executor/index';
+import Executor from '../executor/index';
 
 /**
  * StepProcessor - Singleton implementation of sequential step execution
@@ -24,6 +26,7 @@ export class StepProcessor implements IStepProcessor {
   private executorStreamer: IExecutorStreamer;
   private taskLoop: ITaskLoop;
   private promptManager: IAIPromptManager;
+  private executor: IExecutor;
 
   private constructor(config: StepProcessorConfig = {}) {
     this.config = {
@@ -37,6 +40,7 @@ export class StepProcessor implements IStepProcessor {
     this.executorStreamer = getExecutorStreamer();
     this.taskLoop = TaskLoop.getInstance();
     this.promptManager = AIPromptManager.getInstance();
+    this.executor = new Executor();
     
     if (this.config.enableLogging) {
       console.log('[StepProcessor] Step Processor module initialized', {
@@ -95,6 +99,13 @@ export class StepProcessor implements IStepProcessor {
         console.log(`[StepProcessor] Created stream for session ${sessionId}`);
       }
       
+      // Create executor session - this is critical for browser automation
+      await this.executor.createSession(sessionId);
+      
+      if (this.config.enableLogging) {
+        console.log(`[StepProcessor] Created executor session for session ${sessionId}`);
+      }
+      
       // Execute steps sequentially - handle internally  
       for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
         if (this.config.enableLogging) {
@@ -125,7 +136,34 @@ export class StepProcessor implements IStepProcessor {
       if (this.config.enableLogging) {
         console.error(`[StepProcessor] Error during step processing for session ${sessionId}: ${errorMessage}`);
       }
+      // Clean up executor session on error
+      try {
+        if (this.executor.sessionExists(sessionId)) {
+          await this.executor.destroySession(sessionId);
+          if (this.config.enableLogging) {
+            console.log(`[StepProcessor] Cleaned up executor session for session ${sessionId} due to error`);
+          }
+        }
+      } catch (cleanupError) {
+        if (this.config.enableLogging) {
+          console.error(`[StepProcessor] Error cleaning up executor session ${sessionId}: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`);
+        }
+      }
       // Still return the session ID even if there were errors
+    }
+    
+    // Clean up executor session after successful completion
+    try {
+      if (this.executor.sessionExists(sessionId)) {
+        await this.executor.destroySession(sessionId);
+        if (this.config.enableLogging) {
+          console.log(`[StepProcessor] Cleaned up executor session for session ${sessionId} after completion`);
+        }
+      }
+    } catch (cleanupError) {
+      if (this.config.enableLogging) {
+        console.error(`[StepProcessor] Error cleaning up executor session ${sessionId}: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`);
+      }
     }
     
     return sessionId;
