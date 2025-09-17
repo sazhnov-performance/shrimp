@@ -1,35 +1,28 @@
 /**
- * Jest Setup File
- * Global test configuration and mocks
+ * Jest setup file
+ * Global test setup and configuration
  */
 
-import { jest } from '@jest/globals';
-
-// Mock console to reduce noise in tests unless specifically testing logging
-global.console = {
-  ...console,
-  debug: jest.fn(),
-  log: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-};
-
-// Mock setTimeout and clearTimeout for timer testing
-jest.useFakeTimers();
-
-// Global test timeout
+// Increase test timeout for complex integration tests
 jest.setTimeout(30000);
 
-// Mock environment variables
-process.env.NODE_ENV = 'test';
+// Mock console methods to reduce test noise
+global.console = {
+  ...console,
+  // Uncomment to suppress console.log in tests
+  // log: jest.fn(),
+  // warn: jest.fn(),
+  // error: jest.fn(),
+};
 
-// Clean up after each test
-afterEach(() => {
+// Setup global test environment
+beforeEach(() => {
+  // Clear all mocks before each test
   jest.clearAllMocks();
-  jest.clearAllTimers();
 });
 
-// Global error handler for unhandled promise rejections
-process.on('unhandledRejection', (error) => {
-  console.error('Unhandled promise rejection:', error);
+// Global cleanup
+afterEach(() => {
+  // Cleanup after each test
+  jest.restoreAllMocks();
 });
