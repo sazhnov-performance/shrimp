@@ -14,8 +14,7 @@ import { ITaskLoop } from '../task-loop/types';
 import TaskLoop from '../task-loop/index';
 import { IAIPromptManager } from '../ai-prompt-manager/types';
 import AIPromptManager from '../ai-prompt-manager/index';
-import { IExecutor } from '../executor/index';
-import Executor from '../executor/index';
+import { IExecutor, Executor } from '../executor/index';
 
 /**
  * StepProcessor - Singleton implementation of sequential step execution
@@ -40,7 +39,7 @@ export class StepProcessor implements IStepProcessor {
     this.executorStreamer = getExecutorStreamer();
     this.taskLoop = TaskLoop.getInstance();
     this.promptManager = AIPromptManager.getInstance();
-    this.executor = new Executor();
+    this.executor = Executor.getInstance();
     
     if (this.config.enableLogging) {
       console.log('[StepProcessor] Step Processor module initialized', {

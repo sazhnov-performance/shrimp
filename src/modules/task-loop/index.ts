@@ -24,8 +24,7 @@ import { IAIIntegrationManager } from '../ai-integration/types';
 import AIIntegrationManager from '../ai-integration/index';
 import { IAISchemaManager } from '../ai-schema-manager/types';
 import AISchemaManager from '../ai-schema-manager/index';
-import { IExecutor } from '../executor/index';
-import Executor from '../executor/index';
+import { IExecutor, Executor } from '../executor/index';
 import { CommandAction } from '../executor/types';
 
 /**
@@ -58,7 +57,7 @@ export class TaskLoop implements ITaskLoop {
     this.aiIntegration = AIIntegrationManager.getInstance(aiConfig);
     
     this.schemaManager = AISchemaManager.getInstance();
-    this.executor = new Executor(); // Executor is not a singleton in current implementation
+    this.executor = Executor.getInstance(); // Use singleton instance
     
     if (this.config.enableLogging) {
       console.log('[TaskLoop] Task Loop module initialized', {
@@ -166,14 +165,9 @@ export class TaskLoop implements ITaskLoop {
         
         const validatedResponse = validateAIResponse(aiResponse.data, sessionId, stepId);
         finalResponse = validatedResponse;
-        
-        // Debug logging for AI response validation
-        if (this.config.enableLogging && validatedResponse.action) {
-          console.log(`[TaskLoop] DEBUG - Validated response action:`, JSON.stringify(validatedResponse.action, null, 2));
-        }
 
-        // 4. Execute action if specified (regardless of flow control)
-        if (validatedResponse.action) {
+        // 4. Execute action if specified and flowControl is continue
+        if (validatedResponse.flowControl === 'continue' && validatedResponse.action) {
           if (this.config.enableLogging) {
             console.log(`[TaskLoop] Executing action for session ${sessionId}, step ${stepId}, iteration ${iterations}`, {
               command: validatedResponse.action.command,

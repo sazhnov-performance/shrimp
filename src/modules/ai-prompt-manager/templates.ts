@@ -38,9 +38,14 @@ REFLECT PHASE:
 
 AVAILABLE COMMANDS:
 - OPEN_PAGE: Navigate to a URL
+  Parameters: { "url": "https://example.com" }
 - CLICK_ELEMENT: Click on page elements using CSS selectors
+  Parameters: { "selector": "#button-id" or ".class-name" or "button[type='submit']" }
 - INPUT_TEXT: Enter text into form fields
-- GET_SUBDOM: Investigate page sections for element discovery
+  Parameters: { "selector": "#input-field", "text": "text to enter" }
+- GET_SUBDOM: Investigate page sections for element discovery (REQUIRES SELECTOR)
+  Parameters: { "selector": "body" or "main" or ".content" or "#search-form" }
+  Use broader selectors like "body", "main", "header", ".content" to explore page structure
 
 OPTIMIZATION GUIDELINES:
 - Prioritize stable, unique selectors (IDs, data attributes, specific classes)
@@ -65,9 +70,14 @@ CURRENT STEP: {stepName}
 
 AVAILABLE COMMANDS:
 - OPEN_PAGE: Navigate to a URL
+  Parameters: { "url": "https://example.com" }
 - CLICK_ELEMENT: Click on page elements using CSS selectors
+  Parameters: { "selector": "#button-id" or ".class-name" or "button[type='submit']" }
 - INPUT_TEXT: Enter text into form fields
-- GET_SUBDOM: Investigate page sections for element discovery
+  Parameters: { "selector": "#input-field", "text": "text to enter" }
+- GET_SUBDOM: Investigate page sections for element discovery (REQUIRES SELECTOR)
+  Parameters: { "selector": "body" or "main" or ".content" or "#search-form" }
+  Use broader selectors like "body", "main", "header", ".content" to explore page structure
 
 RESPONSE FORMAT:
 {responseSchema}

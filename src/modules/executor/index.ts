@@ -74,6 +74,7 @@ export interface IExecutor {
 export class Executor implements IExecutor {
   readonly moduleId = 'executor' as const;
   
+  private static instance: Executor | null = null;
   private sessionManager: ExecutorSessionManager;
   private commandProcessor: CommandProcessor;
   private variableResolver: VariableResolver;
@@ -82,7 +83,7 @@ export class Executor implements IExecutor {
   private logger: ExecutorLogger;
   private config: ExecutorConfig;
 
-  constructor(config: ExecutorConfig = DEFAULT_EXECUTOR_CONFIG) {
+  private constructor(config: ExecutorConfig = DEFAULT_EXECUTOR_CONFIG) {
     this.config = config;
     
     // Initialize components
@@ -115,6 +116,18 @@ export class Executor implements IExecutor {
         screenshotsEnabled: config.screenshots.enabled
       }
     });
+  }
+
+  /**
+   * Get singleton instance of Executor
+   * @param config Optional configuration for the executor
+   * @returns Executor instance
+   */
+  static getInstance(config?: ExecutorConfig): Executor {
+    if (!Executor.instance) {
+      Executor.instance = new Executor(config);
+    }
+    return Executor.instance;
   }
 
   // Session Management Implementation

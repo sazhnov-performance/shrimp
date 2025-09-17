@@ -1,17 +1,16 @@
 /**
- * Debug script to test with different steps
+ * Test the complete navigation fix
  */
 
 const { spawn } = require('child_process');
 
-// Test with a simpler request first
-const testSteps = ["open https://www.google.com"];
+const testSteps = ["open google"];
 
 const requestBody = JSON.stringify({
   steps: testSteps
 });
 
-console.log('Making request to automation API...');
+console.log('Testing complete fix...');
 console.log('Request body:', requestBody);
 
 const curl = spawn('curl', [
@@ -23,6 +22,7 @@ const curl = spawn('curl', [
 
 curl.on('close', (code) => {
   console.log(`\nRequest completed with exit code: ${code}`);
+  console.log('Check the dev server logs for detailed execution flow');
 });
 
 curl.on('error', (error) => {
