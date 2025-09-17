@@ -167,6 +167,7 @@ export class TaskLoop implements ITaskLoop {
         finalResponse = validatedResponse;
 
         // 4. Execute action if specified and flowControl is continue
+        let executionResult: {success: boolean, result?: any, error?: string} | undefined;
         if (validatedResponse.flowControl === 'continue' && validatedResponse.action) {
           if (this.config.enableLogging) {
             console.log(`[TaskLoop] Executing action for session ${sessionId}, step ${stepId}, iteration ${iterations}`, {
@@ -175,10 +176,14 @@ export class TaskLoop implements ITaskLoop {
             });
           }
           
-          await this.executeAction(sessionId, validatedResponse.action);
+          executionResult = await this.executeAction(sessionId, validatedResponse.action);
+          
+          if (this.config.enableLogging) {
+            console.log(`[TaskLoop] Action execution result for session ${sessionId}, step ${stepId}, iteration ${iterations}:`, executionResult);
+          }
         }
 
-        // 5. Log execution in context manager
+        // 5. Log execution in context manager (include execution result)
         if (this.config.enableLogging) {
           console.log(`[TaskLoop] Logging task execution for session ${sessionId}, step ${stepId}, iteration ${iterations}`);
         }
@@ -186,6 +191,7 @@ export class TaskLoop implements ITaskLoop {
         this.contextManager.logTask(sessionId, stepId, {
           iteration: iterations,
           aiResponse: validatedResponse,
+          executionResult: executionResult,
           timestamp: new Date()
         });
 
@@ -267,7 +273,7 @@ export class TaskLoop implements ITaskLoop {
   /**
    * Execute an action through the executor
    */
-  private async executeAction(sessionId: string, action: any): Promise<void> {
+  private async executeAction(sessionId: string, action: any): Promise<{success: boolean, result?: any, error?: string}> {
     try {
       // Session should already be created by StepProcessor
       if (!this.executor.sessionExists(sessionId)) {
@@ -302,33 +308,29 @@ export class TaskLoop implements ITaskLoop {
       const response = await this.executor.executeCommand(command);
       
       if (!response.success && response.error) {
-        throw this.createTaskLoopError(
-          TaskLoopErrorType.EXECUTOR_FAILED,
-          `Executor command failed: ${response.error.message}`,
-          sessionId,
-          undefined,
-          undefined,
-          { 
-            command: action.command, 
-            parameters: action.parameters,
-            executorError: response.error 
-          }
-        );
+        // Return error instead of throwing
+        return {
+          success: false,
+          error: `Executor command failed: ${response.error.message}`
+        };
       }
+
+      // Return successful result
+      return {
+        success: true,
+        result: response.dom || 'Command executed successfully'
+      };
 
     } catch (error) {
       if (error instanceof Error && error.name === 'TaskLoopValidationError') {
         throw error; // Re-throw validation errors
       }
       
-      throw this.createTaskLoopError(
-        TaskLoopErrorType.EXECUTOR_FAILED,
-        `Failed to execute action: ${error instanceof Error ? error.message : String(error)}`,
-        sessionId,
-        undefined,
-        undefined,
-        { command: action.command, parameters: action.parameters, originalError: error }
-      );
+      // Return error instead of throwing for execution errors
+      return {
+        success: false,
+        error: `Failed to execute action: ${error instanceof Error ? error.message : String(error)}`
+      };
     }
   }
 

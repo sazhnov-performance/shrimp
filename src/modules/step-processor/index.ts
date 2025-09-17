@@ -82,11 +82,25 @@ export class StepProcessor implements IStepProcessor {
     // Create session
     const sessionId = this.generateId();
     
+    // Check if we're over the session limit
+    const maxSessions = this.config.maxConcurrentSessions || 10;
+    if (this.activeSessions.size >= maxSessions) {
+      throw new Error(`Maximum concurrent sessions limit (${maxSessions}) exceeded. Currently active sessions: ${this.activeSessions.size}`);
+    }
+    
+    // Check if session is already being processed (shouldn't happen with unique IDs, but safety check)
+    if (this.activeSessions.has(sessionId)) {
+      throw new Error(`Session ${sessionId} is already being processed`);
+    }
+    
     if (this.config.enableLogging) {
       console.log(`[StepProcessor] Starting step processing for session ${sessionId} with ${steps.length} steps`);
     }
     
     try {
+      // Mark session as active
+      this.activeSessions.add(sessionId);
+      
       // Initialize AI context with steps - this is critical for task loop execution
       this.promptManager.init(sessionId, steps);
       
@@ -120,7 +134,8 @@ export class StepProcessor implements IStepProcessor {
         console.error(`[StepProcessor] Error during session setup for session ${sessionId}: ${errorMessage}`);
       }
       
-      // Clean up on setup error
+      // Remove from active sessions and clean up on setup error
+      this.activeSessions.delete(sessionId);
       await this.cleanupSession(sessionId);
       
       // Re-throw error for caller to handle
@@ -185,6 +200,8 @@ export class StepProcessor implements IStepProcessor {
     
     // Only cleanup if we should (moved out of finally to prevent premature cleanup)
     if (shouldCleanup) {
+      // Remove from active sessions before cleanup
+      this.activeSessions.delete(sessionId);
       await this.cleanupSession(sessionId);
     }
   }
@@ -195,17 +212,39 @@ export class StepProcessor implements IStepProcessor {
    */
   private async cleanupSession(sessionId: string): Promise<void> {
     try {
+      // Always remove from active sessions set first
+      this.activeSessions.delete(sessionId);
+      
       if (this.executor.sessionExists(sessionId)) {
         await this.executor.destroySession(sessionId);
         if (this.config.enableLogging) {
           console.log(`[StepProcessor] Cleaned up executor session for session ${sessionId}`);
         }
+      } else if (this.config.enableLogging) {
+        console.log(`[StepProcessor] Session ${sessionId} was already cleaned up or did not exist`);
       }
     } catch (cleanupError) {
+      // Ensure session is removed from active set even if cleanup fails
+      this.activeSessions.delete(sessionId);
+      
       if (this.config.enableLogging) {
         console.error(`[StepProcessor] Error cleaning up executor session ${sessionId}: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`);
       }
     }
+  }
+
+  /**
+   * Get active sessions count for monitoring
+   */
+  getActiveSessionsCount(): number {
+    return this.activeSessions.size;
+  }
+
+  /**
+   * Get list of active session IDs for monitoring  
+   */
+  getActiveSessionIds(): string[] {
+    return Array.from(this.activeSessions);
   }
 
   /**

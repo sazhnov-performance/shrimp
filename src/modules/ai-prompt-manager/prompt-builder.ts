@@ -104,10 +104,11 @@ export class PromptBuilder {
 
     const lastLog = logs[logs.length - 1];
     
-    // Check for success/failure indicators in the log
-    if (lastLog?.flowControl === 'stop_success') {
+    // Check for success/failure indicators in the nested aiResponse
+    const flowControl = lastLog?.aiResponse?.flowControl;
+    if (flowControl === 'stop_success') {
       return 'success';
-    } else if (lastLog?.flowControl === 'stop_failure') {
+    } else if (flowControl === 'stop_failure') {
       return 'failure';
     } else {
       return 'in progress';
@@ -128,13 +129,29 @@ export class PromptBuilder {
     const actionCount = logs.length;
     const lastLog = logs[logs.length - 1];
     
-    if (lastLog?.reasoning) {
+    // Access reasoning from nested aiResponse structure
+    const reasoning = lastLog?.aiResponse?.reasoning;
+    const executionResult = lastLog?.executionResult;
+    
+    let summary = `${actionCount} action(s) taken`;
+    
+    // Add execution outcome if available
+    if (executionResult) {
+      if (executionResult.success) {
+        summary += ' (succeeded)';
+      } else {
+        const error = executionResult.error ? executionResult.error.substring(0, 50) : 'failed';
+        summary += ` (failed: ${error}${executionResult.error && executionResult.error.length > 50 ? '...' : ''})`;
+      }
+    }
+    
+    if (reasoning) {
       // Truncate reasoning to keep summary concise
-      const reasoning = lastLog.reasoning.substring(0, 100);
-      return `${actionCount} action(s) taken. Last: ${reasoning}${reasoning.length >= 100 ? '...' : ''}`;
+      const truncatedReasoning = reasoning.substring(0, 80);
+      summary += `. Last: ${truncatedReasoning}${reasoning.length >= 80 ? '...' : ''}`;
     }
 
-    return `${actionCount} action(s) taken`;
+    return summary;
   }
 
   /**
@@ -145,11 +162,28 @@ export class PromptBuilder {
    */
   private formatLogEntry(log: any, attemptNumber: number): string {
     try {
-      const action = log?.action?.command || 'Unknown';
-      const reasoning = log?.reasoning ? log.reasoning.substring(0, 80) : 'No reasoning provided';
-      const confidence = log?.confidence || 0;
+      // Access data from nested aiResponse structure
+      const aiResponse = log?.aiResponse;
+      const executionResult = log?.executionResult;
       
-      return `  Attempt ${attemptNumber}: ${action} (Confidence: ${confidence}%) - ${reasoning}${reasoning.length >= 80 ? '...' : ''}`;
+      const action = aiResponse?.action?.command || 'Unknown';
+      const reasoning = aiResponse?.reasoning ? aiResponse.reasoning.substring(0, 80) : 'No reasoning provided';
+      const confidence = aiResponse?.confidence || 0;
+      
+      let resultText = '';
+      if (executionResult) {
+        if (executionResult.success) {
+          const result = typeof executionResult.result === 'string' 
+            ? executionResult.result.substring(0, 60)
+            : 'Success';
+          resultText = ` → ✓ ${result}${typeof executionResult.result === 'string' && executionResult.result.length > 60 ? '...' : ''}`;
+        } else {
+          const error = executionResult.error ? executionResult.error.substring(0, 60) : 'Unknown error';
+          resultText = ` → ✗ ${error}${executionResult.error && executionResult.error.length > 60 ? '...' : ''}`;
+        }
+      }
+      
+      return `  Attempt ${attemptNumber}: ${action} (Confidence: ${confidence}%) - ${reasoning}${reasoning.length >= 80 ? '...' : ''}${resultText}`;
     } catch (error) {
       return `  Attempt ${attemptNumber}: Error formatting log entry`;
     }
