@@ -1189,6 +1189,45 @@ interface TaskLoopError extends Error {
 - Cache size limitations and eviction policies
 - Timeout management for long-running operations
 
+## Implementation Structure
+
+### Module Organization
+```
+/src/modules/task-loop/
+  ├── index.ts                    # Main module interface
+  ├── task-loop.ts                # Core ACT-REFLECT cycle implementation
+  ├── act-phase-processor.ts      # ACT phase processing logic
+  ├── reflect-phase-processor.ts  # REFLECT phase processing logic
+  ├── investigation/
+  │   ├── investigation-cycle.ts  # Investigation cycle orchestration
+  │   ├── investigation-phase.ts  # Individual phase processing
+  │   ├── tool-executor.ts        # Investigation tool execution
+  │   ├── screenshot-analyzer.ts  # Screenshot analysis implementation
+  │   ├── text-extractor.ts       # Text extraction implementation
+  │   ├── dom-retriever.ts        # DOM retrieval implementation
+  │   └── context-builder.ts      # Investigation context building
+  ├── command-executor.ts         # Command execution and session injection
+  ├── response-parser.ts          # AI response parsing and validation
+  ├── decision-engine.ts          # Decision making framework
+  ├── adaptive-learner.ts         # Adaptive learning implementation
+  ├── working-memory.ts           # Working memory management
+  ├── error-handler.ts            # Error handling and recovery
+  ├── logger.ts                   # Logging implementation
+  ├── metrics-collector.ts        # Performance metrics collection
+  └── types.ts                    # TypeScript type definitions
+```
+
+### Dependencies
+- ai-prompt-manager: Prompt generation for action and investigation
+- ai-integration: AI service communication
+- ai-context-manager: Context management and filtered context
+- executor: Command execution and browser automation
+- executor-streamer: Real-time event streaming
+- ai-schema-manager: Response schema validation
+- uuid: Event and command ID generation
+- winston: Structured logging
+- lodash: Utility functions
+
 ## Configuration
 
 ### Module Configuration (FIXED: Extends BaseModuleConfig)

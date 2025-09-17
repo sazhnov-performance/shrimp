@@ -493,6 +493,33 @@ interface BatchProcessingResult {
 }
 ```
 
+## Implementation Structure
+
+### Module Organization
+```
+/src/modules/step-processor/
+  ├── index.ts                    # Main module interface
+  ├── step-processor.ts           # Core processing logic and orchestration
+  ├── session-coordinator.ts     # Session coordination and management
+  ├── workflow-manager.ts         # Workflow session management
+  ├── event-handler.ts            # Event handling and publishing
+  ├── progress-tracker.ts         # Progress tracking and metrics
+  ├── error-handler.ts            # Error handling and recovery
+  ├── logger.ts                   # Logging implementation
+  ├── recovery-manager.ts         # Session recovery and checkpoints
+  ├── batch-processor.ts          # Batch processing functionality
+  └── types.ts                    # TypeScript type definitions
+```
+
+### Dependencies
+- task-loop: Task execution orchestration
+- ai-context-manager: Context management and storage
+- executor-streamer: Real-time streaming integration
+- ai-integration: AI service connectivity
+- uuid: Session ID generation
+- winston: Structured logging
+- lodash: Utility functions
+
 ## Configuration (Standardized)
 
 ### Module Configuration (Using Shared Pattern)

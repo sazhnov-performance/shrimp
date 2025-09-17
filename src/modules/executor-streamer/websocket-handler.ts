@@ -98,8 +98,12 @@ export class WebSocketHandler implements IWebSocketHandler {
       this.removeWebSocketHandlers(ws);
       
       // Close connection if still open
-      if (ws.readyState === WEBSOCKET_STATES.OPEN) {
-        ws.close(1000, 'Normal closure');
+      if (ws.readyState === WEBSOCKET_STATES.OPEN || ws.readyState === undefined) {
+        try {
+          ws.close(1000, 'Normal closure');
+        } catch (error) {
+          console.warn(`Error closing WebSocket for client ${clientId}:`, error);
+        }
       }
       
       // Remove from active connections

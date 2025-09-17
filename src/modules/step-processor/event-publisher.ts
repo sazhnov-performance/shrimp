@@ -94,7 +94,6 @@ export class StepProcessorEventPublisherImpl implements StepProcessorEventPublis
     };
 
     await this.publishStreamEvent(streamId, event);
-    this.logger.logStepStarted(sessionId, stepIndex, stepContent);
   }
 
   async publishStepCompleted(streamId: string | undefined, sessionId: string, stepIndex: number, result: StepResult): Promise<void> {
@@ -114,7 +113,6 @@ export class StepProcessorEventPublisherImpl implements StepProcessorEventPublis
     };
 
     await this.publishStreamEvent(streamId, event);
-    this.logger.logStepCompleted(sessionId, stepIndex, result.duration);
   }
 
   async publishStepFailed(streamId: string | undefined, sessionId: string, stepIndex: number, error: StandardError): Promise<void> {
@@ -134,7 +132,6 @@ export class StepProcessorEventPublisherImpl implements StepProcessorEventPublis
     };
 
     await this.publishStreamEvent(streamId, event);
-    this.logger.logStepFailed(sessionId, stepIndex, error);
   }
 
   // Workflow-level events (owned by Step Processor)
@@ -154,7 +151,6 @@ export class StepProcessorEventPublisherImpl implements StepProcessorEventPublis
     };
 
     await this.publishStreamEvent(streamId, event);
-    this.logger.logWorkflowStarted(sessionId, totalSteps);
   }
 
   async publishWorkflowProgress(streamId: string | undefined, sessionId: string, progress: ExecutionProgress): Promise<void> {
@@ -188,7 +184,6 @@ export class StepProcessorEventPublisherImpl implements StepProcessorEventPublis
     };
 
     await this.publishStreamEvent(streamId, event);
-    this.logger.logWorkflowCompleted(sessionId, 0); // Duration will be calculated elsewhere
   }
 
   async publishWorkflowFailed(streamId: string | undefined, sessionId: string, error: StandardError): Promise<void> {
@@ -202,7 +197,6 @@ export class StepProcessorEventPublisherImpl implements StepProcessorEventPublis
     };
 
     await this.publishStreamEvent(streamId, event);
-    this.logger.logWorkflowFailed(sessionId, error);
   }
 
   async publishWorkflowPaused(streamId: string | undefined, sessionId: string): Promise<void> {
@@ -254,7 +248,6 @@ export class StepProcessorEventPublisherImpl implements StepProcessorEventPublis
 
       await this.executorStreamer.publishEvent(streamId, fullEvent);
       
-      this.logger.logEventPublished(event.type, event.sessionId, streamId);
     } catch (error) {
       this.logger.error('Failed to publish stream event', undefined, {
         sessionId: event.sessionId,

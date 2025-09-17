@@ -262,10 +262,12 @@ export class StepProcessor implements IStepProcessor {
       this.validateStepProcessingRequest(request);
 
       // Create unified workflow session
+      console.log('[StepProcessor] Creating workflow session...');
       const workflowSession = await this.dependencies!.sessionCoordinator.createWorkflowSession(
         request.steps,
         request.config as any
       );
+      console.log(`[StepProcessor] Workflow session created: ${workflowSession.sessionId}`);
 
       // Initialize all modules for the session
       await this.initializeModulesForSession(workflowSession);
@@ -302,7 +304,19 @@ export class StepProcessor implements IStepProcessor {
       }
 
       // Start processing first step
-      await this.processNextStep(workflowSession.sessionId, 0, request.steps);
+      console.log(`[StepProcessor] Starting first step processing for session ${workflowSession.sessionId}`);
+      console.log(`[StepProcessor] First step: "${request.steps[0]}"`);
+      
+      try {
+        await this.processNextStep(workflowSession.sessionId, 0, request.steps);
+        console.log(`[StepProcessor] First step processing initiated successfully`);
+      } catch (stepError: any) {
+        console.error(`[StepProcessor] First step processing failed:`, {
+          error: stepError.message,
+          stack: stepError.stack?.split('\n').slice(0, 3)
+        });
+        throw stepError;
+      }
 
       const result: StepProcessingResult = {
         sessionId: workflowSession.sessionId,
@@ -590,7 +604,25 @@ export class StepProcessor implements IStepProcessor {
       };
 
       // Task Loop will handle the step and publish events back to us
-      await this.dependencies!.taskLoop.processStep(stepRequest);
+      console.log(`[StepProcessor] Calling TaskLoop.processStep for step ${stepIndex}`);
+      console.log(`[StepProcessor] Step request:`, {
+        sessionId: stepRequest.sessionId,
+        stepIndex: stepRequest.stepIndex,
+        stepContent: stepRequest.stepContent.substring(0, 100) + '...',
+        hasStreamId: !!stepRequest.streamId
+      });
+      
+      try {
+        await this.dependencies!.taskLoop.processStep(stepRequest);
+        console.log(`[StepProcessor] TaskLoop.processStep completed for step ${stepIndex}`);
+      } catch (taskLoopError: any) {
+        console.error(`[StepProcessor] TaskLoop.processStep failed for step ${stepIndex}:`, {
+          error: taskLoopError.message,
+          code: taskLoopError.code,
+          details: taskLoopError.details
+        });
+        throw taskLoopError;
+      }
       
     } catch (error) {
       const standardError = this.errorHandler.wrapError(

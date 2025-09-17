@@ -1158,6 +1158,30 @@ interface PromptManagerError extends Error {
 - **External Knowledge Bases**: Integration with design systems and UI pattern libraries
 - **Real-time Investigation Streaming**: Live investigation progress monitoring and collaboration
 
+## Implementation Structure
+
+### Module Organization
+```
+/src/modules/ai-prompt-manager/
+  ├── index.ts                    # Main module interface
+  ├── prompt-manager.ts           # Core prompt generation logic
+  ├── template-manager.ts         # Template management and rendering
+  ├── context-integrator.ts       # Context integration with AI Context Manager
+  ├── content-builder.ts          # Prompt content assembly
+  ├── investigation-generator.ts  # Investigation prompt generation
+  ├── prompt-validator.ts         # Prompt validation and quality assurance
+  ├── configuration-manager.ts    # Configuration and options management
+  ├── factory.ts                  # Prompt factory and pattern management
+  └── types.ts                    # TypeScript type definitions
+```
+
+### Dependencies
+- ai-context-manager: Context retrieval and filtered context integration
+- ai-schema-manager: Response schema generation and validation
+- lodash: Object manipulation and template utilities
+- handlebars or mustache: Template rendering engine
+- validator: Input validation and sanitization
+
 ## Constants and Configuration
 
 ```typescript
