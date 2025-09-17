@@ -169,9 +169,8 @@ RESPONSE FORMAT:
     }
     
     if (reasoning) {
-      // Truncate reasoning to keep summary concise
-      const truncatedReasoning = reasoning.substring(0, 80);
-      summary += `. Last: ${truncatedReasoning}${reasoning.length >= 80 ? '...' : ''}`;
+      // Include full reasoning in summary - AI needs complete context
+      summary += `. Last reasoning: ${reasoning}`;
     }
 
     return summary;
@@ -198,54 +197,66 @@ RESPONSE FORMAT:
       if (!aiResponse) {
         // Check if data is in the log directly (legacy format)
         const legacyAction = log?.action?.command || log?.command || 'Unknown';
-        const legacyReasoning = log?.reasoning ? log.reasoning.substring(0, 80) : 'No reasoning provided';
+        const legacyParameters = log?.action?.parameters || log?.parameters;
+        const legacyParametersText = legacyParameters ? JSON.stringify(legacyParameters, null, 2) : 'No parameters';
+        const legacyReasoning = log?.reasoning || 'No reasoning provided'; // Show full reasoning, no truncation
         const legacyConfidence = log?.confidence || 0;
         
+        // Format legacy attempt with full details
+        let legacyAttemptDetails = `  Attempt ${attemptNumber}: ${legacyAction} (Confidence: ${legacyConfidence}%)\n`;
+        legacyAttemptDetails += `    Reasoning: ${legacyReasoning}\n`;
+        legacyAttemptDetails += `    Parameters: ${legacyParametersText}`;
+        
         // Handle execution result in legacy format
-        let legacyResultText = '';
         if (executionResult) {
           if (executionResult.success) {
             // For GET_SUBDOM, include full DOM content even in legacy format
             if (legacyAction === 'GET_SUBDOM' && typeof executionResult.result === 'string') {
-              legacyResultText = ` → ✓ DOM retrieved successfully\n\nDOM CONTENT:\n${executionResult.result}`;
+              legacyAttemptDetails += `\n    Result: ✓ DOM retrieved successfully\n\nDOM CONTENT:\n${executionResult.result}`;
             } else {
               const result = typeof executionResult.result === 'string' 
-                ? executionResult.result.substring(0, 60)
+                ? executionResult.result.substring(0, 100)
                 : 'Success';
-              legacyResultText = ` → ✓ ${result}${typeof executionResult.result === 'string' && executionResult.result.length > 60 ? '...' : ''}`;
+              legacyAttemptDetails += `\n    Result: ✓ ${result}${typeof executionResult.result === 'string' && executionResult.result.length > 100 ? '...' : ''}`;
             }
           } else {
-            const error = executionResult.error ? executionResult.error.substring(0, 100) : 'Unknown error';
-            legacyResultText = ` → ✗ ${error}${executionResult.error && executionResult.error.length > 100 ? '...' : ''}`;
+            const error = executionResult.error || 'Unknown error';
+            legacyAttemptDetails += `\n    Result: ✗ ${error}`;
           }
         }
         
-        return `  Attempt ${attemptNumber}: ${legacyAction} (Confidence: ${legacyConfidence}%) - ${legacyReasoning}${legacyReasoning.length >= 80 ? '...' : ''}${legacyResultText}`;
+        return legacyAttemptDetails;
       }
       
       const action = aiResponse?.action?.command || 'Unknown';
-      const reasoning = aiResponse?.reasoning ? aiResponse.reasoning.substring(0, 80) : 'No reasoning provided';
+      const actionParameters = aiResponse?.action?.parameters ? JSON.stringify(aiResponse.action.parameters, null, 2) : 'No parameters';
+      const reasoning = aiResponse?.reasoning || 'No reasoning provided'; // Show full reasoning, no truncation
       const confidence = aiResponse?.confidence !== undefined ? aiResponse.confidence : 0;
       
-      let resultText = '';
+      // Format the attempt with full details
+      let attemptDetails = `  Attempt ${attemptNumber}: ${action} (Confidence: ${confidence}%)\n`;
+      attemptDetails += `    Reasoning: ${reasoning}\n`;
+      attemptDetails += `    Parameters: ${actionParameters}`;
+      
+      // Add execution result
       if (executionResult) {
         if (executionResult.success) {
           // For GET_SUBDOM, include full DOM content
           if (action === 'GET_SUBDOM' && typeof executionResult.result === 'string') {
-            resultText = ` → ✓ DOM retrieved successfully\n\nDOM CONTENT:\n${executionResult.result}`;
+            attemptDetails += `\n    Result: ✓ DOM retrieved successfully\n\nDOM CONTENT:\n${executionResult.result}`;
           } else {
             const result = typeof executionResult.result === 'string' 
-              ? executionResult.result.substring(0, 60)
+              ? executionResult.result.substring(0, 100)
               : 'Success';
-            resultText = ` → ✓ ${result}${typeof executionResult.result === 'string' && executionResult.result.length > 60 ? '...' : ''}`;
+            attemptDetails += `\n    Result: ✓ ${result}${typeof executionResult.result === 'string' && executionResult.result.length > 100 ? '...' : ''}`;
           }
         } else {
-          const error = executionResult.error ? executionResult.error.substring(0, 100) : 'Unknown error';
-          resultText = ` → ✗ ${error}${executionResult.error && executionResult.error.length > 100 ? '...' : ''}`;
+          const error = executionResult.error || 'Unknown error';
+          attemptDetails += `\n    Result: ✗ ${error}`;
         }
       }
       
-      return `  Attempt ${attemptNumber}: ${action} (Confidence: ${confidence}%) - ${reasoning}${reasoning.length >= 80 ? '...' : ''}${resultText}`;
+      return attemptDetails;
     } catch (error) {
       return `  Attempt ${attemptNumber}: Error formatting log entry - ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
