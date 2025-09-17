@@ -3,9 +3,6 @@
  */
 
 export interface IAIPromptManager {
-  // Singleton instance access
-  static getInstance(config?: AIPromptManagerConfig): IAIPromptManager;
-  
   // Initialize context with session and workflow steps
   init(sessionId: string, steps: string[]): void;
   
