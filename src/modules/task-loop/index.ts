@@ -26,6 +26,8 @@ import { IAISchemaManager } from '../ai-schema-manager/types';
 import AISchemaManager from '../ai-schema-manager/index';
 import { IExecutor, Executor } from '../executor/index';
 import { CommandAction } from '../executor/types';
+import { IExecutorStreamer } from '../executor-streamer/types';
+import { ExecutorStreamer } from '../executor-streamer/index';
 
 /**
  * TaskLoop - Singleton implementation of the core ACT-REFLECT cycle
@@ -37,6 +39,7 @@ export class TaskLoop implements ITaskLoop {
   private aiIntegration: IAIIntegrationManager;
   private schemaManager: IAISchemaManager;
   private executor: IExecutor;
+  private streamer: IExecutorStreamer;
   private config: TaskLoopConfig;
 
   private constructor(config: TaskLoopConfig = DEFAULT_CONFIG) {
@@ -58,6 +61,7 @@ export class TaskLoop implements ITaskLoop {
     
     this.schemaManager = AISchemaManager.getInstance();
     this.executor = Executor.getInstance(); // Use singleton instance
+    this.streamer = ExecutorStreamer.getInstance(); // Use singleton instance
     
     if (this.config.enableLogging) {
       console.log('[TaskLoop] Task Loop module initialized', {
@@ -165,6 +169,9 @@ export class TaskLoop implements ITaskLoop {
         
         const validatedResponse = validateAIResponse(aiResponse.data, sessionId, stepId);
         finalResponse = validatedResponse;
+
+        // 3a. Push AI reasoning to streamer
+        await this.pushReasoningToStreamer(sessionId, stepId, iterations, validatedResponse.reasoning);
 
         // 4. Execute action if specified and flowControl is continue
         let executionResult: {success: boolean, result?: any, error?: string} | undefined;
@@ -459,6 +466,54 @@ export class TaskLoop implements ITaskLoop {
    */
   private generateCommandId(): string {
     return `taskloop_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Ensure stream exists for session, create if it doesn't
+   */
+  private async ensureStreamExists(sessionId: string): Promise<void> {
+    try {
+      if (!this.streamer.streamExists(sessionId)) {
+        await this.streamer.createStream(sessionId);
+        if (this.config.enableLogging) {
+          console.log(`[TaskLoop] Created stream for session ${sessionId}`);
+        }
+      }
+    } catch (error) {
+      if (this.config.enableLogging) {
+        console.warn(`[TaskLoop] Failed to create stream for session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      // Don't throw error - streaming is not critical for execution
+    }
+  }
+
+  /**
+   * Push AI reasoning to streamer
+   */
+  private async pushReasoningToStreamer(sessionId: string, stepId: number, iteration: number, reasoning: string): Promise<void> {
+    try {
+      await this.ensureStreamExists(sessionId);
+      
+      const event = JSON.stringify({
+        type: 'ai_reasoning',
+        sessionId,
+        stepId,
+        iteration,
+        reasoning,
+        timestamp: new Date().toISOString()
+      });
+      
+      await this.streamer.putEvent(sessionId, event);
+      
+      if (this.config.enableLogging) {
+        console.log(`[TaskLoop] Pushed reasoning to stream for session ${sessionId}, step ${stepId}, iteration ${iteration}`);
+      }
+    } catch (error) {
+      if (this.config.enableLogging) {
+        console.warn(`[TaskLoop] Failed to push reasoning to stream for session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      // Don't throw error - streaming is not critical for execution
+    }
   }
 
   /**

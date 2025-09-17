@@ -35,6 +35,9 @@ export interface StepResult {
   error?: string;
 }
 
+// Confidence Level Enum
+export type ConfidenceLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+
 // AI Response Interface (from AI Schema Manager)
 export interface AIResponse {
   action?: {
@@ -42,7 +45,7 @@ export interface AIResponse {
     parameters: Record<string, any>;
   };
   reasoning: string;
-  confidence: number;
+  confidence: ConfidenceLevel;
   flowControl: 'continue' | 'stop_success' | 'stop_failure';
 }
 

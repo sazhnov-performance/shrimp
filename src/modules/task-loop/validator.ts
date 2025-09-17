@@ -116,21 +116,23 @@ function validateReasoning(reasoning: any, sessionId: string, stepId: number): v
  * Validates the confidence field
  */
 function validateConfidence(confidence: any, sessionId: string, stepId: number): void {
-  if (!Number.isInteger(confidence)) {
+  if (typeof confidence !== 'string') {
     throw createValidationError(
-      'Confidence field must be an integer',
+      'Confidence field must be a string',
       sessionId,
       stepId,
       { receivedType: typeof confidence, receivedValue: confidence }
     );
   }
 
-  if (confidence < 0 || confidence > 100) {
+  const validValues = ['LOW', 'MEDIUM', 'HIGH'];
+  
+  if (!validValues.includes(confidence)) {
     throw createValidationError(
-      'Confidence field must be between 0 and 100',
+      `Confidence field must be one of: ${validValues.join(', ')}`,
       sessionId,
       stepId,
-      { receivedValue: confidence, validRange: [0, 100] }
+      { receivedValue: confidence, validValues }
     );
   }
 }

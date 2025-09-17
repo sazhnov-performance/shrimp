@@ -118,7 +118,7 @@ export class AIPromptManager implements IAIPromptManager {
         required: ["reasoning", "confidence", "flowControl"],
         properties: {
           reasoning: { type: "string" },
-          confidence: { type: "integer", minimum: 0, maximum: 100 },
+          confidence: { type: "string", enum: ["LOW", "MEDIUM", "HIGH"] },
           flowControl: { type: "string", enum: ["continue", "stop_success", "stop_failure"] }
         }
       };

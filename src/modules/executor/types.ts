@@ -265,6 +265,18 @@ export interface CleanupResult {
   duration: number;
 }
 
+// Network idle configuration
+export interface NetworkIdleConfig {
+  enabled: boolean;
+  timeout: number; // Maximum time to wait for network idle in milliseconds
+  maxConcurrentRequests: number; // Maximum number of concurrent requests to consider "idle"
+  actions: {
+    clickElement: boolean; // Wait for network idle after clicking elements
+    inputText: boolean; // Wait for network idle after inputting text
+    openPage: boolean; // Wait for network idle after opening pages (already implemented)
+  };
+}
+
 // Configuration extends BaseModuleConfig
 export interface ExecutorConfig extends BaseModuleConfig {
   moduleId: 'executor';
@@ -275,6 +287,7 @@ export interface ExecutorConfig extends BaseModuleConfig {
     maxSessions: number;
   };
   screenshots: ScreenshotConfig;
+  networkIdle: NetworkIdleConfig;
 }
 
 // Default configuration
@@ -301,6 +314,17 @@ export const DEFAULT_EXECUTOR_CONFIG: ExecutorConfig = {
       maxAge: 86400000, // 24 hours
       maxCount: 100,
       schedule: 'daily'
+    }
+  },
+  
+  networkIdle: {
+    enabled: true,
+    timeout: 5000, // 5 seconds
+    maxConcurrentRequests: 0, // 0 concurrent requests = true idle
+    actions: {
+      clickElement: true,
+      inputText: true,
+      openPage: true
     }
   },
   

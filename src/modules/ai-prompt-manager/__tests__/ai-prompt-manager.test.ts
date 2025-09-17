@@ -231,7 +231,7 @@ describe('AIPromptManager', () => {
       
       expect(prompt).toContain('OPTIMIZATION GUIDELINES:');
       expect(prompt).toContain('Prioritize stable, unique selectors');
-      expect(prompt).toContain('Maintain high confidence levels');
+      expect(prompt).toContain('Maintain HIGH confidence levels');
     });
 
     it('should include current step objective', () => {
@@ -262,7 +262,7 @@ describe('AIPromptManager', () => {
       contextManager.logTask(sessionId, 0, {
         action: { command: 'OPEN_PAGE', parameters: { url: 'https://example.com' } },
         reasoning: 'Opening test page',
-        confidence: 90,
+        confidence: 'HIGH',
         flowControl: 'continue'
       });
 
@@ -276,7 +276,7 @@ describe('AIPromptManager', () => {
       contextManager.logTask(sessionId, 0, {
         action: { command: 'GET_SUBDOM', parameters: { selector: 'body' } },
         reasoning: 'Investigating page structure',
-        confidence: 75,
+        confidence: 'HIGH',
         flowControl: 'continue'
       });
 

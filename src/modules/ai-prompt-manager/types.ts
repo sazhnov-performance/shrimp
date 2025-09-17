@@ -16,13 +16,16 @@ export interface AIPromptManagerConfig {
   cacheEnabled?: boolean;
 }
 
+// Confidence Level Enum
+export type ConfidenceLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+
 export interface ContextualHistory {
   previousSteps: Array<{
     stepId: number;
     stepName: string;
     outcome: 'success' | 'failure' | 'in_progress';
     summary: string;
-    confidence: number;
+    confidence: ConfidenceLevel;
   }>;
   currentStepAttempts: Array<{
     action: string;

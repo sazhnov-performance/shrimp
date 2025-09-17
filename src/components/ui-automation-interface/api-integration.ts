@@ -6,7 +6,8 @@
 
 import { 
   StepProcessingRequest, 
-  StreamEvent
+  StreamEvent,
+  StreamEventType
 } from './types';
 import { 
   ExecuteStepsResponse, 
@@ -59,51 +60,47 @@ export class FrontendAPIIntegration implements SimpleFrontendAPIIntegration {
   }
 
   /**
-   * Connect to WebSocket stream for real-time events
+   * Connect to SSE stream for real-time events
    */
-  async connectToStream(streamId: string): Promise<WebSocket> {
+  async connectToStream(streamId: string): Promise<EventSource> {
     return new Promise((resolve, reject) => {
       try {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.host;
-        const wsUrl = `${protocol}//${host}/api/stream/ws/${streamId}`;
+        const sseUrl = `${this.baseUrl}/api/stream/ws/${streamId}`;
         
-        const ws = new WebSocket(wsUrl);
+        const eventSource = new EventSource(sseUrl);
         
-        ws.onopen = () => {
-          console.log('WebSocket connected to stream:', streamId);
-          
-          // Send connection acknowledgment
-          const message: WSClientMessage = {
-            type: 'subscribe',
-            payload: {
-              filters: [], // No filters for simplified interface
-            }
-          };
-          ws.send(JSON.stringify(message));
-          
-          resolve(ws);
+        eventSource.onopen = () => {
+          console.log('SSE connected to stream:', streamId);
+          resolve(eventSource);
         };
 
-        ws.onmessage = (event) => {
+        eventSource.onmessage = (event) => {
           try {
-            const message: WSServerMessage = JSON.parse(event.data);
+            const message = JSON.parse(event.data);
             
             switch (message.type) {
               case 'event':
-                if (message.payload?.event) {
-                  this.eventCallbacks.forEach(callback => {
-                    try {
-                      callback(message.payload!.event!);
-                    } catch (error) {
-                      console.error('Error in event callback:', error);
-                    }
-                  });
-                }
+                // Convert SSE message format to expected StreamEvent format
+                const streamEvent: StreamEvent = {
+                  id: `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                  type: StreamEventType.WORKFLOW_PROGRESS,
+                  timestamp: new Date(message.timestamp),
+                  sessionId: message.sessionId,
+                  message: message.data,
+                  level: 'info' as const
+                };
+                
+                this.eventCallbacks.forEach(callback => {
+                  try {
+                    callback(streamEvent);
+                  } catch (error) {
+                    console.error('Error in event callback:', error);
+                  }
+                });
                 break;
                 
               case 'error':
-                const errorMsg = message.payload?.error?.message || 'Stream error';
+                const errorMsg = message.data || 'Stream error';
                 this.errorCallbacks.forEach(callback => {
                   try {
                     callback(errorMsg);
@@ -113,19 +110,11 @@ export class FrontendAPIIntegration implements SimpleFrontendAPIIntegration {
                 });
                 break;
                 
-              case 'connection_ack':
-                console.log('Stream connection acknowledged');
-                break;
-                
-              case 'pong':
-                // Heartbeat response - no action needed
-                break;
-                
               default:
                 console.log('Unknown message type:', message.type);
             }
           } catch (error) {
-            console.error('Error parsing WebSocket message:', error);
+            console.error('Error parsing SSE message:', error);
             this.errorCallbacks.forEach(callback => {
               try {
                 callback('Failed to parse stream message');
@@ -136,13 +125,8 @@ export class FrontendAPIIntegration implements SimpleFrontendAPIIntegration {
           }
         };
 
-        ws.onerror = (error) => {
-          console.error('WebSocket error:', error);
-          reject(new Error(ERROR_MESSAGES.CONNECTION_LOST));
-        };
-
-        ws.onclose = () => {
-          console.log('WebSocket connection closed');
+        eventSource.onerror = (error) => {
+          console.error('SSE error:', error);
           this.errorCallbacks.forEach(callback => {
             try {
               callback(ERROR_MESSAGES.CONNECTION_LOST);
@@ -150,6 +134,11 @@ export class FrontendAPIIntegration implements SimpleFrontendAPIIntegration {
               console.error('Error in error callback:', error);
             }
           });
+          
+          // Don't reject immediately - let the connection be established first
+          if (eventSource.readyState === EventSource.CONNECTING) {
+            reject(new Error(ERROR_MESSAGES.CONNECTION_LOST));
+          }
         };
 
       } catch (error) {

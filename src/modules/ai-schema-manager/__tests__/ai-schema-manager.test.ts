@@ -65,11 +65,10 @@ describe('AISchemaManager', () => {
       expect(schema.properties.reasoning.description).toContain('decision-making process');
     });
 
-    it('should include confidence property with valid range', () => {
+    it('should include confidence property as string', () => {
       expect(schema.properties.confidence).toBeDefined();
-      expect(schema.properties.confidence.type).toBe('integer');
-      expect(schema.properties.confidence.minimum).toBe(0);
-      expect(schema.properties.confidence.maximum).toBe(100);
+      expect(schema.properties.confidence.type).toBe('string');
+      expect(schema.properties.confidence.description).toBeDefined();
     });
 
     it('should include flowControl property with valid enum values', () => {
@@ -158,7 +157,7 @@ describe('AISchemaManager', () => {
           }
         },
         reasoning: 'Starting automation by navigating to the login page.',
-        confidence: 95,
+        confidence: 'HIGH',
         flowControl: 'continue'
       };
 
@@ -180,7 +179,7 @@ describe('AISchemaManager', () => {
           }
         },
         reasoning: 'Located submit button using test ID attribute for reliability.',
-        confidence: 85,
+        confidence: 'HIGH',
         flowControl: 'continue'
       };
 
@@ -200,7 +199,7 @@ describe('AISchemaManager', () => {
           }
         },
         reasoning: 'Filling email field with provided credentials.',
-        confidence: 90,
+        confidence: 'HIGH',
         flowControl: 'continue'
       };
 
@@ -219,7 +218,7 @@ describe('AISchemaManager', () => {
           }
         },
         reasoning: 'Need to examine error messages to understand validation failures.',
-        confidence: 80,
+        confidence: 'HIGH',
         flowControl: 'continue'
       };
 
@@ -232,12 +231,12 @@ describe('AISchemaManager', () => {
     it('should validate stop_success example structure (no action required)', () => {
       const stopSuccessExample: {
         reasoning: string;
-        confidence: number;
+        confidence: string;
         flowControl: string;
         action?: any;
       } = {
         reasoning: 'Successfully completed all automation steps. Login form filled and submitted, confirmation page loaded.',
-        confidence: 92,
+        confidence: 'HIGH',
         flowControl: 'stop_success'
       };
 
@@ -249,12 +248,12 @@ describe('AISchemaManager', () => {
     it('should validate stop_failure example structure (no action required)', () => {
       const stopFailureExample: {
         reasoning: string;
-        confidence: number;
+        confidence: string;
         flowControl: string;
         action?: any;
       } = {
         reasoning: 'Unable to locate expected elements after multiple attempts. Page structure may have changed.',
-        confidence: 78,
+        confidence: 'HIGH',
         flowControl: 'stop_failure'
       };
 

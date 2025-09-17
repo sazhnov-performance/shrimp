@@ -55,10 +55,9 @@ class AISchemaManager implements IAISchemaManager {
           description: "Explanation of decision-making process and rationale"
         },
         confidence: {
-          type: "integer", 
-          minimum: 0,
-          maximum: 100,
-          description: "Confidence level in the decision (0-100 scale)"
+          type: "string",
+          enum: ["LOW", "MEDIUM", "HIGH"],
+          description: "Confidence level for the decision: LOW (uncertain/exploratory), MEDIUM (moderate confidence), HIGH (very confident)"
         },
         flowControl: {
           type: "string",

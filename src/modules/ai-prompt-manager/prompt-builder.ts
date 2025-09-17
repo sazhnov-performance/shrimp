@@ -51,7 +51,7 @@ This GET_SUBDOM operation must FAIL. Please:
 RESPONSE FORMAT:
 {
   "reasoning": "DOM content too large for context - need more specific selector",
-  "confidence": 0,
+  "confidence": "LOW",
   "flowControl": "stop_failure"
 }`;
         }
@@ -200,10 +200,10 @@ RESPONSE FORMAT:
         const legacyParameters = log?.action?.parameters || log?.parameters;
         const legacyParametersText = legacyParameters ? JSON.stringify(legacyParameters, null, 2) : 'No parameters';
         const legacyReasoning = log?.reasoning || 'No reasoning provided'; // Show full reasoning, no truncation
-        const legacyConfidence = log?.confidence || 0;
+        const legacyConfidence = log?.confidence || 'LOW';
         
         // Format legacy attempt with full details
-        let legacyAttemptDetails = `  Attempt ${attemptNumber}: ${legacyAction} (Confidence: ${legacyConfidence}%)\n`;
+        let legacyAttemptDetails = `  Attempt ${attemptNumber}: ${legacyAction} (Confidence: ${legacyConfidence})\n`;
         legacyAttemptDetails += `    Reasoning: ${legacyReasoning}\n`;
         legacyAttemptDetails += `    Parameters: ${legacyParametersText}`;
         
@@ -235,10 +235,10 @@ RESPONSE FORMAT:
       const action = aiResponse?.action?.command || 'Unknown';
       const actionParameters = aiResponse?.action?.parameters ? JSON.stringify(aiResponse.action.parameters, null, 2) : 'No parameters';
       const reasoning = aiResponse?.reasoning || 'No reasoning provided'; // Show full reasoning, no truncation
-      const confidence = aiResponse?.confidence !== undefined ? aiResponse.confidence : 0;
+      const confidence = aiResponse?.confidence !== undefined ? aiResponse.confidence : 'LOW';
       
       // Format the attempt with full details
-      let attemptDetails = `  Attempt ${attemptNumber}: ${action} (Confidence: ${confidence}%)\n`;
+      let attemptDetails = `  Attempt ${attemptNumber}: ${action} (Confidence: ${confidence})\n`;
       attemptDetails += `    Reasoning: ${reasoning}\n`;
       attemptDetails += `    Parameters: ${actionParameters}`;
       

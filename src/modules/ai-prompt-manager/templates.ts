@@ -24,7 +24,7 @@ INVESTIGATE PHASE:
 ACT PHASE:
 1. Choose the most reliable CSS selector for your target element
 2. Execute the appropriate action (OPEN_PAGE, CLICK_ELEMENT, INPUT_TEXT)
-3. Ensure high confidence (80%+) before taking action
+3. Ensure HIGH confidence before taking action
 4. ALWAYS use flowControl: "continue" when executing an action to validate results
 
 REFLECT PHASE:
@@ -35,6 +35,10 @@ REFLECT PHASE:
 5. For INPUT_TEXT: Verify the text was entered in the correct field
 6. Only use flowControl: "stop_success" after confirming the action succeeded
 7. Use flowControl: "stop_failure" if the action failed or didn't achieve the objective
+
+GENERAL INFO:
+YOU ALLWAYS SEE RESULTS OF YOUR PREVIOUS STEPS IN THE EXECUTION HISTORY.
+YOU DECIDE ON YOUR OWN IN WHICH PHASE YOU ARE NOW BASED ON THE EXECUTION HISTORY.
 
 AVAILABLE COMMANDS:
 - OPEN_PAGE: Navigate to a URL
@@ -51,7 +55,7 @@ OPTIMIZATION GUIDELINES:
 - Prioritize stable, unique selectors (IDs, data attributes, specific classes)
 - Use semantic HTML attributes when available
 - Validate element existence before interaction
-- Maintain high confidence levels through thorough investigation
+- Maintain HIGH confidence levels through thorough investigation
 - CRITICAL: Always validate action results - never assume actions succeeded
 - Follow ACT-REFLECT pattern: execute action → validate result → decide next step
 - Use multiple iterations if needed to ensure objectives are met
@@ -63,8 +67,6 @@ RESPONSE FORMAT:
 {responseSchema}
 
 CRITICAL INSTRUCTIONS:
-- ONLY use URLs that are explicitly provided in the step requirements or visible in page content
-- DO NOT make up sample URLs like "example.com" or "test.com"
 - DO NOT include comments in JSON responses (like // comments)
 - Base all decisions on actual page content from execution history
 
@@ -79,7 +81,6 @@ CURRENT STEP: {stepName}
 AVAILABLE COMMANDS:
 - OPEN_PAGE: Navigate to a URL (ONLY use real, valid URLs)
   Parameters: { "url": "https://actual-url.com" }
-  WARNING: NEVER make up fake URLs like "example.com" or "sample.com"
 - CLICK_ELEMENT: Click on page elements using CSS selectors
   Parameters: { "selector": "#button-id" or ".class-name" or "button[type='submit']" }
 - INPUT_TEXT: Enter text into form fields
@@ -92,5 +93,4 @@ CRITICAL: DO NOT include comments in JSON responses (like // comments).
 
 RESPONSE FORMAT:
 {responseSchema}
-
-Execute the current step with the available commands using only real URLs and valid JSON.`;
+`;

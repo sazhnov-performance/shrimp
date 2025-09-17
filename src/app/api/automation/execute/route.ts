@@ -17,10 +17,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Validate steps array
     if (!body.steps || !Array.isArray(body.steps) || body.steps.length === 0) {
-      const errorResponse: ErrorResponse = {
-        error: 'Invalid Request',
-        message: 'Steps array is required and must not be empty',
-        code: 400
+      const errorResponse = {
+        success: false,
+        error: {
+          message: 'Steps array is required and must not be empty',
+          code: 'INVALID_REQUEST'
+        },
+        metadata: {
+          timestamp: new Date().toISOString(),
+          requestId: `req_${Date.now()}`,
+          version: '1.0.0',
+          processingTimeMs: 0
+        }
       };
       return NextResponse.json(errorResponse, { status: 400 });
     }
@@ -28,10 +36,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Validate each step is a string
     for (const step of body.steps) {
       if (typeof step !== 'string' || step.trim() === '') {
-        const errorResponse: ErrorResponse = {
-          error: 'Invalid Request',
-          message: 'All steps must be non-empty strings',
-          code: 400
+        const errorResponse = {
+          success: false,
+          error: {
+            message: 'All steps must be non-empty strings',
+            code: 'INVALID_REQUEST'
+          },
+          metadata: {
+            timestamp: new Date().toISOString(),
+            requestId: `req_${Date.now()}`,
+            version: '1.0.0',
+            processingTimeMs: 0
+          }
         };
         return NextResponse.json(errorResponse, { status: 400 });
       }
@@ -43,11 +59,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Start processing steps asynchronously - don't await, return session ID immediately
     const sessionId = await stepProcessor.processSteps(body.steps);
     
-    // Return session ID immediately as per design
-    const response: ExecuteStepsResponse = {
-      sessionId,
-      status: 'started',
-      message: 'Automation execution started'
+    // Return response in format expected by frontend
+    const response = {
+      success: true,
+      data: {
+        sessionId,
+        streamId: sessionId, // Use sessionId as streamId for SSE endpoint
+        initialStatus: 'ACTIVE' as const,
+        createdAt: new Date().toISOString()
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        requestId: `req_${Date.now()}`,
+        version: '1.0.0',
+        processingTimeMs: 0
+      }
     };
 
     return NextResponse.json(response, { status: 200 });
@@ -55,10 +81,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     console.error('[Execute API] Error processing request:', error);
     
-    const errorResponse: ErrorResponse = {
-      error: 'Execution Failed',
-      message: error instanceof Error ? error.message : 'Unknown error occurred',
-      code: 500
+    const errorResponse = {
+      success: false,
+      error: {
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: 'EXECUTION_FAILED'
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        requestId: `req_${Date.now()}`,
+        version: '1.0.0',
+        processingTimeMs: 0
+      }
     };
     
     return NextResponse.json(errorResponse, { status: 500 });

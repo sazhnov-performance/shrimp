@@ -158,9 +158,20 @@ export class RequestProcessor {
       try {
         // Remove comments and clean up the JSON before parsing
         const cleanedContent = this.cleanJsonContent(content);
+        
+        // Log the cleaned content for debugging
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[RequestProcessor] Original content:', content);
+          console.log('[RequestProcessor] Cleaned content:', cleanedContent);
+        }
+        
         parsedContent = JSON.parse(cleanedContent);
       } catch (parseError) {
-        return this.createErrorResponse('INVALID_JSON', `Failed to parse AI response as JSON: ${content}`);
+        const cleanedContent = this.cleanJsonContent(content);
+        console.error('[RequestProcessor] JSON Parse Error:', parseError);
+        console.error('[RequestProcessor] Original content:', content);
+        console.error('[RequestProcessor] Cleaned content:', cleanedContent);
+        return this.createErrorResponse('INVALID_JSON', `Failed to parse AI response as JSON. Parse error: ${parseError instanceof Error ? parseError.message : String(parseError)}. Content: ${content}`);
       }
 
       return {
@@ -177,28 +188,41 @@ export class RequestProcessor {
    */
   private cleanJsonContent(content: string): string {
     try {
+      // First, try to extract JSON from code blocks if present
+      const codeBlockMatch = content.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+      if (codeBlockMatch) {
+        return codeBlockMatch[1].trim();
+      }
+      
+      // If no code blocks, look for JSON object boundaries
+      const startIndex = content.indexOf('{');
+      const lastIndex = content.lastIndexOf('}');
+      
+      if (startIndex !== -1 && lastIndex !== -1 && lastIndex > startIndex) {
+        let extracted = content.substring(startIndex, lastIndex + 1);
+        
+        // Remove single-line comments (// comments) - but be careful not to remove // in strings
+        extracted = extracted.replace(/(?<!")\/\/(?:[^"\\]|\\.)*?(?=\n|$)/gm, '');
+        
+        // Remove multi-line comments (/* comments */) - but be careful not to remove /* in strings
+        extracted = extracted.replace(/\/\*[\s\S]*?\*\//g, '');
+        
+        return extracted.trim();
+      }
+      
+      // If we can't find clear JSON boundaries, just remove comments from the whole content
+      let cleaned = content;
+      
       // Remove single-line comments (// comments)
-      let cleaned = content.replace(/\/\/.*$/gm, '');
+      cleaned = cleaned.replace(/(?<!")\/\/(?:[^"\\]|\\.)*?(?=\n|$)/gm, '');
       
       // Remove multi-line comments (/* comments */)
       cleaned = cleaned.replace(/\/\*[\s\S]*?\*\//g, '');
       
-      // Extract JSON from code blocks if present
-      const jsonMatch = cleaned.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-      if (jsonMatch) {
-        cleaned = jsonMatch[1];
-      }
-      
-      // Try to find JSON object if it's embedded in text
-      const objectMatch = cleaned.match(/\{[\s\S]*\}/);
-      if (objectMatch) {
-        cleaned = objectMatch[0];
-      }
-      
       return cleaned.trim();
     } catch (error) {
       // If cleaning fails, return original content
-      return content;
+      return content.trim();
     }
   }
 

@@ -150,7 +150,7 @@ describe('TaskLoop', () => {
         status: 'success',
         data: {
           reasoning: 'Test reasoning',
-          confidence: 85,
+          confidence: 'HIGH',
           flowControl: 'stop_success'
         }
       };
@@ -171,7 +171,7 @@ describe('TaskLoop', () => {
         status: 'success',
         data: {
           reasoning: 'Task failed',
-          confidence: 60,
+          confidence: 'MEDIUM',
           flowControl: 'stop_failure'
         }
       };
@@ -192,7 +192,7 @@ describe('TaskLoop', () => {
           status: 'success',
           data: {
             reasoning: 'First attempt',
-            confidence: 70,
+            confidence: 'HIGH',
             flowControl: 'continue',
             action: {
               command: 'CLICK_ELEMENT',
@@ -204,7 +204,7 @@ describe('TaskLoop', () => {
           status: 'success',
           data: {
             reasoning: 'Second attempt successful',
-            confidence: 90,
+            confidence: 'HIGH',
             flowControl: 'stop_success'
           }
         }
@@ -229,7 +229,7 @@ describe('TaskLoop', () => {
         status: 'success',
         data: {
           reasoning: 'Test reasoning',
-          confidence: 85,
+          confidence: 'HIGH',
           flowControl: 'continue',
           action: {
             command: 'OPEN_PAGE',
@@ -244,7 +244,7 @@ describe('TaskLoop', () => {
         .mockResolvedValueOnce(mockAIResponse)
         .mockResolvedValueOnce({
           status: 'success',
-          data: { reasoning: 'Done', confidence: 90, flowControl: 'stop_success' }
+          data: { reasoning: 'Done', confidence: 'HIGH', flowControl: 'stop_success' }
         });
 
       await instance.executeStep('test-session', 0);
@@ -308,7 +308,7 @@ describe('TaskLoop', () => {
         status: 'success',
         data: {
           reasoning: 'Test reasoning',
-          confidence: 150, // Invalid confidence
+          confidence: 'INVALID', // Invalid confidence value
           flowControl: 'stop_success'
         }
       });
@@ -316,7 +316,7 @@ describe('TaskLoop', () => {
       const result = await instance.executeStep('test-session', 0);
 
       expect(result.status).toBe('error');
-      expect(result.error).toContain('Confidence field must be between 0 and 100');
+      expect(result.error).toContain('Confidence field must be one of: LOW, MEDIUM, HIGH');
     });
 
     it('should handle executor failures', async () => {
@@ -324,7 +324,7 @@ describe('TaskLoop', () => {
         status: 'success',
         data: {
           reasoning: 'Test reasoning',
-          confidence: 85,
+          confidence: 'HIGH',
           flowControl: 'continue',
           action: {
             command: 'CLICK_ELEMENT',
@@ -360,7 +360,7 @@ describe('TaskLoop', () => {
         status: 'success',
         data: {
           reasoning: 'Keep going',
-          confidence: 70,
+          confidence: 'HIGH',
           flowControl: 'continue',
           action: {
             command: 'CLICK_ELEMENT',
@@ -384,7 +384,7 @@ describe('TaskLoop', () => {
     it('should validate correct AI response', () => {
       const validResponse = {
         reasoning: 'Valid reasoning',
-        confidence: 85,
+        confidence: 'HIGH',
         flowControl: 'stop_success'
       };
 
@@ -395,7 +395,7 @@ describe('TaskLoop', () => {
     it('should validate AI response with action', () => {
       const validResponse = {
         reasoning: 'Valid reasoning',
-        confidence: 85,
+        confidence: 'HIGH',
         flowControl: 'continue',
         action: {
           command: 'CLICK_ELEMENT',
@@ -420,18 +420,18 @@ describe('TaskLoop', () => {
     it('should reject response with invalid confidence', () => {
       const invalidResponse = {
         reasoning: 'Test reasoning',
-        confidence: 150, // Invalid
+        confidence: 'INVALID', // Invalid enum value
         flowControl: 'stop_success'
       };
 
       expect(() => validateAIResponse(invalidResponse, 'test-session', 0))
-        .toThrow('Confidence field must be between 0 and 100');
+        .toThrow('Confidence field must be one of: LOW, MEDIUM, HIGH');
     });
 
     it('should reject response with invalid flow control', () => {
       const invalidResponse = {
         reasoning: 'Test reasoning',
-        confidence: 85,
+        confidence: 'HIGH',
         flowControl: 'invalid_control' // Invalid
       };
 
@@ -442,7 +442,7 @@ describe('TaskLoop', () => {
     it('should require action when flowControl is continue', () => {
       const invalidResponse = {
         reasoning: 'Test reasoning',
-        confidence: 85,
+        confidence: 'HIGH',
         flowControl: 'continue'
         // Missing action
       };

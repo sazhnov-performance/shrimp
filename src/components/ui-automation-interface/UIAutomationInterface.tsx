@@ -26,7 +26,7 @@ export function UIAutomationInterface() {
 
   // API integration
   const apiRef = useRef<FrontendAPIIntegration | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
+  const sseRef = useRef<EventSource | null>(null);
 
   // Initialize API integration
   useEffect(() => {
@@ -49,9 +49,9 @@ export function UIAutomationInterface() {
     });
 
     return () => {
-      // Cleanup WebSocket connection
-      if (wsRef.current) {
-        wsRef.current.close();
+      // Cleanup SSE connection
+      if (sseRef.current) {
+        sseRef.current.close();
       }
     };
   }, []);
@@ -80,10 +80,10 @@ export function UIAutomationInterface() {
   }, []);
 
   const reset = useCallback(() => {
-    // Close existing WebSocket connection
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
+    // Close existing SSE connection
+    if (sseRef.current) {
+      sseRef.current.close();
+      sseRef.current = null;
     }
 
     setState(prev => ({
@@ -141,31 +141,41 @@ export function UIAutomationInterface() {
       // Connect to stream if available
       if (response.data.streamId) {
         try {
-          const ws = await apiRef.current!.connectToStream(response.data.streamId);
-          wsRef.current = ws;
+          const sse = await apiRef.current!.connectToStream(response.data.streamId);
+          sseRef.current = sse;
           
           setState(prev => ({
             ...prev,
             isConnected: true
           }));
 
-          // Handle WebSocket events
-          ws.onclose = () => {
-            setState(prev => ({
-              ...prev,
-              isConnected: false,
-              isExecuting: false
-            }));
-          };
-
-          ws.onerror = () => {
+          // Handle SSE events
+          sse.addEventListener('error', () => {
             setState(prev => ({
               ...prev,
               isConnected: false,
               isExecuting: false,
               error: ERROR_MESSAGES.CONNECTION_LOST
             }));
+          });
+
+          // SSE doesn't have a direct close event like WebSocket, 
+          // but we can detect when the connection is lost
+          const checkConnection = () => {
+            if (sse.readyState === EventSource.CLOSED) {
+              setState(prev => ({
+                ...prev,
+                isConnected: false,
+                isExecuting: false
+              }));
+            } else if (sse.readyState === EventSource.OPEN) {
+              // Check again in a few seconds
+              setTimeout(checkConnection, 5000);
+            }
           };
+          
+          // Start monitoring connection status
+          setTimeout(checkConnection, 5000);
 
         } catch (streamError) {
           console.error('Failed to connect to stream:', streamError);
@@ -235,7 +245,7 @@ export function UIAutomationInterface() {
             <StreamingOutputComponent
               events={state.events}
               sessionId={state.sessionId}
-              streamConnection={wsRef.current}
+              streamConnection={sseRef.current}
               isConnected={state.isConnected}
               error={state.error}
               autoScroll={true}

@@ -8,7 +8,8 @@ import {
   ExecutorSession, 
   ExecutorCommand, 
   CommandResponse, 
-  ICommandProcessor 
+  ICommandProcessor,
+  NetworkIdleConfig 
 } from './types';
 import { ExecutorErrorHandler } from './error-handler';
 import { IExecutorLogger } from './types';
@@ -20,17 +21,90 @@ export class CommandProcessor implements ICommandProcessor {
   private logger: IExecutorLogger;
   private variableResolver: IVariableResolver;
   private screenshotManager: IScreenshotManager;
+  private networkIdleConfig: NetworkIdleConfig;
 
   constructor(
     errorHandler: ExecutorErrorHandler,
     logger: IExecutorLogger,
     variableResolver: IVariableResolver,
-    screenshotManager: IScreenshotManager
+    screenshotManager: IScreenshotManager,
+    networkIdleConfig: NetworkIdleConfig
   ) {
     this.errorHandler = errorHandler;
     this.logger = logger;
     this.variableResolver = variableResolver;
     this.screenshotManager = screenshotManager;
+    this.networkIdleConfig = networkIdleConfig;
+  }
+
+  /**
+   * Wait for network idle state based on configuration
+   * @param session The executor session
+   * @param actionType The type of action that was performed
+   * @param context Additional context for logging
+   */
+  private async waitForNetworkIdle(
+    session: ExecutorSession, 
+    actionType: CommandAction, 
+    context?: string
+  ): Promise<void> {
+    if (!this.networkIdleConfig.enabled) {
+      return;
+    }
+
+    // Check if network idle is enabled for this specific action
+    const shouldWaitForAction = 
+      (actionType === CommandAction.CLICK_ELEMENT && this.networkIdleConfig.actions.clickElement) ||
+      (actionType === CommandAction.INPUT_TEXT && this.networkIdleConfig.actions.inputText) ||
+      (actionType === CommandAction.OPEN_PAGE && this.networkIdleConfig.actions.openPage);
+
+    if (!shouldWaitForAction) {
+      return;
+    }
+
+    const startTime = Date.now();
+    const actionName = actionType.toLowerCase().replace('_', ' ');
+    
+    this.logger.debug(
+      `Waiting for network idle after ${actionName}${context ? ` (${context})` : ''}`,
+      session.linkedWorkflowSessionId,
+      { 
+        actionType, 
+        timeout: this.networkIdleConfig.timeout,
+        maxConcurrentRequests: this.networkIdleConfig.maxConcurrentRequests
+      }
+    );
+
+    try {
+      // Wait for network idle state
+      await session.page.waitForLoadState('networkidle', { 
+        timeout: this.networkIdleConfig.timeout 
+      });
+
+      const duration = Date.now() - startTime;
+      this.logger.debug(
+        `Network idle achieved after ${actionName} in ${duration}ms`,
+        session.linkedWorkflowSessionId,
+        { actionType, duration, success: true }
+      );
+
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      
+      // Log timeout warning but don't fail the command
+      this.logger.warn(
+        `Network idle timeout after ${actionName} (${duration}ms)`,
+        session.linkedWorkflowSessionId,
+        { 
+          actionType, 
+          duration, 
+          timeout: this.networkIdleConfig.timeout,
+          error: error instanceof Error ? error.message : String(error)
+        }
+      );
+      
+      // Continue execution - network idle timeout is not a fatal error
+    }
   }
 
   /**
@@ -278,8 +352,8 @@ export class CommandProcessor implements ICommandProcessor {
       // Perform click
       await element.click();
 
-      // Wait for any navigation or changes
-      await session.page.waitForTimeout(500);
+      // Wait for network idle if configured
+      await this.waitForNetworkIdle(session, CommandAction.CLICK_ELEMENT, resolvedSelector);
 
       // Get DOM and capture screenshot
       const dom = await session.page.content();
@@ -357,8 +431,8 @@ export class CommandProcessor implements ICommandProcessor {
       await element.fill(''); // Clear first
       await element.fill(resolvedText);
 
-      // Wait for any changes
-      await session.page.waitForTimeout(500);
+      // Wait for network idle if configured
+      await this.waitForNetworkIdle(session, CommandAction.INPUT_TEXT, resolvedSelector);
 
       // Get DOM and capture screenshot
       const dom = await session.page.content();

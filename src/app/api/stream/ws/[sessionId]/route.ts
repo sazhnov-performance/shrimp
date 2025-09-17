@@ -1,6 +1,6 @@
 /**
  * Server-Sent Events (SSE) Event Streaming API Endpoint
- * GET /api/stream/ws/[sessionId] - Uses SSE instead of WebSocket for Next.js compatibility
+ * GET /api/stream/ws/[sessionId] - Uses SSE for Next.js App Router compatibility
  * 
  * Provides real-time event streaming for automation execution monitoring
  */

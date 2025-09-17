@@ -14,7 +14,7 @@ import { formatLogEntry, getLevelColor, getLevelBgColor } from './log-formatter'
 interface StreamingOutputComponentProps {
   events: StreamEvent[];
   sessionId: string | null;
-  streamConnection: WebSocket | null;
+  streamConnection: EventSource | null;
   isConnected: boolean;
   error: string | null;
   autoScroll?: boolean;

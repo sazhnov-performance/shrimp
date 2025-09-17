@@ -104,7 +104,8 @@ export class Executor implements IExecutor {
       this.errorHandler,
       this.logger,
       this.variableResolver,
-      this.screenshotManager
+      this.screenshotManager,
+      config.networkIdle
     );
 
     this.logger.info('Executor module initialized', undefined, { 
