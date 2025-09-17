@@ -12,7 +12,7 @@ export const SYSTEM_MESSAGE_TEMPLATE: PromptTemplate = {
   templateId: 'system-message',
   name: 'System Message Template',
   description: 'Core system message defining the AI agent role and capabilities',
-  template: `ROLE: You are an intelligent web automation agent specialized in browser testing and interaction.
+  template: `ROLE: You are an AI web browser agent specialized in browser testing and interaction.
 
 CURRENT CONTEXT:
 - Session: {{sessionId}}

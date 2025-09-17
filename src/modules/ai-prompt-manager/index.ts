@@ -4,6 +4,7 @@
  */
 
 // Main implementation
+import { AIPromptManagerImpl } from './prompt-manager';
 export { AIPromptManagerImpl } from './prompt-manager';
 export { PromptBuilder } from './prompt-builder';
 export { PromptCache } from './prompt-cache';
@@ -25,7 +26,7 @@ export function createAIPromptManager(
   contextManager?: any,
   schemaManager?: any
 ): any {
-  const finalConfig = config || createDefaultConfig();
+  const finalConfig = config || _createDefaultConfig();
   return new AIPromptManagerImpl(finalConfig, contextManager, schemaManager);
 }
 
