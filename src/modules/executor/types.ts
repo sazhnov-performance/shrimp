@@ -1,37 +1,186 @@
 /**
  * Executor Module Type Definitions
- * Internal types specific to the executor module implementation
+ * All types required for the executor module implementation
  */
 
 import { Browser, Page } from 'playwright';
-import { 
-  ISessionManager,
-  ModuleSessionInfo,
-  SessionStatus,
-  SessionLifecycleCallbacks,
-  ModuleSessionConfig,
-  SessionManagerHealth,
-  StandardError,
-  CommandAction,
-  CommandParameters,
-  LogLevel,
-  BaseModuleConfig,
-  LoggingConfig,
-  PerformanceConfig,
-  TimeoutConfig,
-  DEFAULT_TIMEOUT_CONFIG
-} from '../../../types/shared-types';
 
-// Re-export shared types for convenience
-export type {
-  CommandAction,
-  CommandParameters,
-  StandardError,
-  LogLevel,
-  SessionStatus,
-  ModuleSessionConfig,
-  SessionLifecycleCallbacks
-} from '../../../types/shared-types';
+// Core shared types now defined locally
+export enum SessionStatus {
+  INITIALIZING = 'initializing',
+  ACTIVE = 'active',
+  IDLE = 'idle',
+  PAUSED = 'paused',
+  CLEANUP = 'cleanup',
+  ERROR = 'error'
+}
+
+export enum LogLevel {
+  DEBUG = 'DEBUG',
+  INFO = 'INFO',
+  WARN = 'WARN',
+  ERROR = 'ERROR'
+}
+
+export enum CommandAction {
+  OPEN_PAGE = 'OPEN_PAGE',
+  CLICK_ELEMENT = 'CLICK_ELEMENT',
+  INPUT_TEXT = 'INPUT_TEXT',
+  SAVE_VARIABLE = 'SAVE_VARIABLE',
+  GET_DOM = 'GET_DOM',
+  GET_CONTENT = 'GET_CONTENT',
+  GET_SUBDOM = 'GET_SUBDOM'
+}
+
+export enum ErrorCategory {
+  VALIDATION = 'validation',
+  EXECUTION = 'execution',
+  SYSTEM = 'system',
+  INTEGRATION = 'integration',
+  NETWORK = 'network',
+  TIMEOUT = 'timeout'
+}
+
+export enum ErrorSeverity {
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high',
+  CRITICAL = 'critical'
+}
+
+export const ERROR_CODES = {
+  EXECUTOR: {
+    'SESSION_NOT_FOUND': 'EXEC_SESSION_NOT_FOUND',
+    'SESSION_ALREADY_EXISTS': 'EXEC_SESSION_ALREADY_EXISTS',
+    'MAX_SESSIONS_EXCEEDED': 'EXEC_MAX_SESSIONS_EXCEEDED',
+    'BROWSER_LAUNCH_FAILED': 'EXEC_BROWSER_LAUNCH_FAILED',
+    'PAGE_LOAD_TIMEOUT': 'EXEC_PAGE_LOAD_TIMEOUT',
+    'SELECTOR_NOT_FOUND': 'EXEC_SELECTOR_NOT_FOUND',
+    'ELEMENT_NOT_INTERACTABLE': 'EXEC_ELEMENT_NOT_INTERACTABLE',
+    'INVALID_COMMAND': 'EXEC_INVALID_COMMAND',
+    'SCREENSHOT_FAILED': 'EXEC_SCREENSHOT_FAILED',
+    'COMMAND_EXECUTION_FAILED': 'EXEC_COMMAND_EXECUTION_FAILED',
+    'DOM_CAPTURE_FAILED': 'EXEC_DOM_CAPTURE_FAILED',
+    'SUBDOM_SIZE_EXCEEDED': 'EXEC_SUBDOM_SIZE_EXCEEDED',
+    'VARIABLE_RESOLUTION_DEPTH_EXCEEDED': 'EXEC_VARIABLE_RESOLUTION_DEPTH_EXCEEDED',
+    'INVALID_VARIABLE_NAME': 'EXEC_INVALID_VARIABLE_NAME',
+    'SCREENSHOT_DIRECTORY_ERROR': 'EXEC_SCREENSHOT_DIRECTORY_ERROR',
+    'WRAPPED_ERROR': 'EXEC_WRAPPED_ERROR',
+    'SESSION_LIMIT_EXCEEDED': 'EXEC_SESSION_LIMIT_EXCEEDED'
+  }
+};
+
+// Standard Error Interface
+export interface StandardError {
+  id: string;
+  category: ErrorCategory;
+  severity: ErrorSeverity;
+  code: string;
+  message: string;
+  details?: Record<string, any>;
+  cause?: StandardError;
+  timestamp: Date;
+  moduleId: string;
+  recoverable: boolean;
+  retryable: boolean;
+  suggestedAction: string;
+}
+
+// Command Parameters Interface
+export interface CommandParameters {
+  url?: string;
+  selector?: string;
+  text?: string;
+  variableName?: string;
+  attribute?: string;
+  multiple?: boolean;
+  maxDomSize?: number;
+}
+
+// Session Management Types
+export interface ModuleSessionInfo {
+  moduleId: string;
+  sessionId: string;
+  linkedWorkflowSessionId: string;
+  status: SessionStatus;
+  createdAt: Date;
+  lastActivity: Date;
+  metadata?: Record<string, any>;
+}
+
+export interface ModuleSessionConfig {
+  timeout?: number;
+  retries?: number;
+  metadata?: Record<string, any>;
+}
+
+export interface SessionLifecycleCallbacks {
+  onSessionCreated?: (moduleId: string, workflowSessionId: string, sessionId: string) => Promise<void>;
+  onSessionDestroyed?: (moduleId: string, workflowSessionId: string) => Promise<void>;
+  onSessionStatusChanged?: (moduleId: string, workflowSessionId: string, oldStatus: SessionStatus, newStatus: SessionStatus) => Promise<void>;
+  onSessionError?: (moduleId: string, workflowSessionId: string, error: any) => Promise<void>;
+}
+
+export interface SessionManagerHealth {
+  moduleId: string;
+  isHealthy: boolean;
+  activeSessions: number;
+  totalSessions: number;
+  errors: any[];
+  lastHealthCheck: Date;
+}
+
+export interface ISessionManager {
+  readonly moduleId: string;
+  createSession(workflowSessionId: string, config?: ModuleSessionConfig): Promise<string>;
+  destroySession(workflowSessionId: string): Promise<void>;
+  getSession(workflowSessionId: string): ModuleSessionInfo | null;
+  sessionExists(workflowSessionId: string): boolean;
+  updateSessionStatus(workflowSessionId: string, status: SessionStatus): Promise<void>;
+  getSessionStatus(workflowSessionId: string): SessionStatus | null;
+  recordActivity(workflowSessionId: string): Promise<void>;
+  getLastActivity(workflowSessionId: string): Date | null;
+  setLifecycleCallbacks(callbacks: SessionLifecycleCallbacks): void;
+  healthCheck(): Promise<SessionManagerHealth>;
+}
+
+// Configuration Types
+export interface TimeoutConfig {
+  command: number;
+  session: number;
+  health: number;
+}
+
+export interface LoggingConfig {
+  level: LogLevel;
+  prefix: string;
+  includeTimestamp: boolean;
+  includeSessionId: boolean;
+  includeModuleId: boolean;
+  structured: boolean;
+}
+
+export interface PerformanceConfig {
+  maxConcurrentOperations: number;
+  cacheEnabled: boolean;
+  cacheTTLMs: number;
+  metricsEnabled: boolean;
+}
+
+export interface BaseModuleConfig {
+  moduleId: string;
+  version: string;
+  enabled: boolean;
+  timeouts: TimeoutConfig;
+  logging: LoggingConfig;
+  performance: PerformanceConfig;
+}
+
+export const DEFAULT_TIMEOUT_CONFIG: TimeoutConfig = {
+  command: 30000,
+  session: 1800000,
+  health: 5000
+};
 
 // Executor Session extends ModuleSessionInfo
 export interface ExecutorSession extends ModuleSessionInfo {

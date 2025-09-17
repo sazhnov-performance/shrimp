@@ -3,7 +3,7 @@
  * Implements command execution logic for all supported automation commands
  */
 
-import { CommandAction } from '../../../types/shared-types';
+import { CommandAction } from './types';
 import { 
   ExecutorSession, 
   ExecutorCommand, 

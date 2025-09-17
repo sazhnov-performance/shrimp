@@ -9,7 +9,7 @@ import {
   ModuleSessionConfig,
   SessionLifecycleCallbacks,
   SessionManagerHealth
-} from '../../../types/shared-types';
+} from './types';
 import {
   ExecutorSession,
   ExecutorCommand,

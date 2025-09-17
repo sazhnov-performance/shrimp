@@ -3,7 +3,7 @@
  * Implements standardized logging with [Executor] prefix and session tracking
  */
 
-import { LogLevel } from '../../../types/shared-types';
+import { LogLevel } from './types';
 import { LogEntry, IExecutorLogger } from './types';
 import * as winston from 'winston';
 

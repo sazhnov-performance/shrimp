@@ -7,7 +7,7 @@ import { Page } from 'playwright';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { CommandAction } from '../../../types/shared-types';
+import { CommandAction } from './types';
 import { 
   IScreenshotManager, 
   ScreenshotInfo, 
