@@ -26,6 +26,7 @@ import { IAISchemaManager } from '../ai-schema-manager/types';
 import AISchemaManager from '../ai-schema-manager/index';
 import { IExecutor } from '../executor/index';
 import Executor from '../executor/index';
+import { CommandAction } from '../executor/types';
 
 /**
  * TaskLoop - Singleton implementation of the core ACT-REFLECT cycle
@@ -276,10 +277,13 @@ export class TaskLoop implements ITaskLoop {
         );
       }
 
+      // Convert string command to CommandAction enum
+      const commandAction = this.convertStringToCommandAction(action.command);
+      
       // Execute the command through the executor
       const command = {
         sessionId,
-        action: action.command,
+        action: commandAction,
         parameters: action.parameters,
         commandId: this.generateCommandId(),
         timestamp: new Date()
@@ -405,6 +409,37 @@ export class TaskLoop implements ITaskLoop {
     error.name = 'TaskLoopError';
     
     return error;
+  }
+
+  /**
+   * Convert string command to CommandAction enum
+   */
+  private convertStringToCommandAction(command: string): CommandAction {
+    switch (command) {
+      case 'OPEN_PAGE':
+        return CommandAction.OPEN_PAGE;
+      case 'CLICK_ELEMENT':
+        return CommandAction.CLICK_ELEMENT;
+      case 'INPUT_TEXT':
+        return CommandAction.INPUT_TEXT;
+      case 'SAVE_VARIABLE':
+        return CommandAction.SAVE_VARIABLE;
+      case 'GET_DOM':
+        return CommandAction.GET_DOM;
+      case 'GET_CONTENT':
+        return CommandAction.GET_CONTENT;
+      case 'GET_SUBDOM':
+        return CommandAction.GET_SUBDOM;
+      default:
+        throw this.createTaskLoopError(
+          TaskLoopErrorType.VALIDATION_FAILED,
+          `Unknown command: ${command}. Valid commands: OPEN_PAGE, CLICK_ELEMENT, INPUT_TEXT, SAVE_VARIABLE, GET_DOM, GET_CONTENT, GET_SUBDOM`,
+          undefined,
+          undefined,
+          undefined,
+          { receivedCommand: command }
+        );
+    }
   }
 
   /**
