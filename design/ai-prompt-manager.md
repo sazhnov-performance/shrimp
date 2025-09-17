@@ -13,28 +13,32 @@ The AI Prompt Manager is a minimalistic module responsible for generating contex
 
 ## Core Interface
 
-### Primary Interface
+### Primary Interface (Singleton Pattern)
 ```typescript
 interface IAIPromptManager {
+  // Singleton instance access
+  static getInstance(config?: AIPromptManagerConfig): IAIPromptManager;
+  
   // Initialize context with session and workflow steps
   init(sessionId: string, steps: string[]): void;
   
   // Generate step-specific prompt with full context
   getStepPrompt(sessionId: string, stepId: number): string;
 }
+
+interface AIPromptManagerConfig {
+  maxPromptLength?: number;
+  templateVersion?: string;
+  cacheEnabled?: boolean;
+}
 ```
 
 ## Dependencies
 
-### Module Integration
-```typescript
-interface IAIPromptManager {
-  constructor(
-    contextManager: IAIContextManager,
-    schemaManager: IAISchemaManager
-  );
-}
-```
+### Module Integration (Singleton Pattern)
+Dependencies are resolved internally using singleton instances:
+- IAIContextManager: For retrieving execution context
+- IAISchemaManager: For response schema embedding
 
 ## Functional Requirements
 
@@ -140,13 +144,32 @@ interface ContextualHistory {
 
 ## Implementation
 
-### AI Prompt Manager Class
+### AI Prompt Manager Class (Singleton Implementation)
 ```typescript
 class AIPromptManager implements IAIPromptManager {
-  constructor(
-    private contextManager: IAIContextManager,
-    private schemaManager: IAISchemaManager
-  ) {}
+  private static instance: AIPromptManager | null = null;
+  private contextManager: IAIContextManager;
+  private schemaManager: IAISchemaManager;
+  private config: AIPromptManagerConfig;
+
+  private constructor(config: AIPromptManagerConfig = {}) {
+    // Resolve dependencies internally using singleton instances
+    this.contextManager = IAIContextManager.getInstance();
+    this.schemaManager = IAISchemaManager.getInstance();
+    this.config = {
+      maxPromptLength: 8000,
+      templateVersion: '1.0',
+      cacheEnabled: false,
+      ...config
+    };
+  }
+
+  static getInstance(config?: AIPromptManagerConfig): IAIPromptManager {
+    if (!AIPromptManager.instance) {
+      AIPromptManager.instance = new AIPromptManager(config);
+    }
+    return AIPromptManager.instance;
+  }
 
   init(sessionId: string, steps: string[]): void {
     this.contextManager.createContext(sessionId);
@@ -226,6 +249,9 @@ const schemaText = JSON.stringify(responseSchema, null, 2);
 
 ### Task Loop Integration
 ```typescript
+// Get singleton instance (dependencies resolved internally)
+const promptManager = IAIPromptManager.getInstance();
+
 // Typical usage pattern
 promptManager.init(sessionId, workflowSteps);
 const prompt = promptManager.getStepPrompt(sessionId, currentStepId);

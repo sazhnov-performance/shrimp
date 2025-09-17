@@ -13,9 +13,12 @@ The AI Context Manager is a simple, minimalistic module responsible for tracking
 
 ## Core Interface
 
-### Context Management
+### Context Management (Singleton Pattern)
 ```typescript
 interface IAIContextManager {
+  // Singleton instance access
+  static getInstance(config?: AIContextManagerConfig): IAIContextManager;
+  
   // Create a new context with given ID
   createContext(contextId: string): void;
   
@@ -30,6 +33,12 @@ interface IAIContextManager {
   
   // Get full context including all steps and their logs
   getFullContext(contextId: string): ContextData;
+}
+
+interface AIContextManagerConfig {
+  maxContexts?: number;
+  maxStepsPerContext?: number;
+  maxLogsPerStep?: number;
 }
 ```
 
@@ -135,6 +144,13 @@ AI Prompt Manager → getStepContext() / getFullContext()
 ## Example Usage
 
 ```typescript
+// Get singleton instance with optional config
+const contextManager = IAIContextManager.getInstance({
+  maxContexts: 100,
+  maxStepsPerContext: 50,
+  maxLogsPerStep: 1000
+});
+
 // Initialize context
 contextManager.createContext("workflow-123");
 contextManager.setSteps("workflow-123", [
@@ -180,6 +196,38 @@ const fullContext = contextManager.getFullContext("workflow-123");
   ├── index.ts                    # Main module interface
   ├── ai-context-manager.ts       # Core context management implementation
   └── types.ts                    # TypeScript type definitions
+```
+
+### Singleton Implementation Pattern
+```typescript
+class AIContextManager implements IAIContextManager {
+  private static instance: AIContextManager | null = null;
+  private contexts: Map<string, ContextData> = new Map();
+  private config: AIContextManagerConfig;
+
+  private constructor(config: AIContextManagerConfig = {}) {
+    this.config = {
+      maxContexts: 100,
+      maxStepsPerContext: 50,
+      maxLogsPerStep: 1000,
+      ...config
+    };
+  }
+
+  static getInstance(config?: AIContextManagerConfig): IAIContextManager {
+    if (!AIContextManager.instance) {
+      AIContextManager.instance = new AIContextManager(config);
+    }
+    return AIContextManager.instance;
+  }
+
+  // Implementation of interface methods...
+  createContext(contextId: string): void {
+    // Implementation
+  }
+
+  // ... other methods
+}
 ```
 
 ## Dependencies

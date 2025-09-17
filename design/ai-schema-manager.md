@@ -6,12 +6,21 @@ The AI Schema Manager provides standardized JSON schemas for AI responses in the
 ## Core Responsibility
 Return schemas for embedding in AI requests to ensure consistent, structured responses from AI models.
 
-## Module Interface
+## Module Interface (Singleton Pattern)
 
 ### Primary Interface
 ```typescript
 interface IAISchemaManager {
+  // Singleton instance access
+  static getInstance(config?: AISchemaManagerConfig): IAISchemaManager;
+  
   getAIResponseSchema(): object;
+}
+
+interface AISchemaManagerConfig {
+  schemaVersion?: string;
+  validationEnabled?: boolean;
+  cacheSchemas?: boolean;
 }
 ```
 
@@ -85,9 +94,28 @@ interface ExecutorActionSchema {
 
 ## Implementation
 
-### Schema Manager Class
+### Schema Manager Class (Singleton Implementation)
 ```typescript
-class AISchemaManager {
+class AISchemaManager implements IAISchemaManager {
+  private static instance: AISchemaManager | null = null;
+  private config: AISchemaManagerConfig;
+
+  private constructor(config: AISchemaManagerConfig = {}) {
+    this.config = {
+      schemaVersion: '1.0',
+      validationEnabled: true,
+      cacheSchemas: true,
+      ...config
+    };
+  }
+
+  static getInstance(config?: AISchemaManagerConfig): IAISchemaManager {
+    if (!AISchemaManager.instance) {
+      AISchemaManager.instance = new AISchemaManager(config);
+    }
+    return AISchemaManager.instance;
+  }
+
   getAIResponseSchema(): object {
     return {
       type: "object",

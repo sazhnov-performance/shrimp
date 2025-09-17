@@ -8,10 +8,13 @@ The AI Integration module provides a simple interface for sending requests to Op
 - Handle authentication to OpenAI API
 - Log raw requests and responses to single log file
 
-## Module Interface
+## Module Interface (Singleton Pattern)
 
 ```typescript
 interface IAIIntegrationManager {
+  // Singleton instance access
+  static getInstance(config?: AIConfig): IAIIntegrationManager;
+  
   // Send request to OpenAI and get response
   sendRequest(request: string, imageFilePath?: string): Promise<AIResponse>;
 }
@@ -109,7 +112,13 @@ Simple error categories:
 ## Usage Example
 
 ```typescript
-const aiManager = new AIIntegrationManager();
+// Get singleton instance with config
+const aiManager = IAIIntegrationManager.getInstance({
+  apiKey: process.env.OPENAI_API_KEY,
+  model: 'gpt-4o-mini',
+  baseUrl: 'https://api.openai.com/v1',
+  logFilePath: './ai-requests.log'
+});
 
 // Text-only request
 const response1 = await aiManager.sendRequest('Hello, how are you?');
@@ -122,6 +131,34 @@ const response2 = await aiManager.sendRequest('What do you see in this image?', 
 // Error case
 const response3 = await aiManager.sendRequest('test', './nonexistent.png');
 // Returns: { errorCode: 'IMAGE_ERROR', status: 'error', error: 'File not found' }
+```
+
+### Singleton Implementation Pattern
+```typescript
+class AIIntegrationManager implements IAIIntegrationManager {
+  private static instance: AIIntegrationManager | null = null;
+  private config: AIConfig;
+
+  private constructor(config: AIConfig = {}) {
+    this.config = {
+      model: 'gpt-4o-mini',
+      baseUrl: 'https://api.openai.com/v1',
+      logFilePath: './ai-requests.log',
+      ...config
+    };
+  }
+
+  static getInstance(config?: AIConfig): IAIIntegrationManager {
+    if (!AIIntegrationManager.instance) {
+      AIIntegrationManager.instance = new AIIntegrationManager(config);
+    }
+    return AIIntegrationManager.instance;
+  }
+
+  async sendRequest(request: string, imageFilePath?: string): Promise<AIResponse> {
+    // Implementation
+  }
+}
 ```
 
 ## Testing Requirements

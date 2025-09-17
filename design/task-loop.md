@@ -11,10 +11,13 @@ The Task Loop module implements the core ACT-REFLECT cycle for AI-driven web aut
 - Handle flow control based on AI responses
 - Log execution history for context building
 
-## Core Interface
+## Core Interface (Singleton Pattern)
 
 ```typescript
 interface ITaskLoop {
+  // Singleton instance access
+  static getInstance(config?: TaskLoopConfig): ITaskLoop;
+  
   // Execute a single step with ACT-REFLECT cycle
   executeStep(sessionId: string, stepId: number): Promise<StepResult>;
 }
@@ -22,18 +25,13 @@ interface ITaskLoop {
 
 ## Dependencies
 
-### Module Integration
-```typescript
-interface ITaskLoop {
-  constructor(
-    contextManager: IAIContextManager,
-    promptManager: IAIPromptManager,
-    aiIntegration: IAIIntegrationManager,
-    schemaManager: IAISchemaManager,
-    executor: IExecutorSessionManager
-  );
-}
-```
+### Module Integration (Singleton Pattern)
+Dependencies are resolved internally using singleton instances:
+- IAIContextManager: For logging and retrieving execution context
+- IAIPromptManager: For generating step-specific prompts
+- IAIIntegrationManager: For AI communication
+- IAISchemaManager: For response validation
+- IExecutorSessionManager: For browser automation
 
 ## Data Structures
 
@@ -80,16 +78,33 @@ async executeStep(sessionId: string, stepId: number): Promise<StepResult>
    - If `flowControl = 'stop_success'`: Return success
    - If `flowControl = 'stop_failure'`: Return failure
 
-**Implementation:**
+**Implementation (Singleton Pattern):**
 ```typescript
 class TaskLoop implements ITaskLoop {
-  constructor(
-    private contextManager: IAIContextManager,
-    private promptManager: IAIPromptManager,
-    private aiIntegration: IAIIntegrationManager,
-    private schemaManager: IAISchemaManager,
-    private executor: IExecutorSessionManager
-  ) {}
+  private static instance: TaskLoop | null = null;
+  private contextManager: IAIContextManager;
+  private promptManager: IAIPromptManager;
+  private aiIntegration: IAIIntegrationManager;
+  private schemaManager: IAISchemaManager;
+  private executor: IExecutorSessionManager;
+  private config: TaskLoopConfig;
+
+  private constructor(config: TaskLoopConfig = DEFAULT_CONFIG) {
+    // Resolve dependencies internally using singleton instances
+    this.contextManager = IAIContextManager.getInstance();
+    this.promptManager = IAIPromptManager.getInstance();
+    this.aiIntegration = IAIIntegrationManager.getInstance();
+    this.schemaManager = IAISchemaManager.getInstance();
+    this.executor = IExecutorSessionManager.getInstance();
+    this.config = { ...DEFAULT_CONFIG, ...config };
+  }
+
+  static getInstance(config?: TaskLoopConfig): ITaskLoop {
+    if (!TaskLoop.instance) {
+      TaskLoop.instance = new TaskLoop(config);
+    }
+    return TaskLoop.instance;
+  }
 
   async executeStep(sessionId: string, stepId: number): Promise<StepResult> {
     const startTime = Date.now();
@@ -97,7 +112,7 @@ class TaskLoop implements ITaskLoop {
     let finalResponse: AIResponse;
 
     try {
-      while (iterations < MAX_ITERATIONS) {
+      while (iterations < this.config.maxIterations) {
         iterations++;
 
         // 1. Get prompt from AI Prompt Manager

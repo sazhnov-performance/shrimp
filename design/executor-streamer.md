@@ -12,9 +12,12 @@ The Executor Streamer module provides a simple real-time event streaming system 
 
 ## Module Interface
 
-### Stream Management
+### Stream Management (Singleton Pattern)
 ```typescript
 interface IExecutorStreamer {
+  // Singleton instance access
+  static getInstance(config?: ExecutorStreamerConfig): IExecutorStreamer;
+  
   // Core streaming operations
   createStream(streamId: string): Promise<void>;
   putEvent(streamId: string, eventData: string): Promise<void>;
@@ -99,7 +102,45 @@ const EXECUTOR_STREAMER_ERRORS = {
 /src/modules/executor-streamer/
   ├── index.ts              # Main interface implementation
   ├── stream-manager.ts     # Core stream storage and operations
+  ├── event-publisher.ts    # Event publishing functionality
   └── types.ts              # TypeScript type definitions
+```
+
+### Singleton Implementation Pattern
+```typescript
+class ExecutorStreamer implements IExecutorStreamer {
+  private static instance: ExecutorStreamer | null = null;
+  private streams: Map<string, string[]> = new Map();
+  private config: ExecutorStreamerConfig;
+
+  private constructor(config: ExecutorStreamerConfig = DEFAULT_CONFIG) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
+  }
+
+  static getInstance(config?: ExecutorStreamerConfig): IExecutorStreamer {
+    if (!ExecutorStreamer.instance) {
+      ExecutorStreamer.instance = new ExecutorStreamer(config);
+    }
+    return ExecutorStreamer.instance;
+  }
+
+  async createStream(streamId: string): Promise<void> {
+    if (this.streams.has(streamId)) {
+      throw new Error(`Stream ${streamId} already exists`);
+    }
+    this.streams.set(streamId, []);
+  }
+
+  async putEvent(streamId: string, eventData: string): Promise<void> {
+    const stream = this.streams.get(streamId);
+    if (!stream) {
+      throw new Error(`Stream ${streamId} not found`);
+    }
+    stream.push(eventData);
+  }
+
+  // ... other interface methods
+}
 ```
 
 ## Configuration

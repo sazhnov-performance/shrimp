@@ -8,11 +8,22 @@ The Step Processor is a SIMPLE function that executes steps sequentially. That's
 
 Execute steps one by one. Stop on failure. Continue on success.
 
-## Core Interface
+## Core Interface (Singleton Pattern)
 
 ```typescript
-// Just a simple function - no class, no constructor, no complexity
-async function processSteps(steps: string[]): Promise<string>
+interface IStepProcessor {
+  // Singleton instance access
+  static getInstance(config?: StepProcessorConfig): IStepProcessor;
+  
+  // Process steps sequentially
+  processSteps(steps: string[]): Promise<string>;
+}
+
+interface StepProcessorConfig {
+  maxConcurrentSessions?: number;
+  timeoutMs?: number;
+  enableLogging?: boolean;
+}
 ```
 
 ## Algorithm
@@ -27,41 +38,64 @@ This is the ENTIRE algorithm:
    - If success: CONTINUE to next step
 4. **Return Session ID**: Return the session ID
 
-## Implementation
+## Implementation (Singleton Pattern)
 
 ```typescript
-import { ExecutorStreamer } from '../executor-streamer';
-import { TaskLoop } from '../task-loop';
+import { IExecutorStreamer } from '../executor-streamer';
+import { ITaskLoop } from '../task-loop';
 
-// Simple instances - no complex DI needed
-const executorStreamer = new ExecutorStreamer();
-const taskLoop = new TaskLoop({} as any, {} as any, {} as any, {} as any, {} as any);
+class StepProcessor implements IStepProcessor {
+  private static instance: StepProcessor | null = null;
+  private config: StepProcessorConfig;
+  private executorStreamer: IExecutorStreamer;
+  private taskLoop: ITaskLoop;
 
-async function processSteps(steps: string[]): Promise<string> {
-  // Create session
-  const sessionId = generateId();
-  
-  // Create stream - handle internally
-  await executorStreamer.createStream(sessionId);
-  
-  // Execute steps sequentially - handle internally  
-  for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
-    const result = await taskLoop.executeStep(sessionId, stepIndex);
+  private constructor(config: StepProcessorConfig = {}) {
+    this.config = {
+      maxConcurrentSessions: 10,
+      timeoutMs: 300000, // 5 minutes
+      enableLogging: true,
+      ...config
+    };
     
-    // Stop on failure, continue on success
-    if (result.status === 'failure' || result.status === 'error') {
-      break;
-    }
+    // Resolve dependencies internally using singleton instances
+    this.executorStreamer = IExecutorStreamer.getInstance();
+    this.taskLoop = ITaskLoop.getInstance();
   }
-  
-  return sessionId;
+
+  static getInstance(config?: StepProcessorConfig): IStepProcessor {
+    if (!StepProcessor.instance) {
+      StepProcessor.instance = new StepProcessor(config);
+    }
+    return StepProcessor.instance;
+  }
+
+  async processSteps(steps: string[]): Promise<string> {
+    // Create session
+    const sessionId = this.generateId();
+    
+    // Create stream - handle internally
+    await this.executorStreamer.createStream(sessionId);
+    
+    // Execute steps sequentially - handle internally  
+    for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
+      const result = await this.taskLoop.executeStep(sessionId, stepIndex);
+      
+      // Stop on failure, continue on success
+      if (result.status === 'failure' || result.status === 'error') {
+        break;
+      }
+    }
+    
+    return sessionId;
+  }
+
+  private generateId(): string {
+    return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
 }
 
-function generateId(): string {
-  return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
-
-export { processSteps };
+export { StepProcessor, IStepProcessor };
 ```
 
 ## Module Structure
@@ -75,9 +109,16 @@ export { processSteps };
 ## Usage
 
 ```typescript
-import { processSteps } from './modules/step-processor';
+import { IStepProcessor } from './modules/step-processor';
 
-const sessionId = await processSteps(['step1', 'step2', 'step3']);
+// Get singleton instance
+const stepProcessor = IStepProcessor.getInstance({
+  maxConcurrentSessions: 5,
+  timeoutMs: 600000, // 10 minutes
+  enableLogging: true
+});
+
+const sessionId = await stepProcessor.processSteps(['step1', 'step2', 'step3']);
 ```
 
 That's it. Simple.

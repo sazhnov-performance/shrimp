@@ -36,6 +36,9 @@ interface ExecutorSession extends ModuleSessionInfo {
 interface IExecutorSessionManager extends ISessionManager {
   readonly moduleId: 'executor';
   
+  // Singleton instance access
+  static getInstance(config?: ExecutorConfig): IExecutorSessionManager;
+  
   // Standardized session management (inherited)
   createSession(workflowSessionId: string, config?: ModuleSessionConfig): Promise<string>;
   destroySession(workflowSessionId: string): Promise<void>;
@@ -330,6 +333,37 @@ Examples:
   ├── error-handler.ts      # Error categorization and context
   ├── logger.ts             # Logging implementation
   └── types.ts              # TypeScript type definitions
+```
+
+### Singleton Implementation Pattern
+```typescript
+class ExecutorSessionManager implements IExecutorSessionManager {
+  private static instance: ExecutorSessionManager | null = null;
+  readonly moduleId = 'executor' as const;
+  private config: ExecutorConfig;
+  private sessions: Map<string, ExecutorSession> = new Map();
+
+  private constructor(config: ExecutorConfig = DEFAULT_EXECUTOR_CONFIG) {
+    this.config = { ...DEFAULT_EXECUTOR_CONFIG, ...config };
+  }
+
+  static getInstance(config?: ExecutorConfig): IExecutorSessionManager {
+    if (!ExecutorSessionManager.instance) {
+      ExecutorSessionManager.instance = new ExecutorSessionManager(config);
+    }
+    return ExecutorSessionManager.instance;
+  }
+
+  async createSession(workflowSessionId: string, config?: ModuleSessionConfig): Promise<string> {
+    // Implementation
+  }
+
+  async destroySession(workflowSessionId: string): Promise<void> {
+    // Implementation
+  }
+
+  // ... other interface methods
+}
 ```
 
 ### Dependencies
