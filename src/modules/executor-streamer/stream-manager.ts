@@ -1,141 +1,111 @@
 /**
- * Stream Manager - Session Management for Executor Streamer
- * Implements standardized session management interface with stream-specific functionality
+ * Stream Manager Implementation
+ * Manages stream sessions and client connections
  */
 
+import { v4 as uuidv4 } from 'uuid';
 import {
-  ISessionManager,
-  ModuleSessionInfo,
   SessionStatus,
   SessionLifecycleCallbacks,
-  ModuleSessionConfig,
-  SessionManagerHealth
+  SessionManagerHealth,
+  ModuleSessionInfo,
+  ModuleSessionConfig
 } from '../../../types/shared-types';
-
 import {
-  IExecutorStreamerManager,
-  StreamSession,
+  IStreamManager,
+  StreamInfo,
   StreamConfig,
   StreamClient,
   ExecutorStreamerConfig,
-  DEFAULT_STREAM_CONFIG
+  StreamManagerStats
 } from './types';
 
-export class StreamManager implements IExecutorStreamerManager {
-  readonly moduleId = 'executor-streamer' as const;
+export class StreamManager implements IStreamManager {
+  public readonly moduleId = 'executor-streamer';
   
-  private sessions: Map<string, StreamSession> = new Map();
+  private sessions = new Map<string, ModuleSessionInfo>();
+  private streams = new Map<string, StreamInfo>();
   private config: ExecutorStreamerConfig;
   private lifecycleCallbacks?: SessionLifecycleCallbacks;
-  private startTime: Date = new Date();
+  private startTime = new Date();
 
   constructor(config: ExecutorStreamerConfig) {
-    this.config = config;
+    this.config = { ...config };
   }
 
-  // ISessionManager Implementation
-
+  // Session Management (ISessionManager implementation)
   async createSession(workflowSessionId: string, config?: ModuleSessionConfig): Promise<string> {
     if (this.sessions.has(workflowSessionId)) {
-      throw new Error(`Stream session already exists for workflow session: ${workflowSessionId}`);
+      throw new Error('Stream session already exists');
     }
 
-    // Generate unique stream ID
-    const streamId = this.generateStreamId();
+    const moduleSessionId = uuidv4();
+    const now = new Date();
     
-    // Create stream session
-    const streamSession: StreamSession = {
-      moduleId: 'executor-streamer',
-      sessionId: streamId,
+    const sessionInfo: ModuleSessionInfo = {
+      moduleId: this.moduleId,
+      sessionId: moduleSessionId,
       linkedWorkflowSessionId: workflowSessionId,
-      streamId: streamId,
-      status: SessionStatus.INITIALIZING,
-      createdAt: new Date(),
-      lastActivity: new Date(),
-      isActive: false,
-      clients: [],
-      history: [],
-      config: { ...this.config.defaultStreamConfig },
-      metadata: config?.metadata || {}
+      status: SessionStatus.ACTIVE,
+      createdAt: now,
+      lastActivity: now,
+      metadata: config?.metadata
     };
 
-    this.sessions.set(workflowSessionId, streamSession);
+    this.sessions.set(workflowSessionId, sessionInfo);
 
-    try {
-      // Initialize stream
-      await this.initializeStream(streamSession);
-      
-      // Update status to active
-      streamSession.status = SessionStatus.ACTIVE;
-      streamSession.isActive = true;
-      streamSession.lastActivity = new Date();
-
-      // Fire lifecycle callback
-      if (this.lifecycleCallbacks?.onSessionCreated) {
-        await this.lifecycleCallbacks.onSessionCreated(
-          this.moduleId,
-          workflowSessionId,
-          streamId
-        );
+    // Call lifecycle callback
+    if (this.lifecycleCallbacks?.onSessionCreated) {
+      try {
+        await this.lifecycleCallbacks.onSessionCreated(this.moduleId, workflowSessionId, moduleSessionId);
+      } catch (error) {
+        // Log but don't fail session creation
+        console.error('Error in onSessionCreated callback:', error);
       }
-
-      return streamId;
-    } catch (error) {
-      // Cleanup on failure
-      this.sessions.delete(workflowSessionId);
-      throw new Error(`Failed to create stream session: ${error instanceof Error ? error.message : String(error)}`);
     }
+
+    return moduleSessionId;
   }
 
   async destroySession(workflowSessionId: string): Promise<void> {
     const session = this.sessions.get(workflowSessionId);
     if (!session) {
-      return; // Already destroyed or never existed
+      return; // Gracefully handle non-existent sessions
     }
 
-    try {
-      // Update status
-      session.status = SessionStatus.CLEANUP;
-      session.isActive = false;
-
+    // Destroy associated stream if exists
+    const stream = this.streams.get(workflowSessionId);
+    if (stream) {
       // Disconnect all clients
-      await this.disconnectAllClients(session);
-
-      // Clear history if configured
-      if (session.config.persistence.enabled) {
-        await this.persistSessionHistory(session);
+      for (const client of stream.clients) {
+        try {
+          if ('close' in client.connection) {
+            client.connection.close();
+          } else if ('end' in client.connection) {
+            client.connection.end();
+          }
+        } catch (error) {
+          // Ignore client disconnect errors during cleanup
+          console.warn('Error disconnecting client during session destruction:', error);
+        }
       }
-      session.history = [];
+      this.streams.delete(workflowSessionId);
+    }
 
-      // Fire lifecycle callback
-      if (this.lifecycleCallbacks?.onSessionDestroyed) {
+    this.sessions.delete(workflowSessionId);
+
+    // Call lifecycle callback
+    if (this.lifecycleCallbacks?.onSessionDestroyed) {
+      try {
         await this.lifecycleCallbacks.onSessionDestroyed(this.moduleId, workflowSessionId);
+      } catch (error) {
+        console.error('Error in onSessionDestroyed callback:', error);
       }
-
-      // Remove from sessions map
-      this.sessions.delete(workflowSessionId);
-    } catch (error) {
-      // Still remove the session even if cleanup fails
-      this.sessions.delete(workflowSessionId);
-      throw new Error(`Error during stream session cleanup: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
   getSession(workflowSessionId: string): ModuleSessionInfo | null {
-    const session = this.sessions.get(workflowSessionId);
-    if (!session) {
-      return null;
-    }
-
-    return {
-      moduleId: session.moduleId,
-      sessionId: session.sessionId,
-      linkedWorkflowSessionId: session.linkedWorkflowSessionId,
-      status: session.status,
-      createdAt: session.createdAt,
-      lastActivity: session.lastActivity,
-      metadata: session.metadata
-    };
+    return this.sessions.get(workflowSessionId) || null;
   }
 
   sessionExists(workflowSessionId: string): boolean {
@@ -145,30 +115,26 @@ export class StreamManager implements IExecutorStreamerManager {
   async updateSessionStatus(workflowSessionId: string, status: SessionStatus): Promise<void> {
     const session = this.sessions.get(workflowSessionId);
     if (!session) {
-      throw new Error(`Stream session not found: ${workflowSessionId}`);
+      throw new Error('Stream session not found');
     }
 
     const oldStatus = session.status;
     session.status = status;
     session.lastActivity = new Date();
 
-    // Update active flag based on status
-    session.isActive = status === SessionStatus.ACTIVE || status === SessionStatus.BUSY;
-
-    // Fire lifecycle callback
+    // Call lifecycle callback
     if (this.lifecycleCallbacks?.onSessionStatusChanged) {
-      await this.lifecycleCallbacks.onSessionStatusChanged(
-        this.moduleId,
-        workflowSessionId,
-        oldStatus,
-        status
-      );
+      try {
+        await this.lifecycleCallbacks.onSessionStatusChanged(this.moduleId, workflowSessionId, oldStatus, status);
+      } catch (error) {
+        console.error('Error in onSessionStatusChanged callback:', error);
+      }
     }
   }
 
   getSessionStatus(workflowSessionId: string): SessionStatus | null {
     const session = this.sessions.get(workflowSessionId);
-    return session ? session.status : null;
+    return session?.status || null;
   }
 
   async recordActivity(workflowSessionId: string): Promise<void> {
@@ -180,7 +146,7 @@ export class StreamManager implements IExecutorStreamerManager {
 
   getLastActivity(workflowSessionId: string): Date | null {
     const session = this.sessions.get(workflowSessionId);
-    return session ? session.lastActivity : null;
+    return session?.lastActivity || null;
   }
 
   setLifecycleCallbacks(callbacks: SessionLifecycleCallbacks): void {
@@ -188,44 +154,34 @@ export class StreamManager implements IExecutorStreamerManager {
   }
 
   async healthCheck(): Promise<SessionManagerHealth> {
-    const activeSessions = Array.from(this.sessions.values()).filter(s => s.isActive).length;
-    const totalSessions = this.sessions.size;
+    const now = new Date();
     const errors: any[] = [];
-
-    // Check for unhealthy sessions
+    
+    // Check for stale sessions (no activity for 15 minutes)
+    const staleThreshold = 15 * 60 * 1000;
     for (const [workflowSessionId, session] of this.sessions) {
-      try {
-        // Check if session is stale (no activity for too long)
-        const staleThreshold = this.config.timeouts.stepTimeoutMs * 2; // 2x step timeout
-        const timeSinceActivity = Date.now() - session.lastActivity.getTime();
-        
-        if (session.isActive && timeSinceActivity > staleThreshold) {
-          errors.push({
-            sessionId: workflowSessionId,
-            error: 'Session appears stale',
-            timeSinceActivity,
-            threshold: staleThreshold
-          });
-        }
-
-        // Check for clients that haven't sent heartbeats
-        const staleClients = session.clients.filter(client => {
-          const timeSinceLastPing = Date.now() - client.lastPing.getTime();
-          return timeSinceLastPing > session.config.heartbeatInterval * 2;
-        });
-
-        if (staleClients.length > 0) {
-          errors.push({
-            sessionId: workflowSessionId,
-            error: 'Stale clients detected',
-            staleClientsCount: staleClients.length
-          });
-        }
-      } catch (error) {
+      const timeSinceActivity = now.getTime() - session.lastActivity.getTime();
+      if (timeSinceActivity > staleThreshold) {
         errors.push({
           sessionId: workflowSessionId,
-          error: 'Health check failed',
-          details: error instanceof Error ? error.message : String(error)
+          error: 'Session appears stale'
+        });
+      }
+    }
+
+    // Check for stale clients (no ping for 5 minutes) 
+    const staleClientThreshold = 5 * 60 * 1000;
+    for (const [workflowSessionId, stream] of this.streams) {
+      const staleClients = stream.clients.filter(client => {
+        const timeSinceLastPing = now.getTime() - client.lastPing.getTime();
+        return timeSinceLastPing > staleClientThreshold;
+      });
+      
+      if (staleClients.length > 0) {
+        errors.push({
+          sessionId: workflowSessionId,
+          error: 'Stale clients detected',
+          staleClientsCount: staleClients.length
         });
       }
     }
@@ -233,201 +189,148 @@ export class StreamManager implements IExecutorStreamerManager {
     return {
       moduleId: this.moduleId,
       isHealthy: errors.length === 0,
-      activeSessions,
-      totalSessions,
+      activeSessions: Array.from(this.sessions.values()).filter(s => s.status === SessionStatus.ACTIVE).length,
+      totalSessions: this.sessions.size,
       errors,
-      lastHealthCheck: new Date()
+      lastHealthCheck: now
     };
   }
 
-  // Stream-specific Methods
-
+  // Stream-specific operations
   async createStream(workflowSessionId: string, config?: StreamConfig): Promise<string> {
-    return await this.createSession(workflowSessionId, { metadata: { streamConfig: config } });
-  }
+    // Create session if it doesn't exist
+    if (!this.sessions.has(workflowSessionId)) {
+      await this.createSession(workflowSessionId);
+    }
 
-  getStream(workflowSessionId: string): StreamSession | null {
-    return this.sessions.get(workflowSessionId) || null;
+    if (this.streams.has(workflowSessionId)) {
+      throw new Error('Stream already exists for this session');
+    }
+
+    const streamId = uuidv4();
+    const now = new Date();
+    
+    const streamConfig = config || this.config.defaultStreamConfig;
+    
+    const streamInfo: StreamInfo = {
+      streamId,
+      sessionId: workflowSessionId,
+      isActive: true,
+      clients: [],
+      history: [],
+      config: { ...streamConfig },
+      createdAt: now,
+      lastActivity: now
+    };
+
+    this.streams.set(workflowSessionId, streamInfo);
+    return streamId;
   }
 
   async destroyStream(workflowSessionId: string): Promise<void> {
-    await this.destroySession(workflowSessionId);
-  }
-
-  listActiveStreams(): string[] {
-    return Array.from(this.sessions.values())
-      .filter(session => session.isActive)
-      .map(session => session.linkedWorkflowSessionId);
-  }
-
-  async attachClient(workflowSessionId: string, client: StreamClient): Promise<void> {
-    const session = this.sessions.get(workflowSessionId);
-    if (!session) {
-      throw new Error(`Stream session not found: ${workflowSessionId}`);
-    }
-
-    // Check client limits
-    if (session.clients.length >= session.config.maxClients) {
-      throw new Error(`Maximum clients limit reached for stream: ${workflowSessionId}`);
-    }
-
-    // Check global connection limit
-    const totalConnections = this.getTotalClientCount();
-    if (totalConnections >= this.config.server.maxConnections) {
-      throw new Error(`Global connection limit reached: ${this.config.server.maxConnections}`);
-    }
-
-    // Add client to session
-    session.clients.push(client);
-    session.lastActivity = new Date();
-
-    // Send connection acknowledgment
-    await this.sendConnectionAck(client);
-  }
-
-  async detachClient(workflowSessionId: string, clientId: string): Promise<void> {
-    const session = this.sessions.get(workflowSessionId);
-    if (!session) {
-      return; // Session might have been destroyed
-    }
-
-    const clientIndex = session.clients.findIndex(c => c.id === clientId);
-    if (clientIndex >= 0) {
-      const client = session.clients[clientIndex];
-      
-      // Close connection gracefully
-      try {
-        await this.closeClientConnection(client);
-      } catch (error) {
-        // Log error but continue cleanup
-        console.warn(`Error closing client connection ${clientId}:`, error);
-      }
-
-      // Remove client from session
-      session.clients.splice(clientIndex, 1);
-      session.lastActivity = new Date();
-    }
-  }
-
-  // Utility Methods
-
-  private generateStreamId(): string {
-    return `stream_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  private async initializeStream(session: StreamSession): Promise<void> {
-    // Apply any custom stream configuration
-    if (session.metadata?.streamConfig) {
-      session.config = { ...session.config, ...session.metadata.streamConfig };
-    }
-
-    // Initialize history buffer
-    session.history = [];
-
-    // Set up any persistence if enabled
-    if (session.config.persistence.enabled) {
-      await this.initializePersistence(session);
-    }
-  }
-
-  private async initializePersistence(session: StreamSession): Promise<void> {
-    // Initialize persistence based on storage type
-    switch (session.config.persistence.storageType) {
-      case 'memory':
-        // Already using in-memory storage
-        break;
-      case 'file':
-        // TODO: Initialize file-based persistence
-        break;
-      case 'database':
-        // TODO: Initialize database persistence
-        break;
-    }
-  }
-
-  private async disconnectAllClients(session: StreamSession): Promise<void> {
-    const disconnectPromises = session.clients.map(async (client) => {
-      try {
-        await this.closeClientConnection(client);
-      } catch (error) {
-        console.warn(`Error disconnecting client ${client.id}:`, error);
-      }
-    });
-
-    await Promise.allSettled(disconnectPromises);
-    session.clients = [];
-  }
-
-  private async persistSessionHistory(session: StreamSession): Promise<void> {
-    if (!session.config.persistence.enabled) {
+    const stream = this.streams.get(workflowSessionId);
+    if (!stream) {
       return;
     }
 
-    // TODO: Implement actual persistence based on storage type
-    // For now, just clear the history as it's already in memory
-  }
-
-  private async sendConnectionAck(client: StreamClient): Promise<void> {
-    const ackMessage = {
-      type: 'connection_ack' as const,
-      metadata: {
-        clientId: client.id,
-        timestamp: new Date().toISOString(),
-        filters: client.filters
+    // Disconnect all clients
+    for (const client of stream.clients) {
+      try {
+        if ('close' in client.connection) {
+          client.connection.close();
+        } else if ('end' in client.connection) {
+          client.connection.end();
+        }
+      } catch (error) {
+        console.warn('Error disconnecting client during stream destruction:', error);
       }
-    };
+    }
 
-    // TODO: Send message based on client type
-    // This will be implemented in the specific handlers
+    this.streams.delete(workflowSessionId);
   }
 
-  private async closeClientConnection(client: StreamClient): Promise<void> {
-    client.isActive = false;
-
-    // TODO: Close connection based on client type
-    // This will be implemented in the specific handlers
+  getStream(workflowSessionId: string): StreamInfo | null {
+    return this.streams.get(workflowSessionId) || null;
   }
 
-  private getTotalClientCount(): number {
-    return Array.from(this.sessions.values())
-      .reduce((total, session) => total + session.clients.length, 0);
+  listActiveStreams(): string[] {
+    const activeStreams: string[] = [];
+    for (const [workflowSessionId, session] of this.sessions) {
+      if (session.status === SessionStatus.ACTIVE || session.status === SessionStatus.BUSY) {
+        if (this.streams.has(workflowSessionId)) {
+          activeStreams.push(workflowSessionId);
+        }
+      }
+    }
+    return activeStreams;
   }
 
-  // Configuration and Monitoring
+  // Client management
+  async attachClient(workflowSessionId: string, client: StreamClient): Promise<void> {
+    const stream = this.streams.get(workflowSessionId);
+    if (!stream) {
+      throw new Error('Stream session not found');
+    }
 
+    // Check client limit
+    if (stream.clients.length >= stream.config.maxClients) {
+      throw new Error('Maximum clients limit reached');
+    }
+
+    stream.clients.push(client);
+    stream.lastActivity = new Date();
+  }
+
+  async detachClient(workflowSessionId: string, clientId: string): Promise<void> {
+    const stream = this.streams.get(workflowSessionId);
+    if (!stream) {
+      return; // Gracefully handle non-existent stream
+    }
+
+    const clientIndex = stream.clients.findIndex(c => c.id === clientId);
+    if (clientIndex >= 0) {
+      stream.clients.splice(clientIndex, 1);
+      stream.lastActivity = new Date();
+    }
+  }
+
+  // Configuration
   updateConfig(config: ExecutorStreamerConfig): void {
-    this.config = config;
+    this.config = { ...config };
   }
 
   getConfig(): ExecutorStreamerConfig {
-    return JSON.parse(JSON.stringify(this.config));
+    return { ...this.config }; // Return copy to prevent external modifications
   }
 
-  getStats() {
-    const totalSessions = this.sessions.size;
-    const activeSessions = Array.from(this.sessions.values()).filter(s => s.isActive).length;
-    const totalClients = this.getTotalClientCount();
-    const uptime = Math.max(0, Date.now() - this.startTime.getTime());
+  // Statistics
+  getStats(): StreamManagerStats {
+    const activeSessions = Array.from(this.sessions.values()).filter(
+      s => s.status === SessionStatus.ACTIVE || s.status === SessionStatus.BUSY
+    ).length;
+    
+    const totalClients = Array.from(this.streams.values()).reduce(
+      (total, stream) => total + stream.clients.length, 0
+    );
+
+    const averageClientsPerStream = this.streams.size > 0 ? totalClients / this.streams.size : 0;
+    const uptime = Date.now() - this.startTime.getTime();
 
     return {
-      totalSessions,
+      totalSessions: this.sessions.size,
       activeSessions,
       totalClients,
-      uptime,
-      averageClientsPerStream: totalSessions > 0 ? totalClients / totalSessions : 0
+      averageClientsPerStream,
+      uptime
     };
   }
 
-  // Cleanup
+  // Shutdown
   async shutdown(): Promise<void> {
+    // Destroy all sessions and streams
     const sessionIds = Array.from(this.sessions.keys());
-    
-    for (const workflowSessionId of sessionIds) {
-      try {
-        await this.destroySession(workflowSessionId);
-      } catch (error) {
-        console.error(`Error destroying session ${workflowSessionId} during shutdown:`, error);
-      }
+    for (const sessionId of sessionIds) {
+      await this.destroySession(sessionId);
     }
   }
 }

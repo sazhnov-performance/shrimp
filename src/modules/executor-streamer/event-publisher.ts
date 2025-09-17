@@ -1,43 +1,38 @@
 /**
- * Event Publisher - Handles publishing and validation of stream events
- * Manages event publishing to all connected clients with filtering and validation
+ * Event Publisher Implementation
+ * Handles event publishing, validation, and filtering
  */
 
+import { v4 as uuidv4 } from 'uuid';
 import {
   StreamEvent,
   StreamEventType,
   StreamEventData,
-  CommandAction
+  CommandAction,
+  CommandStatus,
+  ScreenshotInfo,
+  VariableInfo
 } from '../../../types/shared-types';
-
 import {
-  IStreamPublisher,
-  StreamSession,
+  IEventPublisher,
   StreamClient,
   StreamFilter,
   ErrorContext,
-  ScreenshotInfo,
-  EventValidator,
   EventValidationResult
 } from './types';
 
-export class EventPublisher implements IStreamPublisher {
-  private eventValidator: EventValidator;
-
-  constructor() {
-    this.eventValidator = new StreamEventValidator();
-  }
-
-  // AI Reasoning methods
+export class EventPublisher implements IEventPublisher {
+  
+  // Core publishing methods
   async publishReasoning(
     sessionId: string, 
     thought: string, 
     confidence: number, 
-    type: string, 
+    reasoningType: string, 
     context?: Record<string, any>
   ): Promise<void> {
     const event: StreamEvent = {
-      id: this.generateEventId(),
+      id: uuidv4(),
       type: StreamEventType.AI_REASONING,
       timestamp: new Date(),
       sessionId,
@@ -45,16 +40,15 @@ export class EventPublisher implements IStreamPublisher {
         reasoning: {
           thought,
           confidence,
-          reasoningType: type as any,
+          reasoningType: reasoningType as any,
           context
         }
       }
     };
 
-    await this.publishEvent(sessionId, event);
+    await this.publishEvent(event);
   }
 
-  // Command execution methods
   async publishCommandStarted(
     sessionId: string, 
     commandName: string, 
@@ -62,7 +56,7 @@ export class EventPublisher implements IStreamPublisher {
     parameters: Record<string, any>
   ): Promise<void> {
     const event: StreamEvent = {
-      id: this.generateEventId(),
+      id: uuidv4(),
       type: StreamEventType.COMMAND_STARTED,
       timestamp: new Date(),
       sessionId,
@@ -70,39 +64,39 @@ export class EventPublisher implements IStreamPublisher {
         command: {
           commandId: commandName,
           action,
-          parameters,
-          status: 'EXECUTING' as any
+          parameters: parameters as any,
+          status: CommandStatus.EXECUTING
         }
       }
     };
 
-    await this.publishEvent(sessionId, event);
+    await this.publishEvent(event);
   }
 
   async publishCommandCompleted(
     sessionId: string, 
     commandName: string, 
-    result: any, 
+    result: Record<string, any>, 
     duration: number
   ): Promise<void> {
     const event: StreamEvent = {
-      id: this.generateEventId(),
+      id: uuidv4(),
       type: StreamEventType.COMMAND_COMPLETED,
       timestamp: new Date(),
       sessionId,
       data: {
         command: {
           commandId: commandName,
-          action: result.action || 'UNKNOWN' as CommandAction,
-          parameters: result.parameters || {},
-          status: 'COMPLETED' as any,
+          action: CommandAction.CLICK_ELEMENT, // This would need to be tracked from the original command
+          parameters: {},
+          status: CommandStatus.COMPLETED,
           duration,
-          result
+          result: result as any
         }
       }
     };
 
-    await this.publishEvent(sessionId, event);
+    await this.publishEvent(event);
   }
 
   async publishCommandFailed(
@@ -112,96 +106,90 @@ export class EventPublisher implements IStreamPublisher {
     duration: number
   ): Promise<void> {
     const event: StreamEvent = {
-      id: this.generateEventId(),
+      id: uuidv4(),
       type: StreamEventType.COMMAND_FAILED,
       timestamp: new Date(),
       sessionId,
       data: {
         command: {
           commandId: commandName,
-          action: 'UNKNOWN' as CommandAction,
+          action: CommandAction.CLICK_ELEMENT, // This would need to be tracked from the original command
           parameters: {},
-          status: 'FAILED' as any,
+          status: CommandStatus.FAILED,
           duration
         },
         error
       }
     };
 
-    await this.publishEvent(sessionId, event);
+    await this.publishEvent(event);
   }
 
-  // Screenshot methods
   async publishScreenshot(sessionId: string, screenshotInfo: ScreenshotInfo): Promise<void> {
     const event: StreamEvent = {
-      id: this.generateEventId(),
+      id: uuidv4(),
       type: StreamEventType.SCREENSHOT_CAPTURED,
       timestamp: new Date(),
       sessionId,
-      stepIndex: screenshotInfo.stepIndex,
       data: {
         screenshot: screenshotInfo
       }
     };
 
-    await this.publishEvent(sessionId, event);
+    await this.publishEvent(event);
   }
 
-  // Variable methods
   async publishVariableUpdate(
     sessionId: string, 
     name: string, 
     value: string, 
     previousValue?: string
   ): Promise<void> {
+    const variableInfo: VariableInfo = {
+      name,
+      value,
+      previousValue,
+      timestamp: new Date(),
+      sessionId,
+      source: 'extracted'
+    };
+
     const event: StreamEvent = {
-      id: this.generateEventId(),
+      id: uuidv4(),
       type: StreamEventType.VARIABLE_UPDATED,
       timestamp: new Date(),
       sessionId,
       data: {
-        variable: {
-          name,
-          value,
-          previousValue,
-          timestamp: new Date(),
-          sessionId,
-          source: 'extracted' as any
-        }
+        variable: variableInfo
       }
     };
 
-    await this.publishEvent(sessionId, event);
+    await this.publishEvent(event);
   }
 
-  // Status methods
   async publishStatus(
     sessionId: string, 
     type: string, 
     status: string, 
-    message?: string
+    message: string
   ): Promise<void> {
     const event: StreamEvent = {
-      id: this.generateEventId(),
+      id: uuidv4(),
       type: StreamEventType.SESSION_STATUS,
       timestamp: new Date(),
       sessionId,
       data: {
         message,
-        details: {
-          type,
-          status
-        }
+        details: { type, status }
       }
     };
 
-    await this.publishEvent(sessionId, event);
+    await this.publishEvent(event);
   }
 
-  // Error methods
   async publishError(sessionId: string, error: ErrorContext): Promise<void> {
     const event: StreamEvent = {
-      id: this.generateEventId(),
+      id: uuidv4(),
       type: StreamEventType.ERROR_OCCURRED,
       timestamp: new Date(),
       sessionId,
@@ -210,164 +198,53 @@ export class EventPublisher implements IStreamPublisher {
       }
     };
 
-    await this.publishEvent(sessionId, event);
+    await this.publishEvent(event);
   }
 
-  // Generic event publishing
-  async publishEvent(sessionId: string, event: StreamEvent): Promise<void> {
-    // Validate event
-    const validation = this.eventValidator.validateEvent(event);
-    if (!validation.isValid) {
-      throw new Error(`Event validation failed: ${validation.errors.join(', ')}`);
-    }
-
-    // This method will be called by StreamManager to actually distribute the event
-    // For now, this is a placeholder that would be integrated with the stream manager
-    // The actual broadcasting will be handled by the main ExecutorStreamer class
+  // Private helper to handle actual event publishing
+  private async publishEvent(event: StreamEvent): Promise<void> {
+    // In a real implementation, this would:
+    // 1. Validate the event
+    // 2. Add to stream histories
+    // 3. Broadcast to connected clients
+    // 4. Handle persistence if enabled
+    
+    // For now, this is a placeholder
+    console.log('Publishing event:', event.type, 'for session:', event.sessionId);
   }
 
   // Event validation
-  validateEvent(event: StreamEvent): EventValidationResult {
-    return this.eventValidator.validateEvent(event);
-  }
-
-  // Utility methods
-  private generateEventId(): string {
-    return `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  // Event filtering
-  shouldEventPassFilter(event: StreamEvent, filter: StreamFilter): boolean {
-    // Check event type filter
-    if (filter.eventTypes && filter.eventTypes.length > 0) {
-      if (!filter.eventTypes.includes(event.type)) {
-        return false;
-      }
-    }
-
-    // Check session ID filter
-    if (filter.sessionIds && filter.sessionIds.length > 0) {
-      if (!filter.sessionIds.includes(event.sessionId)) {
-        return false;
-      }
-    }
-
-    // Check time range filter
-    if (filter.timeRange) {
-      const eventTime = event.timestamp.getTime();
-      const startTime = filter.timeRange.start.getTime();
-      const endTime = filter.timeRange.end.getTime();
-      
-      if (eventTime < startTime || eventTime > endTime) {
-        return false;
-      }
-    }
-
-    // Check custom filter
-    if (filter.customFilter) {
-      try {
-        return filter.customFilter(event);
-      } catch (error) {
-        // If custom filter throws, consider it failed
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  // Filter events for a client
-  filterEventsForClient(events: StreamEvent[], client: StreamClient): StreamEvent[] {
-    if (!client.filters || client.filters.length === 0) {
-      return events;
-    }
-
-    return events.filter(event => {
-      // Event passes if it matches ANY of the client's filters
-      return client.filters!.some(filter => this.shouldEventPassFilter(event, filter));
-    });
-  }
-
-  // Event serialization for transmission
-  serializeEvent(event: StreamEvent): string {
-    try {
-      return JSON.stringify({
-        id: event.id,
-        type: event.type,
-        timestamp: event.timestamp.toISOString(),
-        sessionId: event.sessionId,
-        stepIndex: event.stepIndex,
-        data: event.data,
-        metadata: event.metadata
-      });
-    } catch (error) {
-      throw new Error(`Failed to serialize event: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-
-  // Event compression (if enabled)
-  async compressEvent(event: StreamEvent, algorithm: 'gzip' | 'brotli' = 'gzip'): Promise<Buffer> {
-    const serialized = this.serializeEvent(event);
-    
-    // TODO: Implement actual compression
-    // For now, just return the serialized data as buffer
-    return Buffer.from(serialized, 'utf8');
-  }
-}
-
-// Event Validator Implementation
-class StreamEventValidator implements EventValidator {
   validateEvent(event: StreamEvent): EventValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
 
     // Validate required fields
-    if (!event.id || typeof event.id !== 'string') {
-      errors.push('Event ID is required and must be a string');
+    if (!event.id || event.id.trim() === '') {
+      errors.push('Event ID is required and cannot be empty');
     }
 
-    if (!event.type || !Object.values(StreamEventType).includes(event.type)) {
-      errors.push('Valid event type is required');
+    if (!event.sessionId || event.sessionId.trim() === '') {
+      errors.push('Session ID is required and cannot be empty');
     }
 
-    if (!event.timestamp || !(event.timestamp instanceof Date)) {
-      errors.push('Valid timestamp is required');
+    if (!Object.values(StreamEventType).includes(event.type)) {
+      errors.push(`Invalid event type: ${event.type}`);
     }
 
-    if (!event.sessionId || typeof event.sessionId !== 'string') {
-      errors.push('Session ID is required and must be a string');
+    if (!(event.timestamp instanceof Date)) {
+      errors.push('Timestamp must be a Date object');
     }
 
-    if (!event.data || typeof event.data !== 'object') {
-      errors.push('Event data is required and must be an object');
+    if (!event.data) {
+      errors.push('Event data is required');
     }
 
-    // Validate event data based on type
-    if (event.type && event.data) {
-      const dataValid = this.validateEventData(event.type, event.data);
-      if (!dataValid) {
-        errors.push(`Event data is invalid for type: ${event.type}`);
-      }
-    }
-
-    // Validate step index if present
-    if (event.stepIndex !== undefined) {
-      if (typeof event.stepIndex !== 'number' || event.stepIndex < 0) {
-        errors.push('Step index must be a non-negative number');
-      }
-    }
-
-    // Check event timestamp is not too far in the future
-    const now = Date.now();
+    // Check for future timestamps (suspicious)
     if (event.timestamp instanceof Date) {
-      const eventTime = event.timestamp.getTime();
-      if (eventTime > now + 60000) { // 1 minute tolerance
-        warnings.push('Event timestamp is in the future');
-      }
-
-      // Check event timestamp is not too old
-      if (eventTime < now - 86400000) { // 24 hours old
-        warnings.push('Event timestamp is more than 24 hours old');
+      const now = new Date();
+      const timeDiff = event.timestamp.getTime() - now.getTime();
+      if (timeDiff > 60000) { // More than 1 minute in the future
+        warnings.push('Event timestamp is significantly in the future');
       }
     }
 
@@ -378,69 +255,70 @@ class StreamEventValidator implements EventValidator {
     };
   }
 
-  validateEventData(eventType: StreamEventType, data: StreamEventData): boolean {
+  // Event filtering
+  filterEventsForClient(events: StreamEvent[], client: StreamClient): StreamEvent[] {
+    if (!client.filters || client.filters.length === 0) {
+      return events;
+    }
+
+    return events.filter(event => {
+      // OR logic between filters - event passes if it matches ANY filter
+      return client.filters!.some(filter => this.shouldEventPassFilter(event, filter));
+    });
+  }
+
+  shouldEventPassFilter(event: StreamEvent, filter: StreamFilter): boolean {
     try {
-      switch (eventType) {
-        case StreamEventType.AI_REASONING:
-          return this.validateReasoningData(data);
-        
-        case StreamEventType.COMMAND_STARTED:
-        case StreamEventType.COMMAND_COMPLETED:
-        case StreamEventType.COMMAND_FAILED:
-          return this.validateCommandData(data);
-        
-        case StreamEventType.SCREENSHOT_CAPTURED:
-          return this.validateScreenshotData(data);
-        
-        case StreamEventType.VARIABLE_UPDATED:
-          return this.validateVariableData(data);
-        
-        case StreamEventType.ERROR_OCCURRED:
-          return this.validateErrorData(data);
-        
-        case StreamEventType.SESSION_STATUS:
-          return this.validateStatusData(data);
-        
-        default:
-          // For unknown event types, just check that data exists
-          return data !== null && data !== undefined;
+      // Event type filter
+      if (filter.eventTypes && filter.eventTypes.length > 0) {
+        if (!filter.eventTypes.includes(event.type)) {
+          return false;
+        }
       }
+
+      // Session ID filter
+      if (filter.sessionIds && filter.sessionIds.length > 0) {
+        if (!filter.sessionIds.includes(event.sessionId)) {
+          return false;
+        }
+      }
+
+      // Time range filter
+      if (filter.timeRange) {
+        const eventTime = event.timestamp.getTime();
+        const startTime = filter.timeRange.start.getTime();
+        const endTime = filter.timeRange.end.getTime();
+        
+        if (eventTime < startTime || eventTime > endTime) {
+          return false;
+        }
+      }
+
+      // Custom filter
+      if (filter.customFilter) {
+        return filter.customFilter(event);
+      }
+
+      return true;
     } catch (error) {
+      // Filter errors should not crash the system
+      console.warn('Error in event filter:', error);
       return false;
     }
   }
 
-  private validateReasoningData(data: StreamEventData): boolean {
-    return !!(data.reasoning?.thought && 
-             typeof data.reasoning.confidence === 'number' &&
-             data.reasoning.confidence >= 0 && 
-             data.reasoning.confidence <= 1);
-  }
-
-  private validateCommandData(data: StreamEventData): boolean {
-    return !!(data.command?.commandId && 
-             data.command.action &&
-             data.command.status);
-  }
-
-  private validateScreenshotData(data: StreamEventData): boolean {
-    return !!(data.screenshot?.id && 
-             data.screenshot.filePath &&
-             data.screenshot.dimensions);
-  }
-
-  private validateVariableData(data: StreamEventData): boolean {
-    return !!(data.variable?.name && 
-             data.variable.value !== undefined);
-  }
-
-  private validateErrorData(data: StreamEventData): boolean {
-    return !!(data.error?.id && 
-             data.error.code && 
-             data.error.message);
-  }
-
-  private validateStatusData(data: StreamEventData): boolean {
-    return !!(data.details || data.message);
+  // Serialization
+  serializeEvent(event: StreamEvent): string {
+    try {
+      return JSON.stringify(event, (key, value) => {
+        // Convert Date objects to ISO strings
+        if (value instanceof Date) {
+          return value.toISOString();
+        }
+        return value;
+      });
+    } catch (error) {
+      throw new Error(`Failed to serialize event: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 }

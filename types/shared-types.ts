@@ -629,7 +629,8 @@ export const DEPENDENCY_TOKENS = {
   TASK_LOOP: 'ITaskLoop', 
   EXECUTOR: 'IExecutor',
   AI_INTEGRATION: 'IAIIntegration',
-  CONTEXT_MANAGER: 'IAIContextManager',
+  AI_CONTEXT_MANAGER: 'IAIContextManager',
+  CONTEXT_MANAGER: 'IAIContextManager', // Legacy alias
   SCHEMA_MANAGER: 'IAISchemaManager',
   PROMPT_MANAGER: 'IAIPromptManager',
   EXECUTOR_STREAMER: 'IExecutorStreamer',
