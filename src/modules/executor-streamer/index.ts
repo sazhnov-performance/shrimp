@@ -5,11 +5,13 @@
  */
 
 import {
-  IExecutorStreamer,
-  ExecutorStreamerConfig,
   DEFAULT_CONFIG,
   ExecutorStreamerError,
   EXECUTOR_STREAMER_ERRORS
+} from './types';
+import type {
+  IExecutorStreamer,
+  ExecutorStreamerConfig
 } from './types';
 import { StreamManager } from './stream-manager';
 import { EventPublisher } from './event-publisher';

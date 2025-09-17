@@ -3,7 +3,8 @@
  * Singleton pattern implementation for AI Integration Manager
  */
 
-import { AIConfig, AIResponse, IAIIntegrationManager } from './types';
+import { AIConfig, AIResponse } from './types';
+import type { IAIIntegrationManager } from './types';
 import { RequestProcessor } from './request-processor';
 
 export class AIIntegrationManager implements IAIIntegrationManager {
