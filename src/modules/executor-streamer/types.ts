@@ -209,6 +209,9 @@ export interface StreamManagerStats {
 
 // Event Publisher Interface
 export interface IEventPublisher {
+  // Callback configuration
+  setEventCallback(callback: (event: StreamEvent) => Promise<void>): void;
+  
   // Core publishing methods
   publishReasoning(sessionId: string, thought: string, confidence: number, reasoningType: string, context?: Record<string, any>): Promise<void>;
   publishCommandStarted(sessionId: string, commandName: string, action: CommandAction, parameters: Record<string, any>): Promise<void>;

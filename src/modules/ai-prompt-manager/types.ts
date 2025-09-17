@@ -491,6 +491,7 @@ export function createMinimalConfig(): Partial<AIPromptManagerConfig> {
     },
     investigationConfig: {
       enableInvestigationPrompts: false,
+      defaultInvestigationTools: [InvestigationTool.SCREENSHOT_ANALYSIS],
       maxInvestigationRounds: 1,
       confidenceThreshold: 0.5
     }
