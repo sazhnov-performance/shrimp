@@ -281,11 +281,15 @@ export class PromptCache {
    * Evict the least recently used entry
    */
   private evictLeastRecentlyUsed(): void {
+    if (this.cache.size === 0) {
+      return;
+    }
+
     let oldestKey: string | null = null;
-    let oldestTime = new Date();
+    let oldestTime: Date | null = null;
     
     for (const [key, entry] of this.cache.entries()) {
-      if (entry.lastAccessed < oldestTime) {
+      if (oldestTime === null || entry.lastAccessed < oldestTime) {
         oldestTime = entry.lastAccessed;
         oldestKey = key;
       }

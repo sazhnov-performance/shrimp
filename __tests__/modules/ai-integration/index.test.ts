@@ -160,7 +160,7 @@ describe('AIIntegrationManager', () => {
     });
 
     test('should handle network error', async () => {
-      (global.fetch as jest.Mock).mockRejectedValue(new TypeError('Network error'));
+      (global.fetch as jest.Mock).mockRejectedValue(new TypeError('Failed to fetch'));
 
       const manager = new AIIntegrationManager(validConfig);
       const response = await manager.sendRequest('Hello');

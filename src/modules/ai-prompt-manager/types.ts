@@ -43,16 +43,16 @@ export enum EnhancedPromptType {
 
 // Investigation Types
 export enum InvestigationPhase {
-  INITIAL_ASSESSMENT = 'initial_assessment',
-  FOCUSED_EXPLORATION = 'focused_exploration',
-  SELECTOR_DETERMINATION = 'selector_determination'
+  INITIAL_ASSESSMENT = 'INITIAL_ASSESSMENT',
+  FOCUSED_EXPLORATION = 'FOCUSED_EXPLORATION',
+  SELECTOR_DETERMINATION = 'SELECTOR_DETERMINATION'
 }
 
 export enum InvestigationTool {
-  SCREENSHOT_ANALYSIS = 'screenshot_analysis',
-  TEXT_EXTRACTION = 'text_extraction',
-  FULL_DOM_RETRIEVAL = 'full_dom_retrieval',
-  SUB_DOM_EXTRACTION = 'sub_dom_extraction'
+  SCREENSHOT_ANALYSIS = 'SCREENSHOT_ANALYSIS',
+  TEXT_EXTRACTION = 'TEXT_EXTRACTION',
+  FULL_DOM_RETRIEVAL = 'FULL_DOM_RETRIEVAL',
+  SUB_DOM_EXTRACTION = 'SUB_DOM_EXTRACTION'
 }
 
 // Error Types
@@ -401,10 +401,25 @@ export interface QualityAssessment {
 
 // Configuration Types
 export interface AIPromptManagerConfig {
+  moduleId: string;
+  version: string;
+  enabled: boolean;
   performance: PerformanceConfig;
   validation: ValidationConfig;
   investigationConfig: InvestigationConfig;
   templateConfig: TemplateConfig;
+  defaultPromptOptions?: PromptOptions & {
+    maxHistorySteps: number;
+  };
+  contextConfig?: {
+    maxDomSize: number;
+  };
+  timeouts?: {
+    workflowTimeoutMs: number;
+    stepTimeoutMs: number;
+    requestTimeoutMs: number;
+    connectionTimeoutMs: number;
+  };
 }
 
 export interface PerformanceConfig {
@@ -449,9 +464,50 @@ export const QUALITY_THRESHOLDS = {
   MIN_OVERALL_SCORE: 0.75
 } as const;
 
+// Investigation Constants
+export const INVESTIGATION_CONSTANTS = {
+  DEFAULT_MAX_INVESTIGATION_ROUNDS: 5,
+  DEFAULT_CONFIDENCE_THRESHOLD: 0.7,
+  DEFAULT_CONTEXT_SIZE_LIMIT: 30000
+} as const;
+
+// Template IDs
+export const TEMPLATE_IDS = {
+  SYSTEM_MESSAGE: 'system_message',
+  INITIAL_ACTION: 'initial_action',
+  INVESTIGATION_INITIAL: 'investigation_initial',
+  INVESTIGATION_FOCUSED: 'investigation_focused',
+  INVESTIGATION_SELECTOR: 'investigation_selector',
+  REFLECTION_ACTION: 'reflection_action',
+  VALIDATION_PROMPT: 'validation_prompt'
+} as const;
+
+// Default Tool Priority
+export const DEFAULT_TOOL_PRIORITY = [
+  InvestigationTool.SCREENSHOT_ANALYSIS,
+  InvestigationTool.TEXT_EXTRACTION,
+  InvestigationTool.SUB_DOM_EXTRACTION,
+  InvestigationTool.FULL_DOM_RETRIEVAL
+] as const;
+
+// Default Investigation Config
+export const defaultInvestigationConfig = {
+  enableInvestigationPrompts: true,
+  defaultInvestigationPhase: InvestigationPhase.INITIAL_ASSESSMENT,
+  maxInvestigationRoundsPerStep: 5,
+  confidenceThreshold: 0.7,
+  investigationTimeoutMs: 30000,
+  enableWorkingMemory: true,
+  enableElementDiscovery: true,
+  enablePatternLearning: true
+} as const;
+
 // Default Configuration Functions
 export function createDefaultConfig(): AIPromptManagerConfig {
   return {
+    moduleId: 'ai-prompt-manager',
+    version: '1.0.0',
+    enabled: true,
     performance: {
       cacheEnabled: true,
       cacheTTLMs: 300000, // 5 minutes
@@ -476,24 +532,121 @@ export function createDefaultConfig(): AIPromptManagerConfig {
     },
     templateConfig: {
       templateCacheEnabled: true,
-      customTemplatesAllowed: false,
+      customTemplatesAllowed: true, // Allow custom templates by default
       templateValidationStrict: true
+    },
+    defaultPromptOptions: {
+      maxHistorySteps: 10,
+      reasoningDepth: 'detailed',
+      validationMode: 'lenient',
+      useFilteredContext: true,
+      includeWorkingMemory: true,
+      includeInvestigationHistory: false
+    },
+    contextConfig: {
+      maxDomSize: 100000
+    },
+    timeouts: {
+      workflowTimeoutMs: 1800000, // 30 minutes
+      stepTimeoutMs: 300000, // 5 minutes
+      requestTimeoutMs: 30000, // 30 seconds
+      connectionTimeoutMs: 10000 // 10 seconds
     }
   };
 }
 
-export function createMinimalConfig(): Partial<AIPromptManagerConfig> {
+export function createMinimalConfig(): AIPromptManagerConfig {
   return {
+    moduleId: 'ai-prompt-manager',
+    version: '1.0.0',
+    enabled: true,
     performance: {
       cacheEnabled: false,
       cacheTTLMs: 0,
       metricsEnabled: false
+    },
+    validation: {
+      enableActionValidation: false,
+      enableResultAnalysis: false,
+      validationTimeoutMs: 10000,
+      requireExplicitValidation: false
     },
     investigationConfig: {
       enableInvestigationPrompts: false,
       defaultInvestigationTools: [InvestigationTool.SCREENSHOT_ANALYSIS],
       maxInvestigationRounds: 1,
       confidenceThreshold: 0.5
+    },
+    templateConfig: {
+      templateCacheEnabled: false,
+      customTemplatesAllowed: false,
+      templateValidationStrict: false
+    },
+    defaultPromptOptions: {
+      maxHistorySteps: 3,
+      reasoningDepth: 'basic',
+      validationMode: 'lenient',
+      useFilteredContext: false,
+      includeWorkingMemory: false,
+      includeInvestigationHistory: false
+    },
+    contextConfig: {
+      maxDomSize: 50000
+    },
+    timeouts: {
+      workflowTimeoutMs: 300000, // 5 minutes
+      stepTimeoutMs: 60000, // 1 minute
+      requestTimeoutMs: 10000, // 10 seconds
+      connectionTimeoutMs: 5000 // 5 seconds
+    }
+  };
+}
+
+// Performance optimized configuration
+export function createPerformanceConfig(): AIPromptManagerConfig {
+  return {
+    moduleId: 'ai-prompt-manager',
+    version: '1.0.0',
+    enabled: true,
+    performance: {
+      cacheEnabled: true,
+      cacheTTLMs: 600000, // 10 minutes
+      maxCacheSize: 500,
+      metricsEnabled: true
+    },
+    validation: {
+      enableActionValidation: true,
+      enableResultAnalysis: true,
+      validationTimeoutMs: 60000,
+      requireExplicitValidation: false
+    },
+    investigationConfig: {
+      enableInvestigationPrompts: true,
+      defaultInvestigationTools: DEFAULT_TOOL_PRIORITY.slice(),
+      maxInvestigationRounds: 5,
+      confidenceThreshold: 0.9
+    },
+    templateConfig: {
+      templateCacheEnabled: true,
+      customTemplatesAllowed: true,
+      templateValidationStrict: true
+    },
+    defaultPromptOptions: {
+      maxHistorySteps: 20,
+      reasoningDepth: 'comprehensive',
+      validationMode: 'strict',
+      useFilteredContext: true,
+      includeWorkingMemory: true,
+      includeInvestigationHistory: true
+    },
+    contextConfig: {
+      maxDomSize: 200000
+    },
+    timeouts: {
+      workflowTimeoutMs: 3600000, // 1 hour
+      stepTimeoutMs: 600000, // 10 minutes
+      requestTimeoutMs: 60000, // 1 minute
+      connectionTimeoutMs: 15000 // 15 seconds
     }
   };
 }

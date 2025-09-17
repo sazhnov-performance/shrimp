@@ -14,10 +14,9 @@ jest.mock('fs', () => ({
   readFileSync: jest.fn()
 }));
 
+// Mock the entire path module
 jest.mock('path', () => ({
-  ...jest.requireActual('path'),
-  extname: jest.fn(),
-  resolve: jest.fn()
+  extname: jest.fn()
 }));
 
 describe('ImageHandler', () => {
@@ -91,10 +90,9 @@ describe('ImageHandler', () => {
     test('should throw error for non-existent file', async () => {
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
-      await expect(imageHandler.processImageFile('nonexistent.png')).rejects.toThrow();
-      
       try {
         await imageHandler.processImageFile('nonexistent.png');
+        fail('Expected error to be thrown');
       } catch (error: any) {
         expect(error.code).toBe('AI006');
         expect(error.message).toContain('Image file not found');
@@ -107,10 +105,9 @@ describe('ImageHandler', () => {
         isFile: () => false
       });
 
-      await expect(imageHandler.processImageFile('directory')).rejects.toThrow();
-      
       try {
         await imageHandler.processImageFile('directory');
+        fail('Expected error to be thrown');
       } catch (error: any) {
         expect(error.code).toBe('AI006');
         expect(error.message).toContain('Path is not a file');
@@ -124,10 +121,9 @@ describe('ImageHandler', () => {
         isFile: () => true
       });
 
-      await expect(imageHandler.processImageFile('large.png')).rejects.toThrow();
-      
       try {
         await imageHandler.processImageFile('large.png');
+        fail('Expected error to be thrown');
       } catch (error: any) {
         expect(error.code).toBe('AI006');
         expect(error.message).toContain('Image file too large');
@@ -137,10 +133,9 @@ describe('ImageHandler', () => {
     test('should throw error for unsupported format', async () => {
       (path.extname as jest.Mock).mockReturnValue('.bmp');
 
-      await expect(imageHandler.processImageFile('test.bmp')).rejects.toThrow();
-      
       try {
         await imageHandler.processImageFile('test.bmp');
+        fail('Expected error to be thrown');
       } catch (error: any) {
         expect(error.code).toBe('AI006');
         expect(error.message).toContain('Unsupported image format');
@@ -152,10 +147,9 @@ describe('ImageHandler', () => {
         throw new Error('Permission denied');
       });
 
-      await expect(imageHandler.processImageFile('test.png')).rejects.toThrow();
-      
       try {
         await imageHandler.processImageFile('test.png');
+        fail('Expected error to be thrown');
       } catch (error: any) {
         expect(error.code).toBe('AI006');
         expect(error.message).toContain('Failed to process image file');

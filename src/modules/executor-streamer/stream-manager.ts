@@ -54,6 +54,22 @@ export class StreamManager implements IStreamManager {
 
     this.sessions.set(workflowSessionId, sessionInfo);
 
+    // Also create a stream for this session (as expected by tests)
+    if (!this.streams.has(workflowSessionId)) {
+      const streamId = uuidv4();
+      const streamInfo: StreamInfo = {
+        streamId,
+        sessionId: workflowSessionId,
+        isActive: true,
+        clients: [],
+        history: [],
+        config: { ...this.config.defaultStreamConfig },
+        createdAt: now,
+        lastActivity: now
+      };
+      this.streams.set(workflowSessionId, streamInfo);
+    }
+
     // Call lifecycle callback
     if (this.lifecycleCallbacks?.onSessionCreated) {
       try {
@@ -157,10 +173,10 @@ export class StreamManager implements IStreamManager {
     const now = new Date();
     const errors: any[] = [];
     
-    // Check for stale sessions (no activity for 15 minutes)
+    // Check for stale streams (no activity for 15 minutes)
     const staleThreshold = 15 * 60 * 1000;
-    for (const [workflowSessionId, session] of this.sessions) {
-      const timeSinceActivity = now.getTime() - session.lastActivity.getTime();
+    for (const [workflowSessionId, stream] of this.streams) {
+      const timeSinceActivity = now.getTime() - stream.lastActivity.getTime();
       if (timeSinceActivity > staleThreshold) {
         errors.push({
           sessionId: workflowSessionId,
@@ -198,15 +214,21 @@ export class StreamManager implements IStreamManager {
 
   // Stream-specific operations
   async createStream(workflowSessionId: string, config?: StreamConfig): Promise<string> {
-    // Create session if it doesn't exist
-    if (!this.sessions.has(workflowSessionId)) {
-      await this.createSession(workflowSessionId);
-    }
-
     // Don't throw error if stream already exists, just return existing stream ID
     const existingStream = this.streams.get(workflowSessionId);
     if (existingStream) {
+      // If custom config is provided, update the existing stream config
+      if (config) {
+        existingStream.config = { ...config };
+      }
       return existingStream.streamId;
+    }
+
+    // Create session if it doesn't exist (but do it AFTER checking for existing stream)
+    if (!this.sessions.has(workflowSessionId)) {
+      await this.createSession(workflowSessionId);
+      // Remove the auto-created stream since we want to create it with custom config
+      this.streams.delete(workflowSessionId);
     }
 
     const streamId = uuidv4();
