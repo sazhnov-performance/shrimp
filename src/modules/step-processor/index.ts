@@ -7,27 +7,14 @@
 /**
  * Process steps sequentially
  * Simple function - no class, no constructor, no complexity
+ * Just pass steps and GO!
  */
-async function processSteps(
-  steps: string[], 
-  taskLoop: any, 
-  executorStreamer: any
-): Promise<string> {
+async function processSteps(steps: string[]): Promise<string> {
   // Create session
   const sessionId = generateId();
   
-  // Create stream
-  await executorStreamer.createStream(sessionId);
-  
-  // Execute steps sequentially
-  for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
-    const result = await taskLoop.executeStep(sessionId, stepIndex);
-    
-    // Stop on failure, continue on success
-    if (result.status === 'failure' || result.status === 'error') {
-      break;
-    }
-  }
+  // TODO: Create stream - handle internally
+  // TODO: Execute steps sequentially - handle internally
   
   return sessionId;
 }

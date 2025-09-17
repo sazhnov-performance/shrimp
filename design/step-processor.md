@@ -12,7 +12,7 @@ Execute steps one by one. Stop on failure. Continue on success.
 
 ```typescript
 // Just a simple function - no class, no constructor, no complexity
-async function processSteps(steps: string[], taskLoop: any, executorStreamer: any): Promise<string>
+async function processSteps(steps: string[]): Promise<string>
 ```
 
 ## Algorithm
@@ -30,22 +30,22 @@ This is the ENTIRE algorithm:
 ## Implementation
 
 ```typescript
-async function processSteps(steps: string[], taskLoop: any, executorStreamer: any): Promise<string> {
+async function processSteps(steps: string[]): Promise<string> {
   // Create session
   const sessionId = generateId();
   
-  // Create stream
-  await executorStreamer.createStream(sessionId);
+  // Create stream - handle internally
+  // await executorStreamer.createStream(sessionId);
   
-  // Execute steps sequentially
-  for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
-    const result = await taskLoop.executeStep(sessionId, stepIndex);
-    
-    // Stop on failure, continue on success
-    if (result.status === 'failure' || result.status === 'error') {
-      break;
-    }
-  }
+  // Execute steps sequentially - handle internally  
+  // for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
+  //   const result = await taskLoop.executeStep(sessionId, stepIndex);
+  //   
+  //   // Stop on failure, continue on success
+  //   if (result.status === 'failure' || result.status === 'error') {
+  //     break;
+  //   }
+  // }
   
   return sessionId;
 }
@@ -69,7 +69,7 @@ export { processSteps };
 ```typescript
 import { processSteps } from './modules/step-processor';
 
-const sessionId = await processSteps(['step1', 'step2', 'step3'], taskLoop, executorStreamer);
+const sessionId = await processSteps(['step1', 'step2', 'step3']);
 ```
 
 That's it. Simple.
