@@ -36,11 +36,13 @@ This is the ENTIRE algorithm:
    - TaskLoop depends on context existing when calling `getStepPrompt()`
    - Without this, execution fails with "Context with ID does not exist"
 3. **Create Stream**: Create streaming session with same session ID  
-4. **Execute Steps**: For each step:
+4. **Create Executor Session**: Create executor session for browser automation
+5. **Return Session ID**: Return the session ID immediately after session setup
+6. **Execute Steps Asynchronously**: For each step (runs in background):
    - Call `taskLoop.executeStep(sessionId, stepIndex)`
    - If failure: STOP
    - If success: CONTINUE to next step
-5. **Return Session ID**: Return the session ID
+   - Clean up session resources when complete or on error
 
 ## Implementation (Singleton Pattern)
 
@@ -87,17 +89,33 @@ class StepProcessor implements IStepProcessor {
     // Create stream - handle internally
     await this.executorStreamer.createStream(sessionId);
     
-    // Execute steps sequentially - handle internally  
-    for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
-      const result = await this.taskLoop.executeStep(sessionId, stepIndex);
-      
-      // Stop on failure, continue on success
-      if (result.status === 'failure' || result.status === 'error') {
-        break;
-      }
-    }
+    // Create executor session - critical for browser automation
+    await this.executor.createSession(sessionId);
+    
+    // Return session ID immediately after session setup
+    // Execute steps asynchronously without blocking the return
+    this.executeStepsAsync(sessionId, steps);
     
     return sessionId;
+  }
+
+  private async executeStepsAsync(sessionId: string, steps: string[]): Promise<void> {
+    try {
+      // Execute steps sequentially - handle internally  
+      for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
+        const result = await this.taskLoop.executeStep(sessionId, stepIndex);
+        
+        // Stop on failure, continue on success
+        if (result.status === 'failure' || result.status === 'error') {
+          break;
+        }
+      }
+    } catch (error) {
+      // Log error but don't throw - this runs in background
+    } finally {
+      // Clean up session resources
+      await this.cleanupSession(sessionId);
+    }
   }
 
   private generateId(): string {

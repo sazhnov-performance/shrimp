@@ -12,13 +12,31 @@ const mockTaskLoop = {
   executeStep: jest.fn()
 };
 
+const mockExecutor = {
+  createSession: jest.fn(),
+  destroySession: jest.fn(),
+  sessionExists: jest.fn().mockReturnValue(true)
+};
+
+const mockPromptManager = {
+  init: jest.fn()
+};
+
 const mockGetExecutorStreamer = jest.fn(() => mockExecutorStreamer);
 const mockTaskLoopClass = {
   getInstance: jest.fn(() => mockTaskLoop)
 };
+const mockExecutorClass = {
+  getInstance: jest.fn(() => mockExecutor)
+};
+const mockPromptManagerClass = {
+  getInstance: jest.fn(() => mockPromptManager)
+};
 
 jest.mock('../../executor-streamer/index', () => mockGetExecutorStreamer);
 jest.mock('../../task-loop/index', () => mockTaskLoopClass);
+jest.mock('../../executor/index', () => ({ Executor: mockExecutorClass }));
+jest.mock('../../ai-prompt-manager/index', () => mockPromptManagerClass);
 
 import { StepProcessor } from '../index';
 import { StepProcessorConfig } from '../types';
@@ -31,6 +49,14 @@ describe('StepProcessor', () => {
     
     // Reset mocks
     jest.clearAllMocks();
+    
+    // Reset mock implementations
+    mockExecutorStreamer.createStream.mockReset();
+    mockTaskLoop.executeStep.mockReset();
+    mockExecutor.createSession.mockReset();
+    mockExecutor.destroySession.mockReset();
+    mockExecutor.sessionExists.mockReturnValue(true);
+    mockPromptManager.init.mockReset();
   });
 
   afterEach(() => {
@@ -107,20 +133,33 @@ describe('StepProcessor', () => {
         .mockResolvedValueOnce({ status: 'success', stepId: 2 });
 
       mockExecutorStreamer.createStream.mockResolvedValue(undefined);
+      mockExecutor.createSession.mockResolvedValue(undefined);
 
       const sessionId = await instance.processSteps(steps);
 
       // Verify session ID format
       expect(sessionId).toMatch(/^session-\d+-[a-z0-9]+$/);
 
+      // Verify prompt manager was initialized
+      expect(mockPromptManager.init).toHaveBeenCalledWith(sessionId, steps);
+
       // Verify stream was created
       expect(mockExecutorStreamer.createStream).toHaveBeenCalledWith(sessionId);
 
-      // Verify all steps were executed
+      // Verify executor session was created
+      expect(mockExecutor.createSession).toHaveBeenCalledWith(sessionId);
+
+      // Wait for async step execution to complete
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      // Verify all steps were executed asynchronously
       expect(mockTaskLoop.executeStep).toHaveBeenCalledTimes(3);
       expect(mockTaskLoop.executeStep).toHaveBeenNthCalledWith(1, sessionId, 0);
       expect(mockTaskLoop.executeStep).toHaveBeenNthCalledWith(2, sessionId, 1);
       expect(mockTaskLoop.executeStep).toHaveBeenNthCalledWith(3, sessionId, 2);
+
+      // Verify cleanup was called
+      expect(mockExecutor.destroySession).toHaveBeenCalledWith(sessionId);
     });
 
     it('should stop processing on first step failure', async () => {
@@ -131,6 +170,7 @@ describe('StepProcessor', () => {
         .mockResolvedValueOnce({ status: 'failure', stepId: 0 });
 
       mockExecutorStreamer.createStream.mockResolvedValue(undefined);
+      mockExecutor.createSession.mockResolvedValue(undefined);
 
       const sessionId = await instance.processSteps(steps);
 
@@ -139,6 +179,9 @@ describe('StepProcessor', () => {
 
       // Verify stream was created
       expect(mockExecutorStreamer.createStream).toHaveBeenCalledWith(sessionId);
+
+      // Wait for async step execution to complete
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       // Verify only first step was executed
       expect(mockTaskLoop.executeStep).toHaveBeenCalledTimes(1);
@@ -154,6 +197,7 @@ describe('StepProcessor', () => {
         .mockResolvedValueOnce({ status: 'error', stepId: 1, error: 'Something went wrong' });
 
       mockExecutorStreamer.createStream.mockResolvedValue(undefined);
+      mockExecutor.createSession.mockResolvedValue(undefined);
 
       const sessionId = await instance.processSteps(steps);
 
@@ -162,6 +206,9 @@ describe('StepProcessor', () => {
 
       // Verify stream was created
       expect(mockExecutorStreamer.createStream).toHaveBeenCalledWith(sessionId);
+
+      // Wait for async step execution to complete
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       // Verify only first two steps were executed
       expect(mockTaskLoop.executeStep).toHaveBeenCalledTimes(2);
@@ -173,6 +220,7 @@ describe('StepProcessor', () => {
       const steps: string[] = [];
       
       mockExecutorStreamer.createStream.mockResolvedValue(undefined);
+      mockExecutor.createSession.mockResolvedValue(undefined);
 
       const sessionId = await instance.processSteps(steps);
 
@@ -181,6 +229,9 @@ describe('StepProcessor', () => {
 
       // Verify stream was created
       expect(mockExecutorStreamer.createStream).toHaveBeenCalledWith(sessionId);
+
+      // Wait for async execution to complete
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       // Verify no steps were executed
       expect(mockTaskLoop.executeStep).toHaveBeenCalledTimes(0);
@@ -191,6 +242,7 @@ describe('StepProcessor', () => {
       
       mockTaskLoop.executeStep.mockResolvedValue({ status: 'success', stepId: 0 });
       mockExecutorStreamer.createStream.mockResolvedValue(undefined);
+      mockExecutor.createSession.mockResolvedValue(undefined);
 
       const sessionId = await instance.processSteps(steps);
 
@@ -199,6 +251,9 @@ describe('StepProcessor', () => {
 
       // Verify stream was created
       expect(mockExecutorStreamer.createStream).toHaveBeenCalledWith(sessionId);
+
+      // Wait for async execution to complete
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       // Verify single step was executed
       expect(mockTaskLoop.executeStep).toHaveBeenCalledTimes(1);
@@ -222,13 +277,11 @@ describe('StepProcessor', () => {
       
       mockExecutorStreamer.createStream.mockRejectedValue(new Error('Failed to create stream'));
 
-      const sessionId = await instance.processSteps(steps);
-
-      // Should still return session ID even if stream creation fails
-      expect(sessionId).toMatch(/^session-\d+-[a-z0-9]+$/);
+      // Now expects the error to be thrown since session setup fails
+      await expect(instance.processSteps(steps)).rejects.toThrow('Failed to create stream');
 
       // Verify createStream was called
-      expect(mockExecutorStreamer.createStream).toHaveBeenCalledWith(sessionId);
+      expect(mockExecutorStreamer.createStream).toHaveBeenCalledWith(expect.any(String));
 
       // Should not execute any steps if stream creation fails
       expect(mockTaskLoop.executeStep).toHaveBeenCalledTimes(0);
@@ -238,6 +291,7 @@ describe('StepProcessor', () => {
       const steps = ['step1', 'step2'];
       
       mockExecutorStreamer.createStream.mockResolvedValue(undefined);
+      mockExecutor.createSession.mockResolvedValue(undefined);
       mockTaskLoop.executeStep.mockRejectedValue(new Error('Task execution failed'));
 
       const sessionId = await instance.processSteps(steps);
@@ -248,6 +302,9 @@ describe('StepProcessor', () => {
       // Verify stream was created
       expect(mockExecutorStreamer.createStream).toHaveBeenCalledWith(sessionId);
 
+      // Wait for async execution to complete
+      await new Promise(resolve => setTimeout(resolve, 10));
+
       // Should attempt to execute first step
       expect(mockTaskLoop.executeStep).toHaveBeenCalledTimes(1);
       expect(mockTaskLoop.executeStep).toHaveBeenCalledWith(sessionId, 0);
@@ -257,8 +314,9 @@ describe('StepProcessor', () => {
       const steps = ['step1', 'step2', 'step3'];
       
       mockExecutorStreamer.createStream.mockResolvedValue(undefined);
+      mockExecutor.createSession.mockResolvedValue(undefined);
       
-      // First step throws error, but we catch it and continue
+      // First step throws error, which stops async execution
       mockTaskLoop.executeStep
         .mockRejectedValueOnce(new Error('First step failed'))
         .mockResolvedValueOnce({ status: 'success', stepId: 1 })
@@ -268,6 +326,9 @@ describe('StepProcessor', () => {
 
       // Should return session ID
       expect(sessionId).toMatch(/^session-\d+-[a-z0-9]+$/);
+
+      // Wait for async execution to complete
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       // Should attempt first step, then stop due to error
       expect(mockTaskLoop.executeStep).toHaveBeenCalledTimes(1);
@@ -303,6 +364,7 @@ describe('StepProcessor', () => {
     it('should generate unique session IDs', async () => {
       const instance = StepProcessor.getInstance();
       mockExecutorStreamer.createStream.mockResolvedValue(undefined);
+      mockExecutor.createSession.mockResolvedValue(undefined);
 
       const sessionId1 = await instance.processSteps(['step1']);
       const sessionId2 = await instance.processSteps(['step2']);
@@ -315,6 +377,7 @@ describe('StepProcessor', () => {
     it('should generate session IDs with correct format', async () => {
       const instance = StepProcessor.getInstance();
       mockExecutorStreamer.createStream.mockResolvedValue(undefined);
+      mockExecutor.createSession.mockResolvedValue(undefined);
 
       const sessionId = await instance.processSteps(['step1']);
 
@@ -336,6 +399,7 @@ describe('StepProcessor', () => {
       });
 
       mockExecutorStreamer.createStream.mockResolvedValue(undefined);
+      mockExecutor.createSession.mockResolvedValue(undefined);
       mockTaskLoop.executeStep.mockResolvedValue({ status: 'success', stepId: 0 });
 
       await instance.processSteps(['step1']);
@@ -353,6 +417,7 @@ describe('StepProcessor', () => {
       });
 
       mockExecutorStreamer.createStream.mockResolvedValue(undefined);
+      mockExecutor.createSession.mockResolvedValue(undefined);
       mockTaskLoop.executeStep.mockResolvedValue({ status: 'success', stepId: 0 });
 
       await instance.processSteps(['step1']);

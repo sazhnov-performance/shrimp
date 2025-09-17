@@ -26,6 +26,7 @@ export class StepProcessor implements IStepProcessor {
   private taskLoop: ITaskLoop;
   private promptManager: IAIPromptManager;
   private executor: IExecutor;
+  private activeSessions: Set<string> = new Set();
 
   private constructor(config: StepProcessorConfig = {}) {
     this.config = {
@@ -66,14 +67,16 @@ export class StepProcessor implements IStepProcessor {
    * Process steps sequentially 
    * This is the ENTIRE algorithm:
    * 1. Create Session: Generate unique session ID
-   * 2. Create Stream: Create streaming session with same session ID  
-   * 3. Execute Steps: For each step, call taskLoop.executeStep(sessionId, stepIndex)
+   * 2. Initialize AI Context: Initialize AI context with session ID and steps using AI Prompt Manager
+   * 3. Create Stream: Create streaming session with same session ID  
+   * 4. Create Executor Session: Create executor session for browser automation
+   * 5. Return Session ID: Return the session ID immediately after session setup
+   * 6. Execute Steps Asynchronously: For each step, call taskLoop.executeStep(sessionId, stepIndex)
    *    - If failure: STOP
    *    - If success: CONTINUE to next step
-   * 4. Return Session ID: Return the session ID
    * 
    * @param steps Array of step strings to execute
-   * @returns Promise<string> Session ID
+   * @returns Promise<string> Session ID (returned immediately after session setup)
    */
   async processSteps(steps: string[]): Promise<string> {
     // Create session
@@ -105,58 +108,97 @@ export class StepProcessor implements IStepProcessor {
         console.log(`[StepProcessor] Created executor session for session ${sessionId}`);
       }
       
+      // Return session ID immediately after session setup
+      // Execute steps asynchronously without blocking the return
+      this.executeStepsAsync(sessionId, steps);
+      
+      return sessionId;
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (this.config.enableLogging) {
+        console.error(`[StepProcessor] Error during session setup for session ${sessionId}: ${errorMessage}`);
+      }
+      
+      // Clean up on setup error
+      await this.cleanupSession(sessionId);
+      
+      // Re-throw error for caller to handle
+      throw error;
+    }
+  }
+
+  /**
+   * Execute steps asynchronously in the background
+   * @param sessionId Session ID
+   * @param steps Array of steps to execute
+   */
+  private async executeStepsAsync(sessionId: string, steps: string[]): Promise<void> {
+    let shouldCleanup = true;
+    
+    try {
+      if (this.config.enableLogging) {
+        console.log(`[StepProcessor] Starting async step execution for session ${sessionId}`);
+      }
+      
       // Execute steps sequentially - handle internally  
       for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
         if (this.config.enableLogging) {
           console.log(`[StepProcessor] Executing step ${stepIndex} for session ${sessionId}`);
         }
         
-        const result = await this.taskLoop.executeStep(sessionId, stepIndex);
-        
-        // Stop on failure, continue on success
-        if (result.status === 'failure' || result.status === 'error') {
-          if (this.config.enableLogging) {
-            console.log(`[StepProcessor] Step ${stepIndex} failed for session ${sessionId}. Status: ${result.status}. Stopping execution.`);
+        try {
+          const result = await this.taskLoop.executeStep(sessionId, stepIndex);
+          
+          // Stop on failure, continue on success
+          if (result.status === 'failure' || result.status === 'error') {
+            if (this.config.enableLogging) {
+              console.log(`[StepProcessor] Step ${stepIndex} failed for session ${sessionId}. Status: ${result.status}. Error: ${result.error}. Stopping execution.`);
+            }
+            break;
           }
+          
+          if (this.config.enableLogging) {
+            console.log(`[StepProcessor] Step ${stepIndex} completed successfully for session ${sessionId}. Continuing to next step.`);
+          }
+        } catch (stepError) {
+          const stepErrorMessage = stepError instanceof Error ? stepError.message : String(stepError);
+          if (this.config.enableLogging) {
+            console.error(`[StepProcessor] Error executing step ${stepIndex} for session ${sessionId}: ${stepErrorMessage}`);
+          }
+          
+          // On step execution error, we still want to cleanup
           break;
-        }
-        
-        if (this.config.enableLogging) {
-          console.log(`[StepProcessor] Step ${stepIndex} completed successfully for session ${sessionId}. Continuing to next step.`);
         }
       }
       
       if (this.config.enableLogging) {
-        console.log(`[StepProcessor] Step processing completed for session ${sessionId}`);
+        console.log(`[StepProcessor] Async step processing completed for session ${sessionId}`);
       }
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (this.config.enableLogging) {
-        console.error(`[StepProcessor] Error during step processing for session ${sessionId}: ${errorMessage}`);
+        console.error(`[StepProcessor] Error during async step processing for session ${sessionId}: ${errorMessage}`);
       }
-      // Clean up executor session on error
-      try {
-        if (this.executor.sessionExists(sessionId)) {
-          await this.executor.destroySession(sessionId);
-          if (this.config.enableLogging) {
-            console.log(`[StepProcessor] Cleaned up executor session for session ${sessionId} due to error`);
-          }
-        }
-      } catch (cleanupError) {
-        if (this.config.enableLogging) {
-          console.error(`[StepProcessor] Error cleaning up executor session ${sessionId}: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`);
-        }
-      }
-      // Still return the session ID even if there were errors
     }
     
-    // Clean up executor session after successful completion
+    // Only cleanup if we should (moved out of finally to prevent premature cleanup)
+    if (shouldCleanup) {
+      await this.cleanupSession(sessionId);
+    }
+  }
+
+  /**
+   * Clean up session resources
+   * @param sessionId Session ID to clean up
+   */
+  private async cleanupSession(sessionId: string): Promise<void> {
     try {
       if (this.executor.sessionExists(sessionId)) {
         await this.executor.destroySession(sessionId);
         if (this.config.enableLogging) {
-          console.log(`[StepProcessor] Cleaned up executor session for session ${sessionId} after completion`);
+          console.log(`[StepProcessor] Cleaned up executor session for session ${sessionId}`);
         }
       }
     } catch (cleanupError) {
@@ -164,8 +206,6 @@ export class StepProcessor implements IStepProcessor {
         console.error(`[StepProcessor] Error cleaning up executor session ${sessionId}: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`);
       }
     }
-    
-    return sessionId;
   }
 
   /**
