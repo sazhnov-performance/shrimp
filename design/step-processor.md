@@ -31,24 +31,30 @@ interface StepProcessorConfig {
 This is the ENTIRE algorithm:
 
 1. **Create Session**: Generate unique session ID
-2. **Create Stream**: Create streaming session with same session ID  
-3. **Execute Steps**: For each step:
+2. **Initialize AI Context**: Initialize AI context with session ID and steps using AI Prompt Manager
+   - **CRITICAL**: This step is required before TaskLoop execution
+   - TaskLoop depends on context existing when calling `getStepPrompt()`
+   - Without this, execution fails with "Context with ID does not exist"
+3. **Create Stream**: Create streaming session with same session ID  
+4. **Execute Steps**: For each step:
    - Call `taskLoop.executeStep(sessionId, stepIndex)`
    - If failure: STOP
    - If success: CONTINUE to next step
-4. **Return Session ID**: Return the session ID
+5. **Return Session ID**: Return the session ID
 
 ## Implementation (Singleton Pattern)
 
 ```typescript
 import { IExecutorStreamer } from '../executor-streamer';
 import { ITaskLoop } from '../task-loop';
+import { IAIPromptManager } from '../ai-prompt-manager';
 
 class StepProcessor implements IStepProcessor {
   private static instance: StepProcessor | null = null;
   private config: StepProcessorConfig;
   private executorStreamer: IExecutorStreamer;
   private taskLoop: ITaskLoop;
+  private promptManager: IAIPromptManager;
 
   private constructor(config: StepProcessorConfig = {}) {
     this.config = {
@@ -61,6 +67,7 @@ class StepProcessor implements IStepProcessor {
     // Resolve dependencies internally using singleton instances
     this.executorStreamer = IExecutorStreamer.getInstance();
     this.taskLoop = ITaskLoop.getInstance();
+    this.promptManager = IAIPromptManager.getInstance();
   }
 
   static getInstance(config?: StepProcessorConfig): IStepProcessor {
@@ -73,6 +80,9 @@ class StepProcessor implements IStepProcessor {
   async processSteps(steps: string[]): Promise<string> {
     // Create session
     const sessionId = this.generateId();
+    
+    // Initialize AI context with steps - critical for task loop execution
+    this.promptManager.init(sessionId, steps);
     
     // Create stream - handle internally
     await this.executorStreamer.createStream(sessionId);
