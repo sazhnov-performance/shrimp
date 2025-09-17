@@ -55,7 +55,7 @@ interface AIResponse {
     parameters: Record<string, any>;
   };
   reasoning: string;
-  confidence: number;
+  confidence: 'LOW' | 'MEDIUM' | 'HIGH';
   flowControl: 'continue' | 'stop_success' | 'stop_failure';
 }
 ```
