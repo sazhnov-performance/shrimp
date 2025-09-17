@@ -1,332 +1,234 @@
 /**
- * Event Publisher Implementation
- * Handles event publishing, validation, and filtering
+ * Event Publisher implementation for Executor Streamer
+ * Handles event publishing functionality and validation
  */
 
-import { v4 as uuidv4 } from 'uuid';
-import {
-  StreamEvent,
-  StreamEventType,
-  StreamEventData,
-  CommandAction,
-  CommandStatus,
-  ScreenshotInfo,
-  VariableInfo
-} from '../../../types/shared-types';
-import {
+import { 
   IEventPublisher,
-  StreamClient,
-  StreamFilter,
-  ErrorContext,
-  EventValidationResult
+  ExecutorStreamerConfig,
+  ExecutorStreamerError,
+  EXECUTOR_STREAMER_ERRORS 
 } from './types';
+import { StreamManager } from './stream-manager';
 
+/**
+ * EventPublisher class handles event publishing and validation
+ */
 export class EventPublisher implements IEventPublisher {
-  private eventCallback?: (event: StreamEvent) => Promise<void>;
-  
-  // Set callback for when events are published
-  setEventCallback(callback: (event: StreamEvent) => Promise<void>): void {
-    this.eventCallback = callback;
-  }
-  
-  // Core publishing methods
-  async publishReasoning(
-    sessionId: string, 
-    thought: string, 
-    confidence: number, 
-    reasoningType: string, 
-    context?: Record<string, any>
-  ): Promise<void> {
-    const event: StreamEvent = {
-      id: uuidv4(),
-      type: StreamEventType.AI_REASONING,
-      timestamp: new Date(),
-      sessionId,
-      data: {
-        reasoning: {
-          thought,
-          confidence,
-          reasoningType: reasoningType as any,
-          context
-        }
-      }
-    };
+  private streamManager: StreamManager;
+  private config: ExecutorStreamerConfig;
 
-    await this.publishEvent(event);
+  constructor(streamManager: StreamManager, config: ExecutorStreamerConfig) {
+    this.streamManager = streamManager;
+    this.config = config;
   }
 
-  async publishCommandStarted(
-    sessionId: string, 
-    commandName: string, 
-    action: CommandAction, 
-    parameters: Record<string, any>
-  ): Promise<void> {
-    const event: StreamEvent = {
-      id: uuidv4(),
-      type: StreamEventType.COMMAND_STARTED,
-      timestamp: new Date(),
-      sessionId,
-      data: {
-        command: {
-          commandId: commandName,
-          action,
-          parameters: parameters as any,
-          status: CommandStatus.EXECUTING
-        }
-      }
-    };
-
-    await this.publishEvent(event);
-  }
-
-  async publishCommandCompleted(
-    sessionId: string, 
-    commandName: string, 
-    result: Record<string, any>, 
-    duration: number
-  ): Promise<void> {
-    const event: StreamEvent = {
-      id: uuidv4(),
-      type: StreamEventType.COMMAND_COMPLETED,
-      timestamp: new Date(),
-      sessionId,
-      data: {
-        command: {
-          commandId: commandName,
-          action: CommandAction.CLICK_ELEMENT, // This would need to be tracked from the original command
-          parameters: {},
-          status: CommandStatus.COMPLETED,
-          duration,
-          result: result as any
-        }
-      }
-    };
-
-    await this.publishEvent(event);
-  }
-
-  async publishCommandFailed(
-    sessionId: string, 
-    commandName: string, 
-    error: ErrorContext, 
-    duration: number
-  ): Promise<void> {
-    const event: StreamEvent = {
-      id: uuidv4(),
-      type: StreamEventType.COMMAND_FAILED,
-      timestamp: new Date(),
-      sessionId,
-      data: {
-        command: {
-          commandId: commandName,
-          action: CommandAction.CLICK_ELEMENT, // This would need to be tracked from the original command
-          parameters: {},
-          status: CommandStatus.FAILED,
-          duration
-        },
-        error
-      }
-    };
-
-    await this.publishEvent(event);
-  }
-
-  async publishScreenshot(sessionId: string, screenshotInfo: ScreenshotInfo): Promise<void> {
-    const event: StreamEvent = {
-      id: uuidv4(),
-      type: StreamEventType.SCREENSHOT_CAPTURED,
-      timestamp: new Date(),
-      sessionId,
-      data: {
-        screenshot: screenshotInfo
-      }
-    };
-
-    await this.publishEvent(event);
-  }
-
-  async publishVariableUpdate(
-    sessionId: string, 
-    name: string, 
-    value: string, 
-    previousValue?: string
-  ): Promise<void> {
-    const variableInfo: VariableInfo = {
-      name,
-      value,
-      previousValue,
-      timestamp: new Date(),
-      sessionId,
-      source: 'extracted'
-    };
-
-    const event: StreamEvent = {
-      id: uuidv4(),
-      type: StreamEventType.VARIABLE_UPDATED,
-      timestamp: new Date(),
-      sessionId,
-      data: {
-        variable: variableInfo
-      }
-    };
-
-    await this.publishEvent(event);
-  }
-
-  async publishStatus(
-    sessionId: string, 
-    type: string, 
-    status: string, 
-    message: string
-  ): Promise<void> {
-    const event: StreamEvent = {
-      id: uuidv4(),
-      type: StreamEventType.SESSION_STATUS,
-      timestamp: new Date(),
-      sessionId,
-      data: {
-        message,
-        details: { type, status }
-      }
-    };
-
-    await this.publishEvent(event);
-  }
-
-  async publishError(sessionId: string, error: ErrorContext): Promise<void> {
-    const event: StreamEvent = {
-      id: uuidv4(),
-      type: StreamEventType.ERROR_OCCURRED,
-      timestamp: new Date(),
-      sessionId,
-      data: {
-        error
-      }
-    };
-
-    await this.publishEvent(event);
-  }
-
-  // Private helper to handle actual event publishing
-  private async publishEvent(event: StreamEvent): Promise<void> {
-    // Validate the event
-    const validation = this.validateEvent(event);
-    if (!validation.isValid) {
-      throw new Error(`Invalid event: ${validation.errors.join(', ')}`);
-    }
-    
-    // Call the callback to handle storage and broadcasting
-    if (this.eventCallback) {
-      await this.eventCallback(event);
-    }
-  }
-
-  // Event validation
-  validateEvent(event: StreamEvent): EventValidationResult {
-    const errors: string[] = [];
-    const warnings: string[] = [];
-
-    // Validate required fields
-    if (!event.id || event.id.trim() === '') {
-      errors.push('Event ID is required and cannot be empty');
+  /**
+   * Publishes an event to the specified stream
+   * @param streamId Target stream ID
+   * @param eventData Event data to publish
+   * @throws ExecutorStreamerError if stream not found or event data invalid
+   */
+  async publishEvent(streamId: string, eventData: string): Promise<void> {
+    // Validate stream exists
+    if (!this.streamManager.streamExists(streamId)) {
+      throw new ExecutorStreamerError(
+        EXECUTOR_STREAMER_ERRORS.STREAM_NOT_FOUND,
+        `Stream ${streamId} not found`,
+        streamId
+      );
     }
 
-    if (!event.sessionId || event.sessionId.trim() === '') {
-      errors.push('Session ID is required and cannot be empty');
+    // Validate event data
+    if (!this.validateEventData(eventData)) {
+      throw new ExecutorStreamerError(
+        EXECUTOR_STREAMER_ERRORS.INVALID_STREAM_ID,
+        `Invalid event data provided`,
+        streamId
+      );
     }
 
-    if (!Object.values(StreamEventType).includes(event.type)) {
-      errors.push(`Invalid event type: ${event.type}`);
-    }
+    // Format the event data
+    const formattedEvent = this.formatEvent(eventData);
 
-    if (!(event.timestamp instanceof Date)) {
-      errors.push('Timestamp must be a Date object');
-    }
-
-    if (!event.data) {
-      errors.push('Event data is required');
-    }
-
-    // Check for future timestamps (suspicious)
-    if (event.timestamp instanceof Date) {
-      const now = new Date();
-      const timeDiff = event.timestamp.getTime() - now.getTime();
-      if (timeDiff > 60000) { // More than 1 minute in the future
-        warnings.push('Event timestamp is significantly in the future');
-      }
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings
-    };
+    // Add event to stream
+    await this.streamManager.addEvent(streamId, formattedEvent);
   }
 
-  // Event filtering
-  filterEventsForClient(events: StreamEvent[], client: StreamClient): StreamEvent[] {
-    if (!client.filters || client.filters.length === 0) {
-      return events;
+  /**
+   * Validates event data before publishing
+   * @param eventData Event data to validate
+   * @returns true if event data is valid
+   */
+  validateEventData(eventData: string): boolean {
+    // Basic validation rules
+    if (typeof eventData !== 'string') {
+      return false;
     }
 
-    return events.filter(event => {
-      // OR logic between filters - event passes if it matches ANY filter
-      return client.filters!.some(filter => this.shouldEventPassFilter(event, filter));
-    });
-  }
+    if (eventData.length === 0) {
+      return false;
+    }
 
-  shouldEventPassFilter(event: StreamEvent, filter: StreamFilter): boolean {
+    // Check maximum event size (reasonable limit to prevent memory issues)
+    const maxEventSize = 10 * 1024; // 10KB per event
+    if (eventData.length > maxEventSize) {
+      return false;
+    }
+
+    // Validate that it's valid UTF-8 string (no null bytes or control characters)
     try {
-      // Event type filter
-      if (filter.eventTypes && filter.eventTypes.length > 0) {
-        if (!filter.eventTypes.includes(event.type)) {
-          return false;
-        }
+      // Check for null bytes
+      if (eventData.includes('\0')) {
+        return false;
       }
 
-      // Session ID filter
-      if (filter.sessionIds && filter.sessionIds.length > 0) {
-        if (!filter.sessionIds.includes(event.sessionId)) {
-          return false;
-        }
-      }
-
-      // Time range filter
-      if (filter.timeRange) {
-        const eventTime = event.timestamp.getTime();
-        const startTime = filter.timeRange.start.getTime();
-        const endTime = filter.timeRange.end.getTime();
-        
-        if (eventTime < startTime || eventTime > endTime) {
-          return false;
-        }
-      }
-
-      // Custom filter
-      if (filter.customFilter) {
-        return filter.customFilter(event);
+      // Check for problematic control characters (except newlines, tabs, carriage returns)
+      const hasInvalidControlChars = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(eventData);
+      if (hasInvalidControlChars) {
+        return false;
       }
 
       return true;
     } catch (error) {
-      // Filter errors should not crash the system
-      console.warn('Error in event filter:', error);
       return false;
     }
   }
 
-  // Serialization
-  serializeEvent(event: StreamEvent): string {
-    try {
-      return JSON.stringify(event, (key, value) => {
-        // Convert Date objects to ISO strings
-        if (value instanceof Date) {
-          return value.toISOString();
-        }
-        return value;
-      });
-    } catch (error) {
-      throw new Error(`Failed to serialize event: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  /**
+   * Formats event data with timestamp and metadata
+   * @param eventData Raw event data
+   * @returns Formatted event string
+   */
+  formatEvent(eventData: string): string {
+    const timestamp = new Date().toISOString();
+    
+    // Create a structured event format
+    const formattedEvent = {
+      timestamp,
+      data: eventData,
+      id: this.generateEventId()
+    };
+
+    return JSON.stringify(formattedEvent);
+  }
+
+  /**
+   * Generates a unique event ID
+   * @returns Unique event identifier
+   */
+  private generateEventId(): string {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 15);
+    return `evt_${timestamp}_${random}`;
+  }
+
+  /**
+   * Batch publishes multiple events to a stream
+   * @param streamId Target stream ID
+   * @param events Array of event data strings
+   * @throws ExecutorStreamerError if stream not found or any event data invalid
+   */
+  async publishBatchEvents(streamId: string, events: string[]): Promise<void> {
+    // Validate stream exists
+    if (!this.streamManager.streamExists(streamId)) {
+      throw new ExecutorStreamerError(
+        EXECUTOR_STREAMER_ERRORS.STREAM_NOT_FOUND,
+        `Stream ${streamId} not found`,
+        streamId
+      );
     }
+
+    // Validate all events first
+    for (let i = 0; i < events.length; i++) {
+      if (!this.validateEventData(events[i])) {
+        throw new ExecutorStreamerError(
+          EXECUTOR_STREAMER_ERRORS.INVALID_STREAM_ID,
+          `Invalid event data at index ${i}`,
+          streamId
+        );
+      }
+    }
+
+    // Publish all events
+    for (const eventData of events) {
+      const formattedEvent = this.formatEvent(eventData);
+      await this.streamManager.addEvent(streamId, formattedEvent);
+    }
+  }
+
+  /**
+   * Publishes a structured event with additional metadata
+   * @param streamId Target stream ID
+   * @param eventType Type of the event
+   * @param eventData Event data
+   * @param metadata Additional metadata
+   * @throws ExecutorStreamerError if stream not found or event data invalid
+   */
+  async publishStructuredEvent(
+    streamId: string, 
+    eventType: string, 
+    eventData: string, 
+    metadata?: Record<string, any>
+  ): Promise<void> {
+    // Validate stream exists
+    if (!this.streamManager.streamExists(streamId)) {
+      throw new ExecutorStreamerError(
+        EXECUTOR_STREAMER_ERRORS.STREAM_NOT_FOUND,
+        `Stream ${streamId} not found`,
+        streamId
+      );
+    }
+
+    // Create structured event
+    const structuredEvent = {
+      type: eventType,
+      data: eventData,
+      metadata: metadata || {},
+      timestamp: new Date().toISOString(),
+      id: this.generateEventId()
+    };
+
+    const eventString = JSON.stringify(structuredEvent);
+
+    // Validate the serialized event
+    if (!this.validateEventData(eventString)) {
+      throw new ExecutorStreamerError(
+        EXECUTOR_STREAMER_ERRORS.INVALID_STREAM_ID,
+        `Invalid structured event data`,
+        streamId
+      );
+    }
+
+    // Add event to stream (already formatted as JSON)
+    await this.streamManager.addEvent(streamId, eventString);
+  }
+
+  /**
+   * Gets event publishing statistics for a stream
+   * @param streamId Target stream ID
+   * @returns Publishing statistics
+   */
+  async getPublishingStats(streamId: string): Promise<{
+    totalEvents: number;
+    lastPublished: Date;
+    streamAge: number;
+  }> {
+    if (!this.streamManager.streamExists(streamId)) {
+      throw new ExecutorStreamerError(
+        EXECUTOR_STREAMER_ERRORS.STREAM_NOT_FOUND,
+        `Stream ${streamId} not found`,
+        streamId
+      );
+    }
+
+    const metadata = this.streamManager.getStreamMetadata(streamId);
+    const now = new Date();
+    
+    return {
+      totalEvents: metadata.eventCount,
+      lastPublished: metadata.lastAccessedAt,
+      streamAge: now.getTime() - metadata.createdAt.getTime()
+    };
   }
 }

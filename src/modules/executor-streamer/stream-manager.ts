@@ -1,361 +1,265 @@
 /**
- * Stream Manager Implementation
- * Manages stream sessions and client connections
+ * Stream Manager implementation for Executor Streamer
+ * Handles core stream storage and operations
  */
 
-import { v4 as uuidv4 } from 'uuid';
-import {
-  SessionStatus,
-  SessionLifecycleCallbacks,
-  SessionManagerHealth,
-  ModuleSessionInfo,
-  ModuleSessionConfig
-} from '../../../types/shared-types';
-import {
-  IStreamManager,
-  StreamInfo,
-  StreamConfig,
-  StreamClient,
-  ExecutorStreamerConfig,
-  StreamManagerStats
+import { 
+  IStreamManager, 
+  ExecutorStreamerConfig, 
+  ExecutorStreamerError,
+  EXECUTOR_STREAMER_ERRORS,
+  StreamMetadata 
 } from './types';
 
-export class StreamManager implements IStreamManager {
-  public readonly moduleId = 'executor-streamer';
-  
-  private sessions = new Map<string, ModuleSessionInfo>();
-  private streams = new Map<string, StreamInfo>();
-  private config: ExecutorStreamerConfig;
-  private lifecycleCallbacks?: SessionLifecycleCallbacks;
-  private startTime = new Date();
+/**
+ * Internal stream data structure
+ */
+interface StreamData {
+  events: string[];
+  metadata: StreamMetadata;
+}
 
-  constructor(config: ExecutorStreamerConfig) {
-    this.config = { ...config };
-  }
+  /**
+   * StreamManager class handles the core stream storage and queue operations
+   */
+  export class StreamManager implements IStreamManager {
+    private streams: Map<string, StreamData> = new Map();
+    private config: ExecutorStreamerConfig;
+    private cleanupTimer?: NodeJS.Timeout;
 
-  // Session Management (ISessionManager implementation)
-  async createSession(workflowSessionId: string, config?: ModuleSessionConfig): Promise<string> {
-    if (this.sessions.has(workflowSessionId)) {
-      throw new Error('Stream session already exists');
+    constructor(config: ExecutorStreamerConfig) {
+      this.config = config;
+      this.startCleanupTimer();
     }
 
-    const moduleSessionId = uuidv4();
+  /**
+   * Creates a new event stream with the provided ID
+   * @param streamId Unique identifier for the stream
+   * @throws ExecutorStreamerError if stream already exists or invalid ID
+   */
+  async createStream(streamId: string): Promise<void> {
+    if (!this.isValidStreamId(streamId)) {
+      throw new ExecutorStreamerError(
+        EXECUTOR_STREAMER_ERRORS.INVALID_STREAM_ID,
+        `Invalid stream ID: ${streamId}`,
+        streamId
+      );
+    }
+
+    if (this.streams.has(streamId)) {
+      throw new ExecutorStreamerError(
+        EXECUTOR_STREAMER_ERRORS.STREAM_ALREADY_EXISTS,
+        `Stream ${streamId} already exists`,
+        streamId
+      );
+    }
+
+    // Check if we've reached the maximum number of streams
+    if (this.streams.size >= this.config.maxStreams) {
+      throw new ExecutorStreamerError(
+        EXECUTOR_STREAMER_ERRORS.INVALID_STREAM_ID,
+        `Maximum number of streams (${this.config.maxStreams}) reached`,
+        streamId
+      );
+    }
+
     const now = new Date();
-    
-    const sessionInfo: ModuleSessionInfo = {
-      moduleId: this.moduleId,
-      sessionId: moduleSessionId,
-      linkedWorkflowSessionId: workflowSessionId,
-      status: SessionStatus.ACTIVE,
-      createdAt: now,
-      lastActivity: now,
-      metadata: config?.metadata
-    };
-
-    this.sessions.set(workflowSessionId, sessionInfo);
-
-    // Also create a stream for this session (as expected by tests)
-    if (!this.streams.has(workflowSessionId)) {
-      const streamId = uuidv4();
-      const streamInfo: StreamInfo = {
-        streamId,
-        sessionId: workflowSessionId,
-        isActive: true,
-        clients: [],
-        history: [],
-        config: { ...this.config.defaultStreamConfig },
+    this.streams.set(streamId, {
+      events: [],
+      metadata: {
+        id: streamId,
         createdAt: now,
-        lastActivity: now
-      };
-      this.streams.set(workflowSessionId, streamInfo);
-    }
-
-    // Call lifecycle callback
-    if (this.lifecycleCallbacks?.onSessionCreated) {
-      try {
-        await this.lifecycleCallbacks.onSessionCreated(this.moduleId, workflowSessionId, moduleSessionId);
-      } catch (error) {
-        // Log but don't fail session creation
-        console.error('Error in onSessionCreated callback:', error);
+        lastAccessedAt: now,
+        eventCount: 0
       }
-    }
-
-    return moduleSessionId;
+    });
   }
 
-  async destroySession(workflowSessionId: string): Promise<void> {
-    const session = this.sessions.get(workflowSessionId);
-    if (!session) {
-      return; // Gracefully handle non-existent sessions
-    }
-
-    // Destroy associated stream if exists
-    const stream = this.streams.get(workflowSessionId);
-    if (stream) {
-      // Disconnect all clients
-      for (const client of stream.clients) {
-        try {
-          if ('close' in client.connection) {
-            client.connection.close();
-          } else if ('end' in client.connection) {
-            client.connection.end();
-          }
-        } catch (error) {
-          // Ignore client disconnect errors during cleanup
-          console.warn('Error disconnecting client during session destruction:', error);
-        }
-      }
-      this.streams.delete(workflowSessionId);
-    }
-
-    this.sessions.delete(workflowSessionId);
-
-    // Call lifecycle callback
-    if (this.lifecycleCallbacks?.onSessionDestroyed) {
-      try {
-        await this.lifecycleCallbacks.onSessionDestroyed(this.moduleId, workflowSessionId);
-      } catch (error) {
-        console.error('Error in onSessionDestroyed callback:', error);
-      }
-    }
+  /**
+   * Deletes a stream and all its events
+   * @param streamId Stream identifier to delete
+   */
+  async deleteStream(streamId: string): Promise<void> {
+    this.streams.delete(streamId);
   }
 
-  getSession(workflowSessionId: string): ModuleSessionInfo | null {
-    return this.sessions.get(workflowSessionId) || null;
+  /**
+   * Checks if a stream exists
+   * @param streamId Stream identifier to check
+   * @returns true if stream exists
+   */
+  streamExists(streamId: string): boolean {
+    return this.streams.has(streamId);
   }
 
-  sessionExists(workflowSessionId: string): boolean {
-    return this.sessions.has(workflowSessionId);
+  /**
+   * Gets all current stream IDs
+   * @returns Array of stream IDs
+   */
+  getStreamIds(): string[] {
+    return Array.from(this.streams.keys());
   }
 
-  async updateSessionStatus(workflowSessionId: string, status: SessionStatus): Promise<void> {
-    const session = this.sessions.get(workflowSessionId);
-    if (!session) {
-      throw new Error('Stream session not found');
-    }
-
-    const oldStatus = session.status;
-    session.status = status;
-    session.lastActivity = new Date();
-
-    // Call lifecycle callback
-    if (this.lifecycleCallbacks?.onSessionStatusChanged) {
-      try {
-        await this.lifecycleCallbacks.onSessionStatusChanged(this.moduleId, workflowSessionId, oldStatus, status);
-      } catch (error) {
-        console.error('Error in onSessionStatusChanged callback:', error);
-      }
-    }
+  /**
+   * Gets the current number of streams
+   * @returns Number of active streams
+   */
+  getStreamCount(): number {
+    return this.streams.size;
   }
 
-  getSessionStatus(workflowSessionId: string): SessionStatus | null {
-    const session = this.sessions.get(workflowSessionId);
-    return session?.status || null;
-  }
-
-  async recordActivity(workflowSessionId: string): Promise<void> {
-    const session = this.sessions.get(workflowSessionId);
-    if (session) {
-      session.lastActivity = new Date();
-    }
-  }
-
-  getLastActivity(workflowSessionId: string): Date | null {
-    const session = this.sessions.get(workflowSessionId);
-    return session?.lastActivity || null;
-  }
-
-  setLifecycleCallbacks(callbacks: SessionLifecycleCallbacks): void {
-    this.lifecycleCallbacks = callbacks;
-  }
-
-  async healthCheck(): Promise<SessionManagerHealth> {
-    const now = new Date();
-    const errors: any[] = [];
+  /**
+   * Adds an event to the specified stream
+   * @param streamId Target stream ID
+   * @param eventData Event data to add
+   * @throws ExecutorStreamerError if stream not found
+   */
+  async addEvent(streamId: string, eventData: string): Promise<void> {
+    const streamData = this.getStreamData(streamId);
     
-    // Check for stale streams (no activity for 15 minutes)
-    const staleThreshold = 15 * 60 * 1000;
-    for (const [workflowSessionId, stream] of this.streams) {
-      const timeSinceActivity = now.getTime() - stream.lastActivity.getTime();
-      if (timeSinceActivity > staleThreshold) {
-        errors.push({
-          sessionId: workflowSessionId,
-          error: 'Session appears stale'
-        });
-      }
+    // Check if we've reached the maximum events per stream
+    if (streamData.events.length >= this.config.maxEventsPerStream) {
+      // Remove oldest event to make room (FIFO)
+      streamData.events.shift();
     }
 
-    // Check for stale clients (no ping for 5 minutes) 
-    const staleClientThreshold = 5 * 60 * 1000;
-    for (const [workflowSessionId, stream] of this.streams) {
-      const staleClients = stream.clients.filter(client => {
-        const timeSinceLastPing = now.getTime() - client.lastPing.getTime();
-        return timeSinceLastPing > staleClientThreshold;
-      });
-      
-      if (staleClients.length > 0) {
-        errors.push({
-          sessionId: workflowSessionId,
-          error: 'Stale clients detected',
-          staleClientsCount: staleClients.length
-        });
-      }
-    }
-
-    return {
-      moduleId: this.moduleId,
-      isHealthy: errors.length === 0,
-      activeSessions: Array.from(this.sessions.values()).filter(s => s.status === SessionStatus.ACTIVE).length,
-      totalSessions: this.sessions.size,
-      errors,
-      lastHealthCheck: now
-    };
+    streamData.events.push(eventData);
+    streamData.metadata.eventCount++;
+    streamData.metadata.lastAccessedAt = new Date();
   }
 
-  // Stream-specific operations
-  async createStream(workflowSessionId: string, config?: StreamConfig): Promise<string> {
-    // Don't throw error if stream already exists, just return existing stream ID
-    const existingStream = this.streams.get(workflowSessionId);
-    if (existingStream) {
-      // If custom config is provided, update the existing stream config
-      if (config) {
-        existingStream.config = { ...config };
-      }
-      return existingStream.streamId;
-    }
-
-    // Create session if it doesn't exist (but do it AFTER checking for existing stream)
-    if (!this.sessions.has(workflowSessionId)) {
-      await this.createSession(workflowSessionId);
-      // Remove the auto-created stream since we want to create it with custom config
-      this.streams.delete(workflowSessionId);
-    }
-
-    const streamId = uuidv4();
-    const now = new Date();
+  /**
+   * Extracts the last (most recent) event from the queue
+   * @param streamId Target stream ID
+   * @returns The last event or null if queue is empty
+   * @throws ExecutorStreamerError if stream not found
+   */
+  async extractLastEvent(streamId: string): Promise<string | null> {
+    const streamData = this.getStreamData(streamId);
+    streamData.metadata.lastAccessedAt = new Date();
     
-    const streamConfig = config || this.config.defaultStreamConfig;
+    return streamData.events.pop() || null;
+  }
+
+  /**
+   * Extracts all events from the queue in chronological order
+   * @param streamId Target stream ID
+   * @returns Array of all events (chronological order)
+   * @throws ExecutorStreamerError if stream not found
+   */
+  async extractAllEvents(streamId: string): Promise<string[]> {
+    const streamData = this.getStreamData(streamId);
+    streamData.metadata.lastAccessedAt = new Date();
     
-    const streamInfo: StreamInfo = {
-      streamId,
-      sessionId: workflowSessionId,
-      isActive: true,
-      clients: [],
-      history: [],
-      config: { ...streamConfig },
-      createdAt: now,
-      lastActivity: now
-    };
-
-    this.streams.set(workflowSessionId, streamInfo);
-    return streamId;
-  }
-
-  async destroyStream(workflowSessionId: string): Promise<void> {
-    const stream = this.streams.get(workflowSessionId);
-    if (!stream) {
-      return;
-    }
-
-    // Disconnect all clients
-    for (const client of stream.clients) {
-      try {
-        if ('close' in client.connection) {
-          client.connection.close();
-        } else if ('end' in client.connection) {
-          client.connection.end();
-        }
-      } catch (error) {
-        console.warn('Error disconnecting client during stream destruction:', error);
-      }
-    }
-
-    this.streams.delete(workflowSessionId);
-  }
-
-  getStream(workflowSessionId: string): StreamInfo | null {
-    return this.streams.get(workflowSessionId) || null;
-  }
-
-  listActiveStreams(): string[] {
-    const activeStreams: string[] = [];
-    for (const [workflowSessionId, session] of this.sessions) {
-      if (session.status === SessionStatus.ACTIVE || session.status === SessionStatus.BUSY) {
-        if (this.streams.has(workflowSessionId)) {
-          activeStreams.push(workflowSessionId);
-        }
-      }
-    }
-    return activeStreams;
-  }
-
-  // Client management
-  async attachClient(workflowSessionId: string, client: StreamClient): Promise<void> {
-    const stream = this.streams.get(workflowSessionId);
-    if (!stream) {
-      throw new Error('Stream session not found');
-    }
-
-    // Check client limit
-    if (stream.clients.length >= stream.config.maxClients) {
-      throw new Error('Maximum clients limit reached');
-    }
-
-    stream.clients.push(client);
-    stream.lastActivity = new Date();
-  }
-
-  async detachClient(workflowSessionId: string, clientId: string): Promise<void> {
-    const stream = this.streams.get(workflowSessionId);
-    if (!stream) {
-      return; // Gracefully handle non-existent stream
-    }
-
-    const clientIndex = stream.clients.findIndex(c => c.id === clientId);
-    if (clientIndex >= 0) {
-      stream.clients.splice(clientIndex, 1);
-      stream.lastActivity = new Date();
-    }
-  }
-
-  // Configuration
-  updateConfig(config: ExecutorStreamerConfig): void {
-    this.config = { ...config };
-  }
-
-  getConfig(): ExecutorStreamerConfig {
-    // Return deep copy to prevent external modifications
-    return JSON.parse(JSON.stringify(this.config));
-  }
-
-  // Statistics
-  getStats(): StreamManagerStats {
-    const activeSessions = Array.from(this.sessions.values()).filter(
-      s => s.status === SessionStatus.ACTIVE || s.status === SessionStatus.BUSY
-    ).length;
+    const events = [...streamData.events]; // Copy events in chronological order
+    streamData.events.length = 0; // Clear the queue
     
-    const totalClients = Array.from(this.streams.values()).reduce(
-      (total, stream) => total + stream.clients.length, 0
-    );
-
-    const averageClientsPerStream = this.streams.size > 0 ? totalClients / this.streams.size : 0;
-    const uptime = Date.now() - this.startTime.getTime();
-
-    return {
-      totalSessions: this.sessions.size,
-      activeSessions,
-      totalClients,
-      averageClientsPerStream,
-      uptime
-    };
+    return events;
   }
 
-  // Shutdown
-  async shutdown(): Promise<void> {
-    // Destroy all sessions and streams
-    const sessionIds = Array.from(this.sessions.keys());
-    for (const sessionId of sessionIds) {
-      await this.destroySession(sessionId);
+  /**
+   * Gets all events without removing them (read-only)
+   * @param streamId Target stream ID
+   * @returns Array of all events (chronological order)
+   * @throws ExecutorStreamerError if stream not found
+   */
+  async getEvents(streamId: string): Promise<string[]> {
+    const streamData = this.getStreamData(streamId);
+    streamData.metadata.lastAccessedAt = new Date();
+    
+    return [...streamData.events]; // Return copy to prevent external modification
+  }
+
+  /**
+   * Checks if the stream has any events
+   * @param streamId Target stream ID
+   * @returns true if stream has events
+   * @throws ExecutorStreamerError if stream not found
+   */
+  async hasEvents(streamId: string): Promise<boolean> {
+    const streamData = this.getStreamData(streamId);
+    streamData.metadata.lastAccessedAt = new Date();
+    
+    return streamData.events.length > 0;
+  }
+
+  /**
+   * Gets stream metadata
+   * @param streamId Target stream ID
+   * @returns Stream metadata
+   * @throws ExecutorStreamerError if stream not found
+   */
+  getStreamMetadata(streamId: string): StreamMetadata {
+    const streamData = this.getStreamData(streamId);
+    return { ...streamData.metadata };
+  }
+
+  /**
+   * Gets stream data or throws error if not found
+   * @param streamId Target stream ID
+   * @returns Stream data
+   * @throws ExecutorStreamerError if stream not found
+   */
+  private getStreamData(streamId: string): StreamData {
+    const streamData = this.streams.get(streamId);
+    if (!streamData) {
+      throw new ExecutorStreamerError(
+        EXECUTOR_STREAMER_ERRORS.STREAM_NOT_FOUND,
+        `Stream ${streamId} not found`,
+        streamId
+      );
+    }
+    return streamData;
+  }
+
+  /**
+   * Validates stream ID format
+   * @param streamId Stream ID to validate
+   * @returns true if valid
+   */
+  private isValidStreamId(streamId: string): boolean {
+    return typeof streamId === 'string' && streamId.length > 0 && streamId.length <= 255;
+  }
+
+  /**
+   * Starts periodic cleanup timer for expired streams
+   */
+  private startCleanupTimer(): void {
+    this.cleanupTimer = setInterval(() => {
+      this.cleanupExpiredStreams();
+    }, this.config.streamTTL / 10); // Check every 1/10th of TTL
+  }
+
+  /**
+   * Stops the cleanup timer (for testing and cleanup)
+   */
+  stopCleanupTimer(): void {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = undefined;
+    }
+  }
+
+  /**
+   * Destroys the stream manager and cleans up resources
+   */
+  destroy(): void {
+    this.stopCleanupTimer();
+    this.streams.clear();
+  }
+
+  /**
+   * Removes expired streams based on TTL configuration
+   */
+  private cleanupExpiredStreams(): void {
+    const now = new Date().getTime();
+    const ttl = this.config.streamTTL;
+
+    for (const [streamId, streamData] of this.streams.entries()) {
+      const lastAccessed = streamData.metadata.lastAccessedAt.getTime();
+      if (now - lastAccessed > ttl) {
+        this.streams.delete(streamId);
+      }
     }
   }
 }
