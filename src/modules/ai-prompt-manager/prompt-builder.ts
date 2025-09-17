@@ -80,8 +80,12 @@ export class PromptBuilder {
       const currentStepLogs = context.stepLogs[currentStepId] || [];
       if (currentStepLogs.length > 0) {
         history += 'CURRENT STEP ATTEMPTS:\n';
-        currentStepLogs.slice(-5).forEach((log, index) => { // Show last 5 attempts
-          const attempt = this.formatLogEntry(log, index + 1);
+        const lastFiveLogs = currentStepLogs.slice(-5); // Show last 5 attempts
+        const startingAttemptNumber = Math.max(1, currentStepLogs.length - 4); // Calculate correct starting attempt number
+        
+        lastFiveLogs.forEach((log, index) => {
+          const attemptNumber = startingAttemptNumber + index;
+          const attempt = this.formatLogEntry(log, attemptNumber);
           history += `${attempt}\n`;
         });
       }
@@ -162,13 +166,28 @@ export class PromptBuilder {
    */
   private formatLogEntry(log: any, attemptNumber: number): string {
     try {
+      // Check if log exists and has expected structure
+      if (!log) {
+        return `  Attempt ${attemptNumber}: No data available`;
+      }
+
       // Access data from nested aiResponse structure
       const aiResponse = log?.aiResponse;
       const executionResult = log?.executionResult;
       
+      // Handle case where aiResponse is missing or malformed
+      if (!aiResponse) {
+        // Check if data is in the log directly (legacy format)
+        const legacyAction = log?.action?.command || log?.command || 'Unknown';
+        const legacyReasoning = log?.reasoning ? log.reasoning.substring(0, 80) : 'No reasoning provided';
+        const legacyConfidence = log?.confidence || 0;
+        
+        return `  Attempt ${attemptNumber}: ${legacyAction} (Confidence: ${legacyConfidence}%) - ${legacyReasoning}${legacyReasoning.length >= 80 ? '...' : ''}`;
+      }
+      
       const action = aiResponse?.action?.command || 'Unknown';
       const reasoning = aiResponse?.reasoning ? aiResponse.reasoning.substring(0, 80) : 'No reasoning provided';
-      const confidence = aiResponse?.confidence || 0;
+      const confidence = aiResponse?.confidence !== undefined ? aiResponse.confidence : 0;
       
       let resultText = '';
       if (executionResult) {
@@ -185,7 +204,7 @@ export class PromptBuilder {
       
       return `  Attempt ${attemptNumber}: ${action} (Confidence: ${confidence}%) - ${reasoning}${reasoning.length >= 80 ? '...' : ''}${resultText}`;
     } catch (error) {
-      return `  Attempt ${attemptNumber}: Error formatting log entry`;
+      return `  Attempt ${attemptNumber}: Error formatting log entry - ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
   }
 
