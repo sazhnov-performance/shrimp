@@ -81,7 +81,19 @@ export type {
   TaskLoopEvent,
   StreamEvent,
   DIContainer
-} from '../../types/shared-types';
+} from '../../../types/shared-types';
+
+// Import types and constants for internal use
+import type { 
+  StepProcessorConfig,
+  StepProcessorErrorHandler
+} from './types';
+import {
+  DEFAULT_STEP_PROCESSOR_CONFIG,
+  STEP_PROCESSOR_LIMITS
+} from './types';
+import { createStepProcessor } from './step-processor';
+import type { DIContainer } from '../../../types/shared-types';
 
 // Module metadata
 export const STEP_PROCESSOR_MODULE_INFO = {
