@@ -7,7 +7,7 @@ import { TaskLoopConfig } from './types';
 
 // Default configuration for Task Loop
 export const DEFAULT_CONFIG: TaskLoopConfig = {
-  maxIterations: 10,
+  maxIterations: 4,
   timeoutMs: 300000, // 5 minutes
   enableLogging: true
 };

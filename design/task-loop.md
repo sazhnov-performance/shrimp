@@ -214,13 +214,13 @@ class TaskLoop implements ITaskLoop {
 
 ```typescript
 interface TaskLoopConfig {
-  maxIterations: number;        // Default: 10
+  maxIterations: number;        // Default: 4
   timeoutMs: number;           // Default: 300000 (5 minutes)
   enableLogging: boolean;      // Default: true
 }
 
 const DEFAULT_CONFIG: TaskLoopConfig = {
-  maxIterations: 10,
+  maxIterations: 4,
   timeoutMs: 300000,
   enableLogging: true
 };

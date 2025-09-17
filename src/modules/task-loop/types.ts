@@ -20,7 +20,7 @@ export interface ITaskLoopConstructor {
 
 // Configuration Interface
 export interface TaskLoopConfig {
-  maxIterations: number;        // Default: 10
+  maxIterations: number;        // Default: 4
   timeoutMs: number;           // Default: 300000 (5 minutes)
   enableLogging: boolean;      // Default: true
 }
