@@ -1061,12 +1061,12 @@ export const INVESTIGATION_CONSTANTS = {
 } as const;
 
 // Investigation tool priorities
-export const DEFAULT_TOOL_PRIORITY = [
+export const DEFAULT_TOOL_PRIORITY: InvestigationTool[] = [
   InvestigationTool.SCREENSHOT_ANALYSIS,
   InvestigationTool.TEXT_EXTRACTION,
   InvestigationTool.SUB_DOM_EXTRACTION,
   InvestigationTool.FULL_DOM_RETRIEVAL
-] as const;
+];
 
 // Default investigation configuration
 export const DEFAULT_INVESTIGATION_CONFIG: InvestigationConfig = {
