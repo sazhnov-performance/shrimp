@@ -1,23 +1,31 @@
 /**
  * Task Loop Module Type Definitions
- * Based on design/task-loop.md specifications
+ * All types required for the Task Loop implementation
  */
 
-import { 
-  StandardError,
-  AIResponse as SharedAIResponse,
-  AIGeneratedCommand,
-  ExecutorCommand,
-  ISessionManager
-} from '../../../types/shared-types';
-
-// Main Task Loop interface
+// Main Task Loop Interface
 export interface ITaskLoop {
   // Execute a single step with ACT-REFLECT cycle
   executeStep(sessionId: string, stepId: number): Promise<StepResult>;
+  
+  // Configuration management
+  getConfig(): TaskLoopConfig;
+  updateConfig(newConfig: Partial<TaskLoopConfig>): void;
 }
 
-// Step Result interface
+// Static interface for the TaskLoop class
+export interface ITaskLoopConstructor {
+  getInstance(config?: TaskLoopConfig): ITaskLoop;
+}
+
+// Configuration Interface
+export interface TaskLoopConfig {
+  maxIterations: number;        // Default: 10
+  timeoutMs: number;           // Default: 300000 (5 minutes)
+  enableLogging: boolean;      // Default: true
+}
+
+// Step Result Interface
 export interface StepResult {
   status: 'success' | 'failure' | 'error';
   stepId: number;
@@ -27,7 +35,7 @@ export interface StepResult {
   error?: string;
 }
 
-// AI Response interface (matches design document expectations)
+// AI Response Interface (from AI Schema Manager)
 export interface AIResponse {
   action?: {
     command: string;
@@ -38,77 +46,30 @@ export interface AIResponse {
   flowControl: 'continue' | 'stop_success' | 'stop_failure';
 }
 
-// Dependency interfaces for modules not yet implemented
-export interface IAIIntegrationManager {
-  sendRequest(prompt: string): Promise<AIIntegrationResponse>;
-}
-
-export interface AIIntegrationResponse {
-  status: 'success' | 'error';
-  data?: any;
-  error?: string;
-}
-
-export interface IAIPromptManager {
-  getStepPrompt(sessionId: string, stepId: number): string;
-}
-
-export interface IAISchemaManager {
-  getAIResponseSchema(): object;
-}
-
-export interface IExecutorSessionManager extends ISessionManager {
-  readonly moduleId: 'executor';
-  getExecutorSession(workflowSessionId: string): any | null;
-  executeCommand(command: any): Promise<any>;
-}
-
-// Task Loop configuration
-export interface TaskLoopConfig {
-  maxIterations: number;
-  timeoutMs: number;
-  enableLogging: boolean;
-}
-
-// Default configuration
-export const DEFAULT_TASK_LOOP_CONFIG: TaskLoopConfig = {
-  maxIterations: 10,
-  timeoutMs: 300000, // 5 minutes
-  enableLogging: true
-};
-
-// Task execution context for logging
-export interface TaskExecutionContext {
+// Task Execution Log Entry
+export interface TaskExecutionLog {
   iteration: number;
   aiResponse: AIResponse;
   timestamp: Date;
 }
 
-// Error types specific to Task Loop
-export class TaskLoopError extends Error {
-  constructor(
-    message: string,
-    public readonly sessionId?: string,
-    public readonly stepId?: number,
-    public readonly iteration?: number,
-    public readonly cause?: Error
-  ) {
-    super(message);
-    this.name = 'TaskLoopError';
-  }
+// Error Categories for Task Loop
+export enum TaskLoopErrorType {
+  AI_REQUEST_FAILED = 'AI_REQUEST_FAILED',
+  VALIDATION_FAILED = 'VALIDATION_FAILED',
+  EXECUTOR_FAILED = 'EXECUTOR_FAILED',
+  SESSION_NOT_FOUND = 'SESSION_NOT_FOUND',
+  MAX_ITERATIONS_EXCEEDED = 'MAX_ITERATIONS_EXCEEDED',
+  TIMEOUT_EXCEEDED = 'TIMEOUT_EXCEEDED',
+  CONFIGURATION_ERROR = 'CONFIGURATION_ERROR',
+  CONTEXT_ERROR = 'CONTEXT_ERROR'
 }
 
-// Validation error
-export class ValidationError extends TaskLoopError {
-  constructor(message: string, sessionId?: string, stepId?: number) {
-    super(message, sessionId, stepId);
-    this.name = 'ValidationError';
-  }
+// Task Loop Error Interface
+export interface TaskLoopError extends Error {
+  type: TaskLoopErrorType;
+  sessionId?: string;
+  stepId?: number;
+  iteration?: number;
+  details?: Record<string, any>;
 }
-
-// Constants
-export const MAX_ITERATIONS = 10;
-export const DEFAULT_TIMEOUT_MS = 300000; // 5 minutes
-
-// Module registration token
-export const TASK_LOOP_TOKEN = 'ITaskLoop';

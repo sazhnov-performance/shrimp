@@ -1,172 +1,235 @@
 /**
  * Task Loop AI Response Validator
  * Validates AI responses against the expected schema
- * Based on design/task-loop.md specifications
  */
 
-import { AIResponse, ValidationError } from './types';
-import { VALIDATION, ERROR_MESSAGES } from './config';
+import { AIResponse, TaskLoopError, TaskLoopErrorType } from './types';
 
 /**
- * Validates an AI response object against the expected schema
- * @param data Raw data from AI response
- * @param sessionId Session ID for error context
- * @param stepId Step ID for error context
+ * Validates AI response data against the expected schema
+ * @param data Raw response data from AI Integration
+ * @param sessionId Session identifier for error context
+ * @param stepId Step identifier for error context
  * @returns Validated AIResponse object
- * @throws ValidationError if validation fails
+ * @throws TaskLoopError if validation fails
  */
 export function validateAIResponse(
   data: any, 
-  sessionId?: string, 
-  stepId?: number
+  sessionId: string, 
+  stepId: number
 ): AIResponse {
   if (!data || typeof data !== 'object') {
-    throw new ValidationError(
-      'AI response must be an object',
+    throw createValidationError(
+      'Response data is not an object',
       sessionId,
-      stepId
+      stepId,
+      { receivedType: typeof data, receivedData: data }
     );
   }
 
   // Validate required fields
-  for (const field of VALIDATION.REQUIRED_FIELDS) {
-    if (!(field in data)) {
-      throw new ValidationError(
-        `Missing required field: ${field}`,
-        sessionId,
-        stepId
-      );
-    }
+  validateRequiredFields(data, sessionId, stepId);
+  
+  // Validate reasoning field
+  validateReasoning(data.reasoning, sessionId, stepId);
+  
+  // Validate confidence field
+  validateConfidence(data.confidence, sessionId, stepId);
+  
+  // Validate flowControl field
+  validateFlowControl(data.flowControl, sessionId, stepId);
+  
+  // Validate action field (if present)
+  if (data.action !== undefined) {
+    validateAction(data.action, sessionId, stepId);
   }
 
-  // Validate reasoning
-  if (typeof data.reasoning !== 'string' || data.reasoning.trim().length === 0) {
-    throw new ValidationError(
-      'Reasoning must be a non-empty string',
+  // Check if action is required but missing
+  if (data.flowControl === 'continue' && !data.action) {
+    throw createValidationError(
+      'Action is required when flowControl is "continue"',
       sessionId,
-      stepId
+      stepId,
+      { flowControl: data.flowControl, hasAction: false }
     );
   }
 
-  // Validate confidence
-  if (typeof data.confidence !== 'number' || 
-      data.confidence < VALIDATION.MIN_CONFIDENCE || 
-      data.confidence > VALIDATION.MAX_CONFIDENCE) {
-    throw new ValidationError(
-      `Confidence must be a number between ${VALIDATION.MIN_CONFIDENCE} and ${VALIDATION.MAX_CONFIDENCE}`,
-      sessionId,
-      stepId
-    );
-  }
-
-  // Validate flowControl
-  if (!VALIDATION.VALID_FLOW_CONTROL_VALUES.includes(data.flowControl)) {
-    throw new ValidationError(
-      `flowControl must be one of: ${VALIDATION.VALID_FLOW_CONTROL_VALUES.join(', ')}`,
-      sessionId,
-      stepId
-    );
-  }
-
-  // Validate action if flowControl is 'continue'
-  if (data.flowControl === 'continue') {
-    if (!data.action) {
-      throw new ValidationError(
-        'Action is required when flowControl is "continue"',
-        sessionId,
-        stepId
-      );
-    }
-
-    if (!validateAction(data.action)) {
-      throw new ValidationError(
-        'Invalid action structure',
-        sessionId,
-        stepId
-      );
-    }
-  }
-
-  // Return validated response
   return {
-    action: data.action,
     reasoning: data.reasoning,
     confidence: data.confidence,
-    flowControl: data.flowControl
+    flowControl: data.flowControl,
+    ...(data.action && { action: data.action })
   };
 }
 
 /**
- * Validates the action portion of an AI response
- * @param action Action object to validate
- * @returns true if valid, false otherwise
+ * Validates that all required fields are present
  */
-function validateAction(action: any): boolean {
-  if (!action || typeof action !== 'object') {
-    return false;
-  }
-
-  // Check required fields
-  if (typeof action.command !== 'string' || action.command.trim().length === 0) {
-    return false;
-  }
-
-  if (!action.parameters || typeof action.parameters !== 'object') {
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * Validates that the data conforms to the schema structure
- * This is a more detailed validation that could use a JSON schema library
- * @param data Data to validate
- * @param schema Schema object (from AI Schema Manager)
- * @returns true if valid, false otherwise
- */
-export function validateAgainstSchema(data: any, schema: object): boolean {
-  // For now, this is a placeholder implementation
-  // In a full implementation, this would use a JSON schema validation library
-  // like ajv or joi to validate against the schema from AI Schema Manager
+function validateRequiredFields(data: any, sessionId: string, stepId: number): void {
+  const requiredFields = ['reasoning', 'confidence', 'flowControl'];
+  const missingFields = requiredFields.filter(field => !(field in data));
   
-  try {
-    validateAIResponse(data);
-    return true;
-  } catch (error) {
-    return false;
+  if (missingFields.length > 0) {
+    throw createValidationError(
+      `Missing required fields: ${missingFields.join(', ')}`,
+      sessionId,
+      stepId,
+      { missingFields, receivedFields: Object.keys(data) }
+    );
   }
 }
 
 /**
- * Sanitizes and normalizes an AI response
- * @param response Raw AI response
- * @returns Sanitized response
+ * Validates the reasoning field
  */
-export function sanitizeAIResponse(response: any): any {
-  if (!response || typeof response !== 'object') {
-    return response;
+function validateReasoning(reasoning: any, sessionId: string, stepId: number): void {
+  if (typeof reasoning !== 'string') {
+    throw createValidationError(
+      'Reasoning field must be a string',
+      sessionId,
+      stepId,
+      { receivedType: typeof reasoning, receivedValue: reasoning }
+    );
   }
 
-  const sanitized = { ...response };
-
-  // Trim reasoning string
-  if (typeof sanitized.reasoning === 'string') {
-    sanitized.reasoning = sanitized.reasoning.trim();
+  if (reasoning.trim().length === 0) {
+    throw createValidationError(
+      'Reasoning field cannot be empty',
+      sessionId,
+      stepId,
+      { receivedValue: reasoning }
+    );
   }
 
-  // Ensure confidence is a number
-  if (typeof sanitized.confidence === 'string') {
-    const parsed = parseFloat(sanitized.confidence);
-    if (!isNaN(parsed)) {
-      sanitized.confidence = parsed;
-    }
+  // Check for reasonable reasoning length
+  if (reasoning.length > 5000) {
+    throw createValidationError(
+      'Reasoning field is too long (max 5000 characters)',
+      sessionId,
+      stepId,
+      { receivedLength: reasoning.length, maxLength: 5000 }
+    );
+  }
+}
+
+/**
+ * Validates the confidence field
+ */
+function validateConfidence(confidence: any, sessionId: string, stepId: number): void {
+  if (!Number.isInteger(confidence)) {
+    throw createValidationError(
+      'Confidence field must be an integer',
+      sessionId,
+      stepId,
+      { receivedType: typeof confidence, receivedValue: confidence }
+    );
   }
 
-  // Ensure flowControl is lowercase
-  if (typeof sanitized.flowControl === 'string') {
-    sanitized.flowControl = sanitized.flowControl.toLowerCase();
+  if (confidence < 0 || confidence > 100) {
+    throw createValidationError(
+      'Confidence field must be between 0 and 100',
+      sessionId,
+      stepId,
+      { receivedValue: confidence, validRange: [0, 100] }
+    );
+  }
+}
+
+/**
+ * Validates the flowControl field
+ */
+function validateFlowControl(flowControl: any, sessionId: string, stepId: number): void {
+  const validValues = ['continue', 'stop_success', 'stop_failure'];
+  
+  if (typeof flowControl !== 'string') {
+    throw createValidationError(
+      'FlowControl field must be a string',
+      sessionId,
+      stepId,
+      { receivedType: typeof flowControl, receivedValue: flowControl }
+    );
   }
 
-  return sanitized;
+  if (!validValues.includes(flowControl)) {
+    throw createValidationError(
+      `FlowControl field must be one of: ${validValues.join(', ')}`,
+      sessionId,
+      stepId,
+      { receivedValue: flowControl, validValues }
+    );
+  }
+}
+
+/**
+ * Validates the action field
+ */
+function validateAction(action: any, sessionId: string, stepId: number): void {
+  if (!action || typeof action !== 'object') {
+    throw createValidationError(
+      'Action field must be an object',
+      sessionId,
+      stepId,
+      { receivedType: typeof action, receivedValue: action }
+    );
+  }
+
+  // Validate required action fields
+  if (!('command' in action) || !('parameters' in action)) {
+    throw createValidationError(
+      'Action must have "command" and "parameters" fields',
+      sessionId,
+      stepId,
+      { receivedFields: Object.keys(action) }
+    );
+  }
+
+  // Validate command field
+  if (typeof action.command !== 'string') {
+    throw createValidationError(
+      'Action command must be a string',
+      sessionId,
+      stepId,
+      { receivedType: typeof action.command, receivedValue: action.command }
+    );
+  }
+
+  // Validate known commands
+  const validCommands = ['OPEN_PAGE', 'CLICK_ELEMENT', 'INPUT_TEXT', 'GET_SUBDOM'];
+  if (!validCommands.includes(action.command)) {
+    throw createValidationError(
+      `Unknown command: ${action.command}. Valid commands: ${validCommands.join(', ')}`,
+      sessionId,
+      stepId,
+      { receivedCommand: action.command, validCommands }
+    );
+  }
+
+  // Validate parameters field
+  if (!action.parameters || typeof action.parameters !== 'object') {
+    throw createValidationError(
+      'Action parameters must be an object',
+      sessionId,
+      stepId,
+      { receivedType: typeof action.parameters, receivedValue: action.parameters }
+    );
+  }
+}
+
+/**
+ * Creates a standardized validation error
+ */
+function createValidationError(
+  message: string,
+  sessionId: string,
+  stepId: number,
+  details?: Record<string, any>
+): TaskLoopError {
+  const error = new Error(message) as TaskLoopError;
+  error.type = TaskLoopErrorType.VALIDATION_FAILED;
+  error.sessionId = sessionId;
+  error.stepId = stepId;
+  error.details = details;
+  error.name = 'TaskLoopValidationError';
+  
+  return error;
 }

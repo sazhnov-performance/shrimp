@@ -1,47 +1,52 @@
 /**
- * Task Loop Configuration Constants
- * Based on design/task-loop.md specifications
+ * Task Loop Module Configuration
+ * Default configuration constants and settings
  */
 
 import { TaskLoopConfig } from './types';
 
-// Default configuration following design specifications
+// Default configuration for Task Loop
 export const DEFAULT_CONFIG: TaskLoopConfig = {
   maxIterations: 10,
   timeoutMs: 300000, // 5 minutes
   enableLogging: true
 };
 
-// Maximum iterations constant
-export const MAX_ITERATIONS = 10;
+// Configuration validation
+export function validateConfig(config: Partial<TaskLoopConfig>): TaskLoopConfig {
+  const validatedConfig: TaskLoopConfig = {
+    ...DEFAULT_CONFIG,
+    ...config
+  };
 
-// Default timeout in milliseconds (5 minutes)
-export const DEFAULT_TIMEOUT_MS = 300000;
+  // Validate maxIterations
+  if (validatedConfig.maxIterations <= 0) {
+    throw new Error('maxIterations must be a positive number');
+  }
 
-// Flow control values
-export const FLOW_CONTROL = {
-  CONTINUE: 'continue',
-  STOP_SUCCESS: 'stop_success', 
-  STOP_FAILURE: 'stop_failure'
-} as const;
+  // Validate timeoutMs
+  if (validatedConfig.timeoutMs <= 0) {
+    throw new Error('timeoutMs must be a positive number');
+  }
 
-// Error messages
-export const ERROR_MESSAGES = {
-  MAX_ITERATIONS_EXCEEDED: 'Maximum iterations exceeded',
-  AI_REQUEST_FAILED: 'AI request failed',
-  VALIDATION_FAILED: 'AI response validation failed',
-  EXECUTOR_SESSION_NOT_FOUND: 'Executor session not found',
-  COMMAND_EXECUTION_FAILED: 'Command execution failed',
-  INVALID_FLOW_CONTROL: 'Invalid flow control value'
-} as const;
+  // Validate maxIterations is reasonable
+  if (validatedConfig.maxIterations > 100) {
+    throw new Error('maxIterations should not exceed 100 for safety');
+  }
 
-// Logging prefixes
-export const LOG_PREFIX = '[TaskLoop]';
+  // Validate timeout is reasonable (max 1 hour)
+  if (validatedConfig.timeoutMs > 3600000) {
+    throw new Error('timeoutMs should not exceed 1 hour (3600000ms)');
+  }
 
-// Validation constants  
-export const VALIDATION = {
-  MIN_CONFIDENCE: 0,
-  MAX_CONFIDENCE: 100,
-  REQUIRED_FIELDS: ['reasoning', 'confidence', 'flowControl'],
-  VALID_FLOW_CONTROL_VALUES: ['continue', 'stop_success', 'stop_failure']
-} as const;
+  return validatedConfig;
+}
+
+// Configuration factory function
+export function createConfig(overrides?: Partial<TaskLoopConfig>): TaskLoopConfig {
+  try {
+    return validateConfig(overrides || {});
+  } catch (error) {
+    throw new Error(`Invalid Task Loop configuration: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}

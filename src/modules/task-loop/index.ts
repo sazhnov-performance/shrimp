@@ -1,48 +1,80 @@
 /**
  * Task Loop Module Implementation
- * Implements the core ACT-REFLECT cycle for AI-driven web automation
- * Based on design/task-loop.md specifications
+ * Core ACT-REFLECT cycle for AI-driven web automation
  */
 
 import { 
-  ITaskLoop,
-  StepResult,
-  AIResponse,
-  TaskLoopConfig,
-  TaskLoopError,
-  ValidationError,
-  TaskExecutionContext,
-  IAIPromptManager,
-  IAIIntegrationManager,
-  IAISchemaManager,
-  IExecutorSessionManager
+  ITaskLoop, 
+  ITaskLoopConstructor,
+  TaskLoopConfig, 
+  StepResult, 
+  AIResponse, 
+  TaskLoopError, 
+  TaskLoopErrorType 
 } from './types';
-import { IAIContextManager } from '../../../types/ai-context-manager-types';
-import { validateAIResponse, sanitizeAIResponse } from './validator';
-import { DEFAULT_CONFIG, ERROR_MESSAGES, LOG_PREFIX, FLOW_CONTROL } from './config';
+import { DEFAULT_CONFIG, validateConfig } from './config';
+import { validateAIResponse } from './validator';
+
+// Import dependent module interfaces
+import { IAIContextManager } from '../ai-context-manager/types';
+import { AIContextManager } from '../ai-context-manager/ai-context-manager';
+import { IAIPromptManager } from '../ai-prompt-manager/types';
+import AIPromptManager from '../ai-prompt-manager/index';
+import { IAIIntegrationManager } from '../ai-integration/types';
+import AIIntegrationManager from '../ai-integration/index';
+import { IAISchemaManager } from '../ai-schema-manager/types';
+import AISchemaManager from '../ai-schema-manager/index';
+import { IExecutor } from '../executor/index';
+import Executor from '../executor/index';
 
 /**
- * TaskLoop class implements the core ACT-REFLECT cycle
- * Orchestrates interaction between AI processing and browser execution
+ * TaskLoop - Singleton implementation of the core ACT-REFLECT cycle
  */
 export class TaskLoop implements ITaskLoop {
+  private static instance: TaskLoop | null = null;
+  private contextManager: IAIContextManager;
+  private promptManager: IAIPromptManager;
+  private aiIntegration: IAIIntegrationManager;
+  private schemaManager: IAISchemaManager;
+  private executor: IExecutor;
   private config: TaskLoopConfig;
 
-  constructor(
-    private contextManager: IAIContextManager,
-    private promptManager: IAIPromptManager,
-    private aiIntegration: IAIIntegrationManager,
-    private schemaManager: IAISchemaManager,
-    private executor: IExecutorSessionManager,
-    config?: Partial<TaskLoopConfig>
-  ) {
-    this.config = { ...DEFAULT_CONFIG, ...config };
+  private constructor(config: TaskLoopConfig = DEFAULT_CONFIG) {
+    // Validate and store configuration
+    this.config = validateConfig(config);
+    
+    // Resolve dependencies internally using singleton instances
+    this.contextManager = AIContextManager.getInstance();
+    this.promptManager = AIPromptManager.getInstance();
+    this.aiIntegration = AIIntegrationManager.getInstance();
+    this.schemaManager = AISchemaManager.getInstance();
+    this.executor = new Executor(); // Executor is not a singleton in current implementation
+    
+    if (this.config.enableLogging) {
+      console.log('[TaskLoop] Task Loop module initialized', {
+        maxIterations: this.config.maxIterations,
+        timeoutMs: this.config.timeoutMs,
+        enableLogging: this.config.enableLogging
+      });
+    }
+  }
+
+  /**
+   * Get singleton instance of TaskLoop
+   * @param config Optional configuration for the task loop
+   * @returns TaskLoop instance
+   */
+  static getInstance(config?: TaskLoopConfig): ITaskLoop {
+    if (!TaskLoop.instance) {
+      TaskLoop.instance = new TaskLoop(config);
+    }
+    return TaskLoop.instance;
   }
 
   /**
    * Execute a single step with ACT-REFLECT cycle
    * @param sessionId Session identifier
-   * @param stepId Step number to execute
+   * @param stepId Step index (0-based)
    * @returns Promise<StepResult> with execution results
    */
   async executeStep(sessionId: string, stepId: number): Promise<StepResult> {
@@ -50,108 +82,105 @@ export class TaskLoop implements ITaskLoop {
     let iterations = 0;
     let finalResponse: AIResponse | undefined;
 
-    if (this.config.enableLogging) {
-      console.log(`${LOG_PREFIX} Starting step ${stepId} for session ${sessionId}`);
-    }
+    // Input validation (throws error if invalid)
+    this.validateInputs(sessionId, stepId);
 
     try {
-      while (iterations < this.config.maxIterations) {
-        iterations++;
+      // Set up timeout if configured
+      const timeoutPromise = this.createTimeoutPromise();
+      const executionPromise = this.executeStepWithIterations(sessionId, stepId, startTime);
 
-        if (this.config.enableLogging) {
-          console.log(`${LOG_PREFIX} Step ${stepId}, iteration ${iterations}`);
-        }
+      // Race between execution and timeout
+      const result = await Promise.race([executionPromise, timeoutPromise]);
+      
+      if (result.status === 'error' && result.error?.includes('timeout')) {
+        return result;
+      }
 
+      return result;
+
+    } catch (error) {
+      return this.createErrorResult(sessionId, stepId, iterations, startTime, error);
+    }
+  }
+
+  /**
+   * Execute the step with iteration loop
+   */
+  private async executeStepWithIterations(
+    sessionId: string, 
+    stepId: number, 
+    startTime: number
+  ): Promise<StepResult> {
+    let iterations = 0;
+    let finalResponse: AIResponse | undefined;
+
+    while (iterations < this.config.maxIterations) {
+      iterations++;
+
+      try {
         // 1. Get prompt from AI Prompt Manager
-        let prompt: string;
-        try {
-          prompt = this.promptManager.getStepPrompt(sessionId, stepId);
-        } catch (error) {
-          throw new TaskLoopError(
-            `Failed to get step prompt: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            sessionId,
-            stepId,
-            iterations,
-            error instanceof Error ? error : undefined
-          );
+        if (this.config.enableLogging) {
+          console.log(`[TaskLoop] Getting prompt for session ${sessionId}, step ${stepId}, iteration ${iterations}`);
         }
+        
+        const prompt = this.promptManager.getStepPrompt(sessionId, stepId);
 
         // 2. Send request to AI Integration
-        let aiResponse;
-        try {
-          aiResponse = await this.aiIntegration.sendRequest(prompt);
-        } catch (error) {
-          throw new TaskLoopError(
-            `AI integration request failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        if (this.config.enableLogging) {
+          console.log(`[TaskLoop] Sending AI request for session ${sessionId}, step ${stepId}, iteration ${iterations}`);
+        }
+        
+        const aiResponse = await this.aiIntegration.sendRequest(prompt);
+        
+        if (aiResponse.status === 'error') {
+          throw this.createTaskLoopError(
+            TaskLoopErrorType.AI_REQUEST_FAILED,
+            `AI request failed: ${aiResponse.error}`,
             sessionId,
             stepId,
             iterations,
-            error instanceof Error ? error : undefined
-          );
-        }
-
-        if (aiResponse.status === 'error') {
-          throw new TaskLoopError(
-            `${ERROR_MESSAGES.AI_REQUEST_FAILED}: ${aiResponse.error}`,
-            sessionId,
-            stepId,
-            iterations
+            { aiError: aiResponse.error, errorCode: aiResponse.errorCode }
           );
         }
 
         // 3. Validate response against schema
-        let validatedResponse: AIResponse;
-        try {
-          const sanitizedData = sanitizeAIResponse(aiResponse.data);
-          validatedResponse = this.validateAIResponse(sanitizedData, sessionId, stepId);
-          finalResponse = validatedResponse;
-        } catch (error) {
-          if (error instanceof ValidationError) {
-            throw error;
-          }
-          throw new TaskLoopError(
-            `Response validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            sessionId,
-            stepId,
-            iterations,
-            error instanceof Error ? error : undefined
-          );
+        if (this.config.enableLogging) {
+          console.log(`[TaskLoop] Validating AI response for session ${sessionId}, step ${stepId}, iteration ${iterations}`);
         }
+        
+        const validatedResponse = validateAIResponse(aiResponse.data, sessionId, stepId);
+        finalResponse = validatedResponse;
 
-        // 4. Execute action if specified
-        if (validatedResponse.flowControl === FLOW_CONTROL.CONTINUE && validatedResponse.action) {
-          try {
-            await this.executeAction(sessionId, validatedResponse.action);
-          } catch (error) {
-            throw new TaskLoopError(
-              `Command execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              sessionId,
-              stepId,
-              iterations,
-              error instanceof Error ? error : undefined
-            );
+        // 4. Execute action if specified and flowControl is continue
+        if (validatedResponse.flowControl === 'continue' && validatedResponse.action) {
+          if (this.config.enableLogging) {
+            console.log(`[TaskLoop] Executing action for session ${sessionId}, step ${stepId}, iteration ${iterations}`, {
+              command: validatedResponse.action.command,
+              parameters: validatedResponse.action.parameters
+            });
           }
+          
+          await this.executeAction(sessionId, validatedResponse.action);
         }
 
         // 5. Log execution in context manager
-        try {
-          this.logExecution(sessionId, stepId, {
-            iteration: iterations,
-            aiResponse: validatedResponse,
-            timestamp: new Date()
-          });
-        } catch (error) {
-          // Log error but don't fail the execution
-          if (this.config.enableLogging) {
-            console.warn(`${LOG_PREFIX} Failed to log execution context:`, error);
-          }
+        if (this.config.enableLogging) {
+          console.log(`[TaskLoop] Logging task execution for session ${sessionId}, step ${stepId}, iteration ${iterations}`);
         }
+        
+        this.contextManager.logTask(sessionId, stepId, {
+          iteration: iterations,
+          aiResponse: validatedResponse,
+          timestamp: new Date()
+        });
 
         // 6. Handle flow control
-        if (validatedResponse.flowControl === FLOW_CONTROL.STOP_SUCCESS) {
+        if (validatedResponse.flowControl === 'stop_success') {
           if (this.config.enableLogging) {
-            console.log(`${LOG_PREFIX} Step ${stepId} completed successfully after ${iterations} iterations`);
+            console.log(`[TaskLoop] Step completed successfully for session ${sessionId}, step ${stepId} after ${iterations} iterations`);
           }
+          
           return {
             status: 'success',
             stepId,
@@ -161,10 +190,11 @@ export class TaskLoop implements ITaskLoop {
           };
         }
 
-        if (validatedResponse.flowControl === FLOW_CONTROL.STOP_FAILURE) {
+        if (validatedResponse.flowControl === 'stop_failure') {
           if (this.config.enableLogging) {
-            console.log(`${LOG_PREFIX} Step ${stepId} failed after ${iterations} iterations`);
+            console.log(`[TaskLoop] Step failed for session ${sessionId}, step ${stepId} after ${iterations} iterations`);
           }
+          
           return {
             status: 'failure',
             stepId,
@@ -176,94 +206,229 @@ export class TaskLoop implements ITaskLoop {
 
         // Continue with next iteration
         if (this.config.enableLogging) {
-          console.log(`${LOG_PREFIX} Continuing to next iteration for step ${stepId}`);
+          console.log(`[TaskLoop] Continuing to next iteration for session ${sessionId}, step ${stepId}. Iteration ${iterations} complete.`);
         }
-      }
 
-      // Max iterations reached
-      if (this.config.enableLogging) {
-        console.warn(`${LOG_PREFIX} Maximum iterations exceeded for step ${stepId}`);
-      }
-      return {
-        status: 'error',
-        stepId,
-        iterations,
-        totalDuration: Date.now() - startTime,
-        error: ERROR_MESSAGES.MAX_ITERATIONS_EXCEEDED
-      };
+      } catch (error) {
+        // Log the error and continue to next iteration or fail if it's the last one
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        
+        if (this.config.enableLogging) {
+          console.error(`[TaskLoop] Error in iteration ${iterations} for session ${sessionId}, step ${stepId}: ${errorMessage}`);
+        }
 
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      if (this.config.enableLogging) {
-        console.error(`${LOG_PREFIX} Step ${stepId} failed:`, error);
+        // Log the failed attempt
+        this.contextManager.logTask(sessionId, stepId, {
+          iteration: iterations,
+          aiResponse: null,
+          error: errorMessage,
+          timestamp: new Date()
+        });
+
+        // If this is the last iteration, throw the error
+        if (iterations >= this.config.maxIterations) {
+          throw error;
+        }
+
+        // Otherwise, continue to next iteration
+        continue;
       }
-      
-      return {
-        status: 'error',
-        stepId,
-        iterations,
-        totalDuration: Date.now() - startTime,
-        error: errorMessage
-      };
     }
-  }
 
-  /**
-   * Validates AI response using the schema manager and internal validation
-   * @param data Raw AI response data
-   * @param sessionId Session ID for error context
-   * @param stepId Step ID for error context
-   * @returns Validated AIResponse
-   */
-  private validateAIResponse(data: any, sessionId: string, stepId: number): AIResponse {
-    // Get schema from AI Schema Manager
-    const schema = this.schemaManager.getAIResponseSchema();
+    // Max iterations reached
+    if (this.config.enableLogging) {
+      console.log(`[TaskLoop] Maximum iterations (${this.config.maxIterations}) reached for session ${sessionId}, step ${stepId}`);
+    }
     
-    // Use our internal validator (in a full implementation, this would use a JSON schema library)
-    return validateAIResponse(data, sessionId, stepId);
+    return {
+      status: 'error',
+      stepId,
+      iterations,
+      totalDuration: Date.now() - startTime,
+      finalResponse,
+      error: `Maximum iterations (${this.config.maxIterations}) exceeded`
+    };
   }
 
   /**
-   * Executes an action through the executor
-   * @param sessionId Session identifier
-   * @param action Action to execute
+   * Execute an action through the executor
    */
   private async executeAction(sessionId: string, action: any): Promise<void> {
-    const executorSession = this.executor.getExecutorSession(sessionId);
-    if (!executorSession) {
-      throw new TaskLoopError(`${ERROR_MESSAGES.EXECUTOR_SESSION_NOT_FOUND}: ${sessionId}`);
+    try {
+      // Ensure session exists in executor
+      if (!this.executor.sessionExists(sessionId)) {
+        await this.executor.createSession(sessionId);
+      }
+
+      // Execute the command through the executor
+      const command = {
+        sessionId,
+        action: action.command,
+        parameters: action.parameters,
+        commandId: this.generateCommandId(),
+        timestamp: new Date()
+      };
+
+      const response = await this.executor.executeCommand(command);
+      
+      if (!response.success && response.error) {
+        throw this.createTaskLoopError(
+          TaskLoopErrorType.EXECUTOR_FAILED,
+          `Executor command failed: ${response.error.message}`,
+          sessionId,
+          undefined,
+          undefined,
+          { 
+            command: action.command, 
+            parameters: action.parameters,
+            executorError: response.error 
+          }
+        );
+      }
+
+    } catch (error) {
+      if (error instanceof Error && error.name === 'TaskLoopValidationError') {
+        throw error; // Re-throw validation errors
+      }
+      
+      throw this.createTaskLoopError(
+        TaskLoopErrorType.EXECUTOR_FAILED,
+        `Failed to execute action: ${error instanceof Error ? error.message : String(error)}`,
+        sessionId,
+        undefined,
+        undefined,
+        { command: action.command, parameters: action.parameters, originalError: error }
+      );
     }
-
-    // Build the command for the executor
-    const command = {
-      sessionId,
-      action: action.command,
-      parameters: action.parameters,
-      commandId: `cmd_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: new Date()
-    };
-
-    if (this.config.enableLogging) {
-      console.log(`${LOG_PREFIX} Executing command:`, command.action, command.parameters);
-    }
-
-    // Execute the command through the executor
-    await this.executor.executeCommand(command);
   }
 
   /**
-   * Logs execution context using the AI Context Manager
-   * @param sessionId Session identifier
-   * @param stepId Step identifier
-   * @param context Execution context to log
+   * Input validation
    */
-  private logExecution(sessionId: string, stepId: number, context: TaskExecutionContext): void {
-    try {
-      this.contextManager.logTask(sessionId, stepId, context);
-    } catch (error) {
-      if (this.config.enableLogging) {
-        console.warn(`${LOG_PREFIX} Failed to log task context:`, error);
-      }
+  private validateInputs(sessionId: string, stepId: number): void {
+    if (!sessionId || typeof sessionId !== 'string' || sessionId.trim().length === 0) {
+      throw this.createTaskLoopError(
+        TaskLoopErrorType.CONFIGURATION_ERROR,
+        'Session ID must be a non-empty string',
+        sessionId,
+        stepId
+      );
+    }
+
+    if (!Number.isInteger(stepId) || stepId < 0) {
+      throw this.createTaskLoopError(
+        TaskLoopErrorType.CONFIGURATION_ERROR,
+        'Step ID must be a non-negative integer',
+        sessionId,
+        stepId
+      );
+    }
+  }
+
+  /**
+   * Create timeout promise
+   */
+  private createTimeoutPromise(): Promise<StepResult> {
+    if (this.config.timeoutMs <= 0) {
+      // Return a promise that never resolves if timeout is disabled
+      return new Promise(() => {});
+    }
+
+    return new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(this.createTaskLoopError(
+          TaskLoopErrorType.TIMEOUT_EXCEEDED,
+          `Step execution timeout exceeded (${this.config.timeoutMs}ms)`
+        ));
+      }, this.config.timeoutMs);
+    });
+  }
+
+  /**
+   * Create error result
+   */
+  private createErrorResult(
+    sessionId: string,
+    stepId: number,
+    iterations: number,
+    startTime: number,
+    error: any
+  ): StepResult {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    if (this.config.enableLogging) {
+      console.error(`[TaskLoop] Step execution failed for session ${sessionId}, step ${stepId}: ${errorMessage}`);
+    }
+
+    return {
+      status: 'error',
+      stepId,
+      iterations,
+      totalDuration: Date.now() - startTime,
+      error: errorMessage
+    };
+  }
+
+  /**
+   * Create TaskLoop specific error
+   */
+  private createTaskLoopError(
+    type: TaskLoopErrorType,
+    message: string,
+    sessionId?: string,
+    stepId?: number,
+    iteration?: number,
+    details?: Record<string, any>
+  ): TaskLoopError {
+    const error = new Error(message) as TaskLoopError;
+    error.type = type;
+    error.sessionId = sessionId;
+    error.stepId = stepId;
+    error.iteration = iteration;
+    error.details = details;
+    error.name = 'TaskLoopError';
+    
+    return error;
+  }
+
+  /**
+   * Generate unique command ID
+   */
+  private generateCommandId(): string {
+    return `taskloop_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Get current configuration
+   */
+  getConfig(): TaskLoopConfig {
+    return { ...this.config };
+  }
+
+  /**
+   * Update configuration (only affects new executions)
+   */
+  updateConfig(newConfig: Partial<TaskLoopConfig>): void {
+    this.config = validateConfig({ ...this.config, ...newConfig });
+    
+    if (this.config.enableLogging) {
+      console.log('[TaskLoop] Configuration updated', this.config);
     }
   }
 }
+
+// Export the main interface and implementation
+export { TaskLoop as default };
+
+// Export types and utilities
+export type { 
+  ITaskLoop, 
+  TaskLoopConfig, 
+  StepResult, 
+  AIResponse,
+  TaskLoopError,
+  TaskLoopErrorType
+} from './types';
+
+export { DEFAULT_CONFIG } from './config';
+export { validateAIResponse } from './validator';
