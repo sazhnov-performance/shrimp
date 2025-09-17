@@ -25,7 +25,7 @@ interface AIPromptManager {
   generateActionPrompt(request: ActionPromptRequest): Promise<GeneratedPrompt>;
   generateReflectionPrompt(request: ReflectionPromptRequest): Promise<GeneratedPrompt>;
   
-  // Investigation-enhanced prompts
+  // Investigation prompts
   generateInvestigationPrompt(request: InvestigationPromptRequest): Promise<GeneratedPrompt>;
   generateActionWithInvestigationPrompt(request: ActionWithInvestigationRequest): Promise<GeneratedPrompt>;
   
@@ -603,7 +603,7 @@ interface ContextManagerIntegration {
   getCurrentPageState(sessionId: string): Promise<string>;
   getPreviousPageState(sessionId: string, stepIndex: number): Promise<string | null>;
   
-  // Investigation-enhanced context methods
+  // Investigation context methods
   generateFilteredContext(sessionId: string, targetStep: number, options: ContextFilterOptions): Promise<FilteredContextJson>;
   generateInvestigationContext(sessionId: string, stepIndex: number): Promise<InvestigationContextJson>;
   getWorkingMemory(sessionId: string): WorkingMemoryState;
@@ -859,7 +859,7 @@ interface QualityAssessment {
 
 ## Prompt Generation Flow
 
-### Investigation-Enhanced Prompt Generation
+### Investigation Prompt Generation
 
 #### Investigation Prompt Flow (New)
 1. **Receive Investigation Request**: Get investigation prompt request with phase and available tools
@@ -874,19 +874,19 @@ interface QualityAssessment {
 #### Action With Investigation Context Flow (New)
 1. **Receive Action Request**: Get request with investigation context summary
 2. **Load Investigation Results**: Retrieve completed investigations and discoveries
-3. **Build Enhanced Context**: Combine filtered context with investigation findings
+3. **Build Investigation Context**: Combine filtered context with investigation findings
 4. **Include Element Knowledge**: Add discovered elements and reliability scores
 5. **Apply Working Memory**: Include learned patterns and preferences
 6. **Generate Action Guidance**: Provide specific action recommendations based on investigations
 7. **Create Validation Framework**: Include investigation-based validation criteria
-8. **Return Enhanced Action Prompt**: Provide context-rich prompt for informed action
+8. **Return Action Prompt**: Provide context-rich prompt for informed action
 
-### Traditional Prompt Flows (Enhanced)
+### Traditional Prompt Flows
 
-#### Initial Action Prompt Flow (Enhanced)
+#### Initial Action Prompt Flow
 1. Receive action prompt request for step index 0
 2. Retrieve current step content and context
-3. **Check for Investigation Mode**: Determine if investigation-enhanced flow should be used
+3. **Check for Investigation Mode**: Determine if investigation flow should be used
 4. Load system message template and action prompt template
 5. Generate schema section using AI Schema Manager
 6. Build context section (minimal for first step, or filtered if investigation enabled)
@@ -897,13 +897,13 @@ interface QualityAssessment {
 11. Validate prompt structure and quality
 12. Return generated prompt with schema
 
-#### Reflection and Action Prompt Flow (Enhanced)
+#### Reflection and Action Prompt Flow
 1. Receive reflection prompt request for step index > 0
 2. **Retrieve Filtered Context**: Get filtered context to prevent overflow
 3. **Load Investigation History**: Include investigation results and discoveries
 4. **Get Working Memory State**: Retrieve element knowledge and patterns
 5. Load reflection prompt template with validation sections
-6. **Build Enhanced Context Section**: Use filtered context with investigation insights
+6. **Build Investigation Context Section**: Use filtered context with investigation insights
 7. **Generate Investigation-Aware Validation**: Include investigation-based success criteria
 8. **Create Result Analysis with Element Knowledge**: Use discovered elements for analysis
 9. **Include Working Memory Updates**: Guide AI on updating element knowledge
@@ -913,7 +913,7 @@ interface QualityAssessment {
 13. Validate complete prompt structure
 14. Return reflection prompt with investigation requirements
 
-### Context Integration Process (Enhanced)
+### Context Integration Process
 
 #### Filtered Context Integration (New)
 1. **Query Filtered Context**: Request filtered context from AI Context Manager
@@ -934,18 +934,18 @@ interface QualityAssessment {
 6. **Build Cumulative Understanding**: Progressively enhance page understanding
 7. **Optimize Future Investigations**: Use learned patterns for better investigation strategies
 
-#### Traditional Context Integration (Enhanced)
+#### Traditional Context Integration
 1. Query AI Context Manager for session execution history
 2. **Choose Context Strategy**: Use filtered context or traditional based on configuration
 3. Retrieve chronological list of reasoning and executor commands
-4. **Get Investigation-Enhanced Page States**: Include investigation insights
+4. **Get Investigation Page States**: Include investigation insights
 5. Filter and organize context based on prompt options
 6. **Apply Progressive Context Building**: Use working memory for context enhancement
 7. Compress or summarize large DOM content if needed
 8. **Highlight Investigation Discoveries**: Emphasize discovered elements and patterns
 9. Format context into structured sections
 
-### Schema Integration Process (Enhanced)
+### Schema Integration Process
 1. Query AI Schema Manager for current response schema
 2. Apply prompt-specific schema options
 3. **Include Investigation Tool Schema**: Add schema for investigation tool usage
@@ -1073,7 +1073,7 @@ interface PromptManagerError extends Error {
 - Validation with actual AI responses
 - Multi-step execution scenarios
 
-#### Investigation-Enhanced Integration Testing
+#### Investigation Integration Testing
 - Complete investigation cycle workflows (Initial Assessment → Focused Exploration → Selector Determination → Action)
 - Filtered context integration with AI Context Manager
 - Working memory persistence and retrieval
@@ -1147,7 +1147,7 @@ interface PromptManagerError extends Error {
 - Real-time prompt collaboration features
 
 #### Investigation Integration Expansions
-- **Computer Vision Services**: Integration with image analysis APIs for enhanced screenshot analysis
+- **Computer Vision Services**: Integration with image analysis APIs for screenshot analysis
 - **Natural Language Processing**: Advanced text analysis for better page content understanding
 - **Machine Learning Platforms**: Integration with ML services for pattern recognition and optimization
 - **Visual Testing Tools**: Integration with visual regression testing frameworks
@@ -1336,7 +1336,7 @@ export const DEFAULT_INVESTIGATION_CONFIG: InvestigationConfig = {
 
 ## Summary of Investigation Flow Integration
 
-The AI Prompt Manager has been enhanced to support the sophisticated page investigation flow described in the overall architecture. Key integration points include:
+The AI Prompt Manager supports the sophisticated page investigation flow described in the overall architecture. Key integration points include:
 
 ### Investigation Cycle Support
 1. **Phase-Specific Prompts**: Specialized prompts for Initial Assessment, Focused Exploration, and Selector Determination phases
@@ -1350,7 +1350,7 @@ The AI Prompt Manager has been enhanced to support the sophisticated page invest
 3. **Element Knowledge Accumulation**: Builds and maintains knowledge base of discovered elements and selectors
 4. **Pattern Learning Integration**: Incorporates successful and failed patterns for future investigations
 
-### Enhanced Prompt Generation
+### Prompt Generation
 1. **Investigation-Aware Templates**: New templates specifically designed for investigation workflows
 2. **Tool-Specific Guidance**: Detailed guidance for each investigation tool with parameters and best practices
 3. **Context Overflow Prevention**: Built-in strategies to manage context size while preserving critical information

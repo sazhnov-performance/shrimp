@@ -66,7 +66,7 @@ interface IAIContextManager extends ISessionManager {
   readonly moduleId: 'ai-context-manager';
   
   // Standardized Session Management (inherited from ISessionManager)
-  createSession(workflowSessionId: string, config?: AIContextConfig): Promise<string>;
+  createSession(workflowSessionId: string, config?: ModuleSessionConfig): Promise<string>;
   destroySession(workflowSessionId: string): Promise<void>;
   getSession(workflowSessionId: string): ModuleSessionInfo | null;
   sessionExists(workflowSessionId: string): boolean;
@@ -96,6 +96,23 @@ interface IAIContextManager extends ISessionManager {
   
   // Context Generation
   generateContextJson(workflowSessionId: string, targetStep: number): Promise<AIContextJson>;
+  generateInvestigationContext(workflowSessionId: string, stepIndex: number): Promise<InvestigationContextJson>;
+  
+  // Page Investigation Support
+  addInvestigationResult(workflowSessionId: string, stepIndex: number, investigation: InvestigationResult): Promise<string>;
+  getInvestigationHistory(workflowSessionId: string, stepIndex: number): InvestigationResult[];
+  addPageElementDiscovery(workflowSessionId: string, stepIndex: number, discovery: ElementDiscovery): Promise<void>;
+  getPageElementsDiscovered(workflowSessionId: string, stepIndex: number): ElementDiscovery[];
+  
+  // Context Filtering and Summarization
+  generateFilteredContext(workflowSessionId: string, targetStep: number, options: ContextFilterOptions): Promise<FilteredContextJson>;
+  addContextSummary(workflowSessionId: string, stepIndex: number, summary: StepContextSummary): Promise<void>;
+  getContextSummaries(workflowSessionId: string, stepRange?: [number, number]): StepContextSummary[];
+  
+  // Working Memory Management
+  updateWorkingMemory(workflowSessionId: string, stepIndex: number, memory: WorkingMemoryUpdate): Promise<void>;
+  getWorkingMemory(workflowSessionId: string): WorkingMemoryState;
+  clearWorkingMemory(workflowSessionId: string): Promise<void>;
   
   // Query Methods
   getSessionContext(workflowSessionId: string): AIContextSession | null;
@@ -105,12 +122,12 @@ interface IAIContextManager extends ISessionManager {
 
 ## Data Structures (FIXED: Uses Shared Types)
 
-### Execution Status (FIXED: Uses Shared SessionStatus)
+### Status Management (FIXED: Uses Shared SessionStatus)
 ```typescript
-// FIXED: Import and use shared SessionStatus instead of custom enum
+// Import and use shared SessionStatus for all status tracking
 import { SessionStatus } from './shared-types';
 
-// No longer defining custom ExecutionStatus - uses SessionStatus from shared types
+// All status fields use SessionStatus from shared types
 // SessionStatus includes: INITIALIZING, ACTIVE, PAUSED, COMPLETED, FAILED, CANCELLED, CLEANUP
 ```
 
@@ -140,8 +157,272 @@ interface ExecutionFlowItem {
   reasoning: string;
   executorMethod: string;
   timestamp: Date;
-  status: ExecutionStatus;
+  status: SessionStatus;
   screenshotId?: string;
+}
+
+// Page Investigation Data Structures
+interface InvestigationResult {
+  investigationId: string;
+  investigationType: InvestigationType;
+  timestamp: Date;
+  input: InvestigationInput;
+  output: InvestigationOutput;
+  success: boolean;
+  error?: string;
+  metadata?: Record<string, any>;
+}
+
+enum InvestigationType {
+  SCREENSHOT_ANALYSIS = 'SCREENSHOT_ANALYSIS',
+  TEXT_EXTRACTION = 'TEXT_EXTRACTION', 
+  FULL_DOM_RETRIEVAL = 'FULL_DOM_RETRIEVAL',
+  SUB_DOM_EXTRACTION = 'SUB_DOM_EXTRACTION'
+}
+
+interface InvestigationInput {
+  selector?: string;          // For text/DOM extraction
+  screenshotId?: string;      // For screenshot analysis
+  parameters?: Record<string, any>;
+}
+
+interface InvestigationOutput {
+  textContent?: string;       // For text extraction
+  domContent?: string;        // For DOM retrieval (excluded from context)
+  visualDescription?: string; // For screenshot analysis
+  elementCount?: number;      // For DOM queries
+  summary?: string;           // High-level summary for context
+}
+
+interface ElementDiscovery {
+  discoveryId: string;
+  timestamp: Date;
+  selector: string;
+  elementType: string;
+  properties: ElementProperties;
+  confidence: number;
+  discoveryMethod: InvestigationType;
+  isReliable: boolean;
+  metadata?: Record<string, any>;
+}
+
+interface ElementProperties {
+  tagName: string;
+  textContent?: string;
+  attributes?: Record<string, string>;
+  isVisible: boolean;
+  isInteractable: boolean;
+  boundingBox?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
+// Context Filtering and Summarization
+interface FilteredContextJson {
+  sessionId: string;
+  targetStep: number;
+  generatedAt: Date;
+  
+  // High-level execution flow (no full DOM content)
+  executionSummary: ExecutionSummaryItem[];
+  
+  // Page understanding without full content
+  pageInsights: PageInsight[];
+  
+  // Element discoveries and selector knowledge
+  elementKnowledge: ElementKnowledge[];
+  
+  // Working memory state
+  workingMemory: WorkingMemoryState;
+  
+  // Investigation strategy context
+  investigationStrategy: InvestigationStrategy;
+}
+
+interface ExecutionSummaryItem {
+  stepIndex: number;
+  stepName: string;
+  reasoning: string;
+  actionTaken: string;
+  outcome: 'success' | 'failure' | 'retry' | 'investigating';
+  confidence: number;
+  timestamp: Date;
+  screenshotId?: string;
+  keyFindings?: string[];
+}
+
+interface PageInsight {
+  stepIndex: number;
+  pageUrl?: string;
+  pageTitle?: string;
+  layoutType?: string;
+  mainSections?: string[];
+  keyElements?: string[];
+  navigationStructure?: string;
+  formElements?: string[];
+  interactiveElements?: string[];
+  visualDescription?: string;
+  complexity: 'low' | 'medium' | 'high';
+}
+
+interface ElementKnowledge {
+  selector: string;
+  elementType: string;
+  purpose: string;
+  reliability: number;
+  lastSeen: Date;
+  discoveryHistory: string[];
+  alternativeSelectors?: string[];
+  interactionNotes?: string;
+}
+
+interface InvestigationContextJson {
+  sessionId: string;
+  stepIndex: number;
+  generatedAt: Date;
+  
+  // Current investigation cycle context
+  currentInvestigations: InvestigationResult[];
+  elementsDiscovered: ElementDiscovery[];
+  pageInsight: PageInsight;
+  workingMemory: WorkingMemoryState;
+  
+  // Investigation strategy and next steps
+  suggestedInvestigations: SuggestedInvestigation[];
+  investigationPriority: InvestigationPriority;
+}
+
+interface SuggestedInvestigation {
+  type: InvestigationType;
+  purpose: string;
+  parameters?: Record<string, any>;
+  priority: number;
+  reasoning: string;
+}
+
+interface InvestigationPriority {
+  primary: InvestigationType;
+  fallbacks: InvestigationType[];
+  reasoning: string;
+}
+
+// Working Memory Management
+interface WorkingMemoryState {
+  sessionId: string;
+  lastUpdated: Date;
+  
+  // Current page understanding
+  currentPageInsight?: PageInsight;
+  
+  // Known elements and their properties
+  knownElements: Map<string, ElementKnowledge>;
+  
+  // Navigation and flow understanding
+  navigationPattern?: NavigationPattern;
+  
+  // Variable and data context
+  extractedVariables: Map<string, VariableContext>;
+  
+  // Strategy and learning
+  successfulPatterns: SuccessPattern[];
+  failurePatterns: FailurePattern[];
+  
+  // Investigation preferences
+  investigationPreferences: InvestigationPreferences;
+}
+
+interface WorkingMemoryUpdate {
+  updateType: 'element_discovery' | 'page_insight' | 'variable_extraction' | 'pattern_learning' | 'investigation_preference';
+  data: any;
+  confidence: number;
+  source: string;
+}
+
+interface NavigationPattern {
+  urlPattern: string;
+  navigationSteps: string[];
+  reliability: number;
+  lastUsed: Date;
+}
+
+interface VariableContext {
+  name: string;
+  value: string;
+  extractionMethod: string;
+  reliability: number;
+  lastUpdated: Date;
+  sourceElement?: string;
+}
+
+interface SuccessPattern {
+  pattern: string;
+  context: string;
+  successRate: number;
+  usageCount: number;
+  lastUsed: Date;
+}
+
+interface FailurePattern {
+  pattern: string;
+  context: string;
+  failureReasons: string[];
+  lastEncountered: Date;
+  avoidanceStrategy?: string;
+}
+
+interface InvestigationPreferences {
+  preferredOrder: InvestigationType[];
+  qualityThresholds: Record<InvestigationType, number>;
+  fallbackStrategies: Record<InvestigationType, InvestigationType[]>;
+}
+
+// Context Filtering Options
+interface ContextFilterOptions {
+  excludeFullDom: boolean;
+  excludePageContent: boolean;
+  maxHistorySteps: number;
+  includeWorkingMemory: boolean;
+  includeElementKnowledge: boolean;
+  includeInvestigationHistory: boolean;
+  summarizationLevel: 'minimal' | 'standard' | 'detailed';
+  confidenceThreshold: number;
+}
+
+interface StepContextSummary {
+  stepIndex: number;
+  stepName: string;
+  timestamp: Date;
+  
+  // High-level summary without full content
+  actionSummary: string;
+  outcomeSummary: string;
+  keyFindings: string[];
+  elementsDiscovered: string[];
+  variablesExtracted: string[];
+  
+  // Investigation summary
+  investigationsSummary: string;
+  pageInsightSummary: string;
+  
+  // Learning and patterns
+  patternsLearned?: string[];
+  strategiesUsed?: string[];
+  
+  // Confidence and reliability
+  overallConfidence: number;
+  reliability: number;
+}
+
+interface InvestigationStrategy {
+  currentPhase: 'initial_assessment' | 'focused_exploration' | 'selector_determination';
+  recommendedInvestigations: SuggestedInvestigation[];
+  investigationPriority: InvestigationPriority;
+  contextManagementApproach: 'minimal' | 'standard' | 'comprehensive';
+  confidenceThreshold: number;
+  maxInvestigationRounds: number;
 }
 ```
 
@@ -206,6 +487,107 @@ The core method that produces AI-consumable context:
 - **Chronological Order**: Maintain temporal sequence of all events
 - **Screenshot References**: Include screenshot IDs for visual context linkage
 
+### 6. Page Investigation Support
+
+#### Investigation Result Management
+```typescript
+async addInvestigationResult(sessionId: string, stepIndex: number, investigation: InvestigationResult): Promise<string>
+```
+- Store results from AI page investigation tools
+- Track investigation type, input parameters, and output
+- Maintain investigation history for learning and optimization
+- Link investigations to specific steps and execution events
+
+#### Element Discovery Tracking
+```typescript
+async addPageElementDiscovery(sessionId: string, stepIndex: number, discovery: ElementDiscovery): Promise<void>
+```
+- Record discovered page elements and their properties
+- Track discovery method, reliability, and confidence scores
+- Build knowledge base of element selectors and interactions
+- Support progressive element understanding across investigations
+
+### 7. Context Filtering and Summarization
+
+#### Filtered Context Generation
+```typescript
+async generateFilteredContext(sessionId: string, targetStep: number, options: ContextFilterOptions): Promise<FilteredContextJson>
+```
+The core method that implements context overflow prevention:
+
+**Context Filtering Strategy:**
+1. **Exclude Full DOM Content**: Removes large DOM strings from context
+2. **High-Level Execution Summary**: Provides step outcomes without full details
+3. **Page Insights**: Summarizes page understanding without raw content
+4. **Element Knowledge**: Tracks selector discoveries and reliability
+5. **Working Memory**: Maintains current page understanding state
+
+**Filtering Process:**
+1. Extract high-level execution outcomes and reasoning
+2. Summarize page investigations without including full DOM/content
+3. Preserve element selector knowledge and discovery history
+4. Include only screenshot IDs and visual descriptions
+5. Maintain working memory of page understanding patterns
+
+#### Context Summarization
+```typescript
+async addContextSummary(sessionId: string, stepIndex: number, summary: StepContextSummary): Promise<void>
+```
+- Create compact summaries of step execution and findings
+- Exclude full page content while preserving key insights
+- Track elements discovered, variables extracted, and patterns learned
+- Maintain confidence and reliability metrics for context quality
+
+### 8. Working Memory Management
+
+#### Working Memory Updates
+```typescript
+async updateWorkingMemory(sessionId: string, stepIndex: number, memory: WorkingMemoryUpdate): Promise<void>
+```
+- Maintain AI's understanding of current page state
+- Track known elements, navigation patterns, and variables
+- Learn from successful and failed interaction patterns
+- Update investigation preferences based on experience
+
+**Working Memory Components:**
+- **Page Insight**: Current understanding of page structure and purpose
+- **Element Knowledge**: Map of discovered elements and their reliability
+- **Navigation Patterns**: Understanding of site flow and structure
+- **Variable Context**: Extracted data and its sources
+- **Pattern Learning**: Successful and failed interaction strategies
+- **Investigation Preferences**: Optimized investigation approaches
+
+#### Memory State Retrieval
+```typescript
+getWorkingMemory(sessionId: string): WorkingMemoryState
+```
+- Provide current AI understanding state
+- Include element knowledge and navigation patterns
+- Support decision-making with learned preferences
+- Enable context-aware investigation strategy selection
+
+### 9. Investigation Context Generation
+
+#### Investigation-Specific Context
+```typescript
+async generateInvestigationContext(sessionId: string, stepIndex: number): Promise<InvestigationContextJson>
+```
+Specialized context generation for investigation cycles:
+
+**Investigation Context Features:**
+- Current investigation results and their outcomes
+- Elements discovered in this step with confidence scores
+- Page insight summary without full content
+- Working memory state for informed decisions
+- Suggested next investigations based on current knowledge
+- Investigation priority recommendations
+
+**Context Management Strategy:**
+1. **Progressive Building**: Each investigation builds upon previous knowledge
+2. **Selective Inclusion**: Include only investigation summaries, not raw data
+3. **Confidence Tracking**: Maintain reliability scores for discovered elements
+4. **Strategy Optimization**: Learn optimal investigation patterns for similar pages
+
 ## Implementation Structure
 
 ### Module Organization
@@ -216,6 +598,11 @@ The core method that produces AI-consumable context:
   ├── step-manager.ts             # Step definition handling
   ├── execution-tracker.ts        # Step execution and event tracking
   ├── context-generator.ts        # Context JSON generation logic
+  ├── investigation-manager.ts    # Page investigation result tracking
+  ├── element-discovery.ts        # Element discovery and knowledge management
+  ├── context-filter.ts           # Context filtering and summarization
+  ├── working-memory.ts           # AI working memory management
+  ├── investigation-context.ts    # Investigation-specific context generation
   ├── storage-adapter.ts          # Data persistence abstraction
   └── types.ts                    # TypeScript type definitions
 ```
@@ -252,11 +639,34 @@ interface ExecutorIntegration {
 ```
 
 ### Data Flow
+
+#### Traditional Execution Flow
 1. **AI Engine** sets steps via `setSteps()`
 2. **Executor Module** performs automation commands
 3. **Context Manager** captures events via `addExecutionEvent()`
 4. **AI Engine** requests context via `generateContextJson()`
 5. **AI Engine** makes decisions based on historical context
+
+#### Investigation-Enhanced Flow
+1. **Task Loop** initiates step with high-level description
+2. **Task Loop** requests investigation context via `generateInvestigationContext()`
+3. **Task Loop** performs investigation cycle:
+   - Screenshot analysis → `addInvestigationResult()`
+   - Text extraction → `addInvestigationResult()`
+   - DOM retrieval → `addInvestigationResult()` (content filtered)
+   - Element discovery → `addPageElementDiscovery()`
+4. **Task Loop** updates working memory via `updateWorkingMemory()`
+5. **Task Loop** requests filtered context via `generateFilteredContext()`
+6. **Task Loop** determines optimal selector and executes action
+7. **Context Manager** captures execution via `addExecutionEvent()`
+8. **Context Manager** creates step summary via `addContextSummary()`
+
+#### Context Management Benefits
+- **No Context Overflow**: Full DOM/page content excluded from AI context
+- **Progressive Learning**: Working memory builds understanding over time
+- **Intelligent Investigation**: AI learns optimal investigation patterns
+- **Element Knowledge**: Reliable selector discovery and validation
+- **Pattern Recognition**: Success/failure patterns improve future decisions
 
 ## Advanced Features
 
@@ -360,7 +770,7 @@ class ContextManagerErrorHandler {
 ### Context Manager Configuration (FIXED: Extends BaseModuleConfig)
 ```typescript
 // Import shared configuration pattern
-import { BaseModuleConfig, DEFAULT_TIMEOUT_CONFIG } from './shared-types';
+import { BaseModuleConfig } from './shared-types';
 
 interface AIContextConfig extends BaseModuleConfig {
   moduleId: 'ai-context-manager';
@@ -381,10 +791,43 @@ interface AIContextConfig extends BaseModuleConfig {
     formats: string[];
   };
   
+  // Page Investigation Configuration
+  investigation: {
+    maxInvestigationsPerStep: number;
+    enableWorkingMemory: boolean;
+    workingMemoryTTL: number; // Time-to-live for working memory
+    enableElementKnowledge: boolean;
+    maxElementKnowledgeEntries: number;
+    enablePatternLearning: boolean;
+    patternLearningThreshold: number; // Minimum occurrences to form pattern
+  };
+  
+  // Context Filtering Configuration
+  contextFiltering: {
+    enableAutoFiltering: boolean;
+    maxContextSize: number; // Maximum context size in characters
+    defaultFilteringLevel: 'minimal' | 'standard' | 'detailed';
+    excludeFullDomByDefault: boolean;
+    includeWorkingMemoryByDefault: boolean;
+    confidenceThreshold: number; // Minimum confidence for inclusion
+    summarizationQuality: 'fast' | 'balanced' | 'comprehensive';
+  };
+  
+  // Working Memory Configuration
+  workingMemory: {
+    enabled: boolean;
+    maxKnownElements: number;
+    maxNavigationPatterns: number;
+    maxSuccessPatterns: number;
+    maxFailurePatterns: number;
+    reliabilityThreshold: number; // Minimum reliability to keep element
+    learningRate: number; // How quickly patterns are learned/forgotten
+    memoryCleanupInterval: number; // Cleanup interval in milliseconds
+  };
+  
   // Inherits from BaseModuleConfig:
   // - logging: LoggingConfig
-  // - performance: PerformanceConfig  
-  // - timeouts: TimeoutConfig
+  // - performance: PerformanceConfig
 }
 
 // Default configuration
@@ -410,7 +853,36 @@ const DEFAULT_AI_CONTEXT_CONFIG: AIContextConfig = {
     formats: ['json', 'csv', 'xml']
   },
   
-  timeouts: DEFAULT_TIMEOUT_CONFIG,
+  investigation: {
+    maxInvestigationsPerStep: 10,
+    enableWorkingMemory: true,
+    workingMemoryTTL: 3600000, // 1 hour
+    enableElementKnowledge: true,
+    maxElementKnowledgeEntries: 1000,
+    enablePatternLearning: true,
+    patternLearningThreshold: 3 // Minimum 3 occurrences
+  },
+  
+  contextFiltering: {
+    enableAutoFiltering: true,
+    maxContextSize: 50000, // 50K characters
+    defaultFilteringLevel: 'standard',
+    excludeFullDomByDefault: true,
+    includeWorkingMemoryByDefault: true,
+    confidenceThreshold: 0.6,
+    summarizationQuality: 'balanced'
+  },
+  
+  workingMemory: {
+    enabled: true,
+    maxKnownElements: 500,
+    maxNavigationPatterns: 50,
+    maxSuccessPatterns: 100,
+    maxFailurePatterns: 100,
+    reliabilityThreshold: 0.7,
+    learningRate: 0.1,
+    memoryCleanupInterval: 300000 // 5 minutes
+  },
   
   logging: {
     level: LogLevel.INFO,
@@ -446,9 +918,35 @@ const DEFAULT_AI_CONTEXT_CONFIG: AIContextConfig = {
 - Data encryption for persistent storage
 
 ## Future Enhancements
+
+### Core Context Management
 - Real-time context streaming for live monitoring
 - AI-powered execution pattern analysis
 - Automated context summarization
 - Visual execution flow diagrams
 - Context-based debugging tools
 - Machine learning insights from execution patterns
+
+### Investigation and Learning Enhancements
+- **Advanced Pattern Recognition**: Machine learning models to identify optimal investigation sequences
+- **Cross-Session Learning**: Share element knowledge and patterns across different automation sessions
+- **Intelligent Summarization**: AI-powered content summarization to further reduce context size
+- **Visual Element Mapping**: Computer vision integration for visual element identification and tracking
+- **Adaptive Investigation**: Dynamic adjustment of investigation strategies based on page complexity
+- **Semantic Understanding**: Natural language processing for better page content understanding
+
+### Working Memory Evolution
+- **Persistent Knowledge Base**: Long-term storage of element knowledge across sessions
+- **Site-Specific Patterns**: Learn navigation and interaction patterns for specific websites
+- **Predictive Investigation**: Predict optimal investigation approaches before starting
+- **Context Quality Metrics**: Automatic assessment and optimization of context quality
+- **Memory Compression**: Advanced compression techniques for large working memory states
+- **Collaborative Learning**: Share learning across multiple AI automation instances
+
+### Context Optimization
+- **Dynamic Context Sizing**: Automatically adjust context size based on AI model capabilities
+- **Smart Content Filtering**: AI-powered filtering to identify most relevant context elements
+- **Context Caching**: Intelligent caching of frequently accessed context patterns
+- **Multi-Modal Context**: Integration of visual, textual, and structural context types
+- **Context Versioning**: Track context evolution and rollback capabilities
+- **Performance Analytics**: Detailed analysis of context generation and filtering performance

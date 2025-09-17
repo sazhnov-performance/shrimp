@@ -324,6 +324,17 @@ enum StreamEventType {
   STEP_COMPLETED = 'STEP_COMPLETED',
   STEP_FAILED = 'STEP_FAILED',
   
+  // Investigation events (owned by Task Loop)
+  INVESTIGATION_STARTED = 'INVESTIGATION_STARTED',
+  INVESTIGATION_PHASE_STARTED = 'INVESTIGATION_PHASE_STARTED',
+  INVESTIGATION_PHASE_COMPLETED = 'INVESTIGATION_PHASE_COMPLETED',
+  INVESTIGATION_TOOL_STARTED = 'INVESTIGATION_TOOL_STARTED',
+  INVESTIGATION_TOOL_COMPLETED = 'INVESTIGATION_TOOL_COMPLETED',
+  INVESTIGATION_COMPLETED = 'INVESTIGATION_COMPLETED',
+  INVESTIGATION_FAILED = 'INVESTIGATION_FAILED',
+  ELEMENT_DISCOVERED = 'ELEMENT_DISCOVERED',
+  WORKING_MEMORY_UPDATED = 'WORKING_MEMORY_UPDATED',
+  
   // AI events (owned by AI Integration/Task Loop)
   AI_REASONING = 'AI_REASONING',
   AI_RESPONSE_RECEIVED = 'AI_RESPONSE_RECEIVED',
@@ -380,6 +391,46 @@ interface StreamEventData {
     status: StepStatus;
     progress?: number;
     result?: StepResult;
+  };
+  
+  // Investigation data (NEW)
+  investigation?: {
+    investigationId?: string;
+    phase: 'initial_assessment' | 'focused_exploration' | 'selector_determination';
+    toolsUsed: string[];
+    elementsDiscovered: number;
+    confidence: number;
+    duration?: number;
+    readyForAction?: boolean;
+  };
+  
+  // Investigation tool data (NEW)
+  investigationTool?: {
+    tool: 'screenshot_analysis' | 'text_extraction' | 'full_dom_retrieval' | 'sub_dom_extraction';
+    success: boolean;
+    confidence: number;
+    duration: number;
+    elementsFound?: number;
+    summary?: string;
+  };
+  
+  // Element discovery data (NEW)
+  elementDiscovery?: {
+    selector: string;
+    elementType: string;
+    confidence: number;
+    discoveryMethod: string;
+    isReliable: boolean;
+    properties?: Record<string, any>;
+  };
+  
+  // Working memory data (NEW)
+  workingMemory?: {
+    updateType: 'element_discovery' | 'page_insight' | 'variable_extraction' | 'pattern_learning' | 'investigation_preference';
+    elementsKnown: number;
+    patternsLearned: number;
+    confidence: number;
+    source: string;
   };
   
   // Workflow progress data
@@ -751,7 +802,17 @@ enum TaskLoopEventType {
   STEP_FAILED = 'STEP_FAILED',
   AI_REASONING_UPDATE = 'AI_REASONING_UPDATE',
   COMMAND_EXECUTED = 'COMMAND_EXECUTED',
-  PROGRESS_UPDATE = 'PROGRESS_UPDATE'
+  PROGRESS_UPDATE = 'PROGRESS_UPDATE',
+  // Investigation events (NEW)
+  INVESTIGATION_STARTED = 'INVESTIGATION_STARTED',
+  INVESTIGATION_PHASE_STARTED = 'INVESTIGATION_PHASE_STARTED',
+  INVESTIGATION_PHASE_COMPLETED = 'INVESTIGATION_PHASE_COMPLETED',
+  INVESTIGATION_TOOL_STARTED = 'INVESTIGATION_TOOL_STARTED',
+  INVESTIGATION_TOOL_COMPLETED = 'INVESTIGATION_TOOL_COMPLETED',
+  INVESTIGATION_COMPLETED = 'INVESTIGATION_COMPLETED',
+  INVESTIGATION_FAILED = 'INVESTIGATION_FAILED',
+  ELEMENT_DISCOVERED = 'ELEMENT_DISCOVERED',
+  WORKING_MEMORY_UPDATED = 'WORKING_MEMORY_UPDATED'
 }
 
 interface TaskLoopEventData {
@@ -766,6 +827,39 @@ interface TaskLoopEventData {
     result: CommandResponse;
   };
   progress?: ExecutionProgress;
+  // Investigation event data (NEW)
+  investigation?: {
+    investigationId?: string;
+    phase: 'initial_assessment' | 'focused_exploration' | 'selector_determination';
+    toolsUsed: string[];
+    elementsDiscovered: number;
+    confidence: number;
+    duration?: number;
+    readyForAction?: boolean;
+  };
+  investigationTool?: {
+    tool: 'screenshot_analysis' | 'text_extraction' | 'full_dom_retrieval' | 'sub_dom_extraction';
+    success: boolean;
+    confidence: number;
+    duration: number;
+    elementsFound?: number;
+    summary?: string;
+  };
+  elementDiscovery?: {
+    selector: string;
+    elementType: string;
+    confidence: number;
+    discoveryMethod: string;
+    isReliable: boolean;
+    properties?: Record<string, any>;
+  };
+  workingMemory?: {
+    updateType: 'element_discovery' | 'page_insight' | 'variable_extraction' | 'pattern_learning' | 'investigation_preference';
+    elementsKnown: number;
+    patternsLearned: number;
+    confidence: number;
+    source: string;
+  };
 }
 
 // Processing options for Task Loop steps

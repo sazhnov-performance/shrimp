@@ -1,197 +1,185 @@
 /**
  * Step Processor Module Type Definitions
- * Defines all interfaces and types for orchestrating automation workflow execution
+ * Defines all interfaces and types for workflow orchestration and step processing
+ * Based on design/step-processor.md specifications
  */
 
-import { StreamConfig, StreamEvent, StreamEventType } from './executor-streamer';
-import { ExecutionStatus, SessionSummary } from './ai-context-manager';
-import { LogLevel } from './executor';
-
-// Core Step Processor Interface
-export interface IStepProcessor {
-  // Workflow Management
-  processSteps(request: StepProcessingRequest): Promise<StepProcessingResult>;
-  pauseExecution(sessionId: string): Promise<void>;
-  resumeExecution(sessionId: string): Promise<void>;
-  cancelExecution(sessionId: string): Promise<void>;
+import {
+  // Shared session management types
+  ISessionManager,
+  ModuleSessionInfo,
+  ModuleSessionConfig,
+  SessionStatus,
+  SessionLifecycleCallbacks,
+  SessionManagerHealth,
+  WorkflowSession,
+  SessionCoordinator,
   
-  // Session Management
-  getSessionStatus(sessionId: string): Promise<SessionStatus>;
-  listActiveSessions(): string[];
-  destroySession(sessionId: string): Promise<void>;
+  // Shared processing types
+  StepProcessingRequest,
+  StepProcessingResult,
+  ProcessingConfig,
+  StepResult,
+  ExecutionProgress,
+  
+  // Shared error and logging types
+  StandardError,
+  LogLevel,
+  LoggingConfig,
+  
+  // Shared event types
+  IEventPublisher,
+  TaskLoopEvent,
+  TaskLoopEventType,
+  TaskLoopEventData,
+  StreamEvent,
+  StreamEventType,
+  StreamEventData,
+  
+  // Shared timeout and config types
+  TimeoutConfig,
+  BaseModuleConfig,
+  PerformanceConfig,
+  
+  // Dependency injection types
+  DIContainer,
+  
+  // Command and response types
+  ExecutorCommand,
+  CommandResponse,
+  AIResponse,
+  
+  // Status enums
+  StepStatus,
+  
+  // Working session types
+  WorkflowConfig
+} from './shared-types';
+
+// Core Step Processor Interface - implements standardized session management
+export interface IStepProcessor extends ISessionManager {
+  readonly moduleId: 'step-processor';
+  
+  // Workflow Management (uses workflowSessionId consistently)
+  processSteps(request: StepProcessingRequest): Promise<StepProcessingResult>;
+  pauseExecution(workflowSessionId: string): Promise<void>;
+  resumeExecution(workflowSessionId: string): Promise<void>;
+  cancelExecution(workflowSessionId: string): Promise<void>;
+  
+  // Session Coordination (works with SessionCoordinator)
+  getWorkflowSession(workflowSessionId: string): WorkflowSession | null;
+  listActiveWorkflowSessions(): string[];
+  destroyWorkflowSession(workflowSessionId: string): Promise<void>;
   
   // Progress Tracking
-  getExecutionProgress(sessionId: string): Promise<ExecutionProgress>;
-  getStepHistory(sessionId: string): Promise<StepExecutionSummary[]>;
-}
-
-// Request and Response Types
-export interface StepProcessingRequest {
-  steps: string[];
-  config?: ProcessingConfig;
-  metadata?: Record<string, any>;
-  streamingEnabled?: boolean;
-}
-
-export interface StepProcessingResult {
-  sessionId: string;
-  streamId?: string;
-  initialStatus: ProcessingStatus;
-  estimatedDuration?: number;
-  createdAt: Date;
-}
-
-// Configuration Types
-export interface ProcessingConfig {
-  maxExecutionTime?: number; // milliseconds
-  enableStreaming: boolean;
-  enableReflection: boolean;
-  retryOnFailure: boolean;
-  maxRetries: number;
-  parallelExecution: boolean;
-  streamConfig?: Partial<StreamConfig>;
-}
-
-export interface StepProcessorConfig {
-  maxConcurrentSessions: number;
-  defaultTimeout: number; // milliseconds
-  enableCheckpoints: boolean;
-  checkpointInterval: number; // milliseconds
-  streamingDefaults: {
-    enabled: boolean;
-    bufferSize: number;
-    maxHistorySize: number;
-  };
-  retry: {
-    enabled: boolean;
-    maxAttempts: number;
-    delayMs: number;
-  };
-  logging: {
-    level: LogLevel;
-    includeStepContent: boolean;
-    includeMetadata: boolean;
-  };
-}
-
-// Status and State Types
-export enum ProcessingStatus {
-  INITIALIZING = 'INITIALIZING',
-  ACTIVE = 'ACTIVE',
-  PAUSED = 'PAUSED',
-  COMPLETED = 'COMPLETED',
-  FAILED = 'FAILED',
-  CANCELLED = 'CANCELLED'
-}
-
-export interface SessionStatus {
-  sessionId: string;
-  streamId?: string;
-  status: ProcessingStatus;
-  currentStepIndex: number;
-  totalSteps: number;
-  startTime: Date;
-  lastActivity: Date;
-  estimatedTimeRemaining?: number;
-  error?: ProcessingError;
-}
-
-export interface ExecutionProgress {
-  sessionId: string;
-  totalSteps: number;
-  completedSteps: number;
-  currentStepIndex: number;
-  currentStepName: string;
-  overallProgress: number; // 0-100 percentage
-  estimatedTimeRemaining: number; // milliseconds
-  averageStepDuration: number;
-  lastActivity: Date;
-}
-
-export interface StepExecutionSummary {
-  stepIndex: number;
-  stepName: string;
-  status: ExecutionStatus;
-  startTime: Date;
-  endTime?: Date;
-  duration?: number;
-  iterations: number;
-  success: boolean;
-  error?: string;
+  getExecutionProgress(workflowSessionId: string): Promise<ExecutionProgress>;
+  getStepHistory(workflowSessionId: string): Promise<StepExecutionSummary[]>;
+  
+  // Dependency Injection
+  initialize(container: DIContainer): Promise<void>;
 }
 
 // Session Management Types
-export interface SessionRegistry {
-  sessions: Map<string, ProcessingSession>;
-  streamSessions: Map<string, string>; // sessionId -> streamId
-  
-  addSession(session: ProcessingSession): void;
-  getSession(sessionId: string): ProcessingSession | null;
-  removeSession(sessionId: string): void;
-  listActiveSessions(): ProcessingSession[];
-}
-
-export interface ProcessingSession {
-  sessionId: string;
-  streamId?: string;
-  steps: string[];
-  config: ProcessingConfig;
-  status: ProcessingStatus;
+export interface StepProcessorSession extends ModuleSessionInfo {
+  moduleId: 'step-processor';
+  workflowSession?: WorkflowSession;
   currentStepIndex: number;
-  startTime: Date;
-  lastActivity: Date;
-  metadata?: Record<string, any>;
-}
-
-// Task Loop Coordination Types
-export interface TaskLoopCoordination {
-  onStepCompleted(sessionId: string, stepIndex: number, result: StepResult): Promise<void>;
-  onStepFailed(sessionId: string, stepIndex: number, error: ProcessingError): Promise<void>;
-  onExecutionCompleted(sessionId: string, summary: ExecutionSummary): Promise<void>;
-}
-
-export interface StepResult {
-  sessionId: string;
-  stepIndex: number;
-  success: boolean;
-  duration: number;
-  iterations: number;
-  finalDom?: string;
-  screenshotId?: string;
-  executedActions: string[];
-  aiReasoning?: string;
-  error?: any;
-}
-
-export interface ExecutionSummary {
-  sessionId: string;
   totalSteps: number;
-  completedSteps: number;
-  failedSteps: number;
-  totalDuration: number;
-  averageStepDuration: number;
-  totalIterations: number;
-  successRate: number;
+  executionProgress: ExecutionProgress;
+  streamingEnabled: boolean;
+  lastStepResult?: StepResult;
 }
 
-// Integration Interface Types
-export interface ContextManagerIntegration {
-  initializeSession(sessionId: string, steps: string[]): Promise<void>;
-  trackStepProgress(sessionId: string, stepIndex: number, status: ExecutionStatus): Promise<void>;
-  getSessionSummary(sessionId: string): Promise<SessionSummary>;
+export interface StepProcessorSessionConfig extends ModuleSessionConfig {
+  enableStreaming?: boolean;
+  maxExecutionTime?: number;
+  retryOnFailure?: boolean;
+  maxRetries?: number;
+  workflowConfig?: WorkflowConfig;
 }
 
-export interface ExecutorStreamerIntegration {
-  createStreamSession(sessionId: string, config?: Partial<StreamConfig>): Promise<string>;
-  publishSessionEvents(streamId: string, events: StreamEvent[]): Promise<void>;
-  destroyStreamSession(streamId: string): Promise<void>;
+// Step Execution Management
+export interface StepExecutionSummary {
+  stepIndex: number;
+  stepContent: string;
+  status: StepStatus;
+  startTime: Date;
+  endTime?: Date;
+  duration?: number;
+  result?: StepResult;
+  error?: StandardError;
+  iterationCount: number;
+  aiReasoningCount: number;
+  commandCount: number;
 }
 
-export interface TaskLoopIntegration {
-  processStep(request: TaskLoopStepRequest): Promise<void>;
-  registerCallbacks(callbacks: TaskLoopCallbacks): void;
-  pauseStep(sessionId: string, stepIndex: number): Promise<void>;
-  resumeStep(sessionId: string, stepIndex: number): Promise<void>;
+export interface StepExecutionContext {
+  sessionId: string;
+  workflowSessionId: string;
+  stepIndex: number;
+  stepContent: string;
+  streamId?: string;
+  config: ProcessingConfig;
+  startTime: Date;
+  currentIteration: number;
+  maxIterations: number;
+}
+
+// Event Publishing and Coordination
+export interface StepProcessorEventPublisher extends IEventPublisher {
+  // Step-level events (owned by Step Processor)
+  publishStepStarted(streamId: string | undefined, sessionId: string, stepIndex: number, stepContent: string): Promise<void>;
+  publishStepCompleted(streamId: string | undefined, sessionId: string, stepIndex: number, result: StepResult): Promise<void>;
+  publishStepFailed(streamId: string | undefined, sessionId: string, stepIndex: number, error: StandardError): Promise<void>;
+  
+  // Workflow-level events (owned by Step Processor)
+  publishWorkflowStarted(streamId: string | undefined, sessionId: string, totalSteps: number): Promise<void>;
+  publishWorkflowProgress(streamId: string | undefined, sessionId: string, progress: ExecutionProgress): Promise<void>;
+  publishWorkflowCompleted(streamId: string | undefined, sessionId: string): Promise<void>;
+  publishWorkflowFailed(streamId: string | undefined, sessionId: string, error: StandardError): Promise<void>;
+  publishWorkflowPaused(streamId: string | undefined, sessionId: string): Promise<void>;
+  publishWorkflowResumed(streamId: string | undefined, sessionId: string): Promise<void>;
+  
+  // Generic stream event publishing
+  publishStreamEvent(streamId: string | undefined, event: Omit<StreamEvent, 'id' | 'timestamp'>): Promise<void>;
+}
+
+// Task Loop Integration - Event-Driven Architecture
+export interface TaskLoopEventHandler {
+  handleStepStarted(sessionId: string, stepIndex: number): Promise<void>;
+  handleStepCompleted(sessionId: string, stepIndex: number, result: StepResult): Promise<void>;
+  handleStepFailed(sessionId: string, stepIndex: number, error: StandardError): Promise<void>;
+  handleAIReasoningUpdate(sessionId: string, stepIndex: number, reasoning: { content: string; confidence: number }): Promise<void>;
+  handleCommandExecuted(sessionId: string, stepIndex: number, commandData: { command: ExecutorCommand; result: CommandResponse }): Promise<void>;
+  handleProgressUpdate(sessionId: string, progress: ExecutionProgress): Promise<void>;
+}
+
+// Module Dependencies (resolved via DI Container)
+export interface StepProcessorDependencies {
+  sessionCoordinator: SessionCoordinator;
+  contextManager: IAIContextManagerInterface;
+  taskLoop: ITaskLoopInterface;
+  executor: IExecutorInterface;
+  executorStreamer: IExecutorStreamerInterface;
+  aiIntegration: IAIIntegrationInterface;
+  errorHandler: IErrorHandlerInterface;
+  logger: ILoggerInterface;
+}
+
+// External Module Interfaces (for DI integration)
+export interface IAIContextManagerInterface {
+  createSession(sessionId: string): Promise<string>;
+  linkExecutorSession(sessionId: string, executorSessionId: string): Promise<void>;
+  setSteps(sessionId: string, steps: string[]): Promise<void>;
+  destroySession(sessionId: string): Promise<void>;
+}
+
+export interface ITaskLoopInterface {
+  processStep(request: TaskLoopStepRequest): Promise<StepResult>;
+  setEventPublisher(publisher: IEventPublisher): void;
+  pauseExecution(workflowSessionId: string, stepIndex: number): Promise<void>;
+  resumeExecution(workflowSessionId: string, stepIndex: number): Promise<void>;
+  cancelExecution(workflowSessionId: string, stepIndex: number): Promise<void>;
 }
 
 export interface TaskLoopStepRequest {
@@ -199,230 +187,241 @@ export interface TaskLoopStepRequest {
   stepIndex: number;
   stepContent: string;
   streamId?: string;
-  options?: TaskLoopProcessingOptions;
+  options?: ProcessingOptions;
 }
 
-export interface TaskLoopProcessingOptions {
+export interface ProcessingOptions {
   maxIterations?: number;
   reflectionEnabled?: boolean;
   validationMode?: 'strict' | 'lenient';
   timeoutMs?: number;
+  retryOnFailure?: boolean;
+  maxRetries?: number;
 }
 
-export interface TaskLoopCallbacks {
-  onStepStarted(sessionId: string, stepIndex: number): Promise<void>;
-  onStepCompleted(sessionId: string, stepIndex: number, result: StepResult): Promise<void>;
-  onStepFailed(sessionId: string, stepIndex: number, error: ProcessingError): Promise<void>;
-  onReasoningUpdate(sessionId: string, stepIndex: number, reasoning: string): Promise<void>;
-  onExecutorMethodCalled(sessionId: string, stepIndex: number, method: string, parameters: any): Promise<void>;
+export interface IExecutorInterface {
+  createSession(sessionId: string): Promise<string>;
+  destroySession(sessionId: string): Promise<void>;
+  executeCommand(sessionId: string, command: ExecutorCommand): Promise<CommandResponse>;
 }
 
-// Advanced Features Types
-export interface SessionRecovery {
-  saveCheckpoint(sessionId: string): Promise<void>;
-  recoverSession(sessionId: string): Promise<ProcessingSession>;
-  listRecoverableSessions(): Promise<string[]>;
-  clearCheckpoint(sessionId: string): Promise<void>;
+export interface IExecutorStreamerInterface {
+  createStream(streamId: string, sessionId: string): Promise<void>;
+  destroyStream(streamId: string): Promise<void>;
+  publishEvent(streamId: string, event: StreamEvent): Promise<void>;
 }
 
-export interface BatchProcessor {
-  processBatch(requests: StepProcessingRequest[]): Promise<BatchProcessingResult>;
-  monitorBatch(batchId: string): Promise<BatchStatus>;
-  cancelBatch(batchId: string): Promise<void>;
+export interface IAIIntegrationInterface {
+  validateConnection(connectionId: string): Promise<boolean>;
+  sendRequest(connectionId: string, request: any): Promise<AIResponse>;
 }
 
-export interface BatchProcessingResult {
-  batchId: string;
-  sessionIds: string[];
-  status: BatchStatus;
-  createdAt: Date;
+export interface IErrorHandlerInterface {
+  createStandardError(code: string, message: string, details?: Record<string, any>, cause?: Error): StandardError;
+  wrapError(error: any, code: string, message: string, details?: Record<string, any>): StandardError;
+  handleError(error: StandardError): void;
 }
 
-export enum BatchStatus {
-  PENDING = 'PENDING',
-  IN_PROGRESS = 'IN_PROGRESS',
-  COMPLETED = 'COMPLETED',
-  FAILED = 'FAILED',
-  CANCELLED = 'CANCELLED'
+export interface ILoggerInterface {
+  debug(message: string, context?: LogContext): void;
+  info(message: string, context?: LogContext): void;
+  warn(message: string, context?: LogContext): void;
+  error(message: string, error?: StandardError, context?: LogContext): void;
 }
 
-// Event Publishing Types
-export interface StreamEventPublisher {
-  publishStepStarted(streamId: string | undefined, sessionId: string, stepIndex: number, stepContent: string): Promise<void>;
-  publishStepCompleted(streamId: string | undefined, sessionId: string, stepIndex: number, result: StepResult): Promise<void>;
-  publishStepFailed(streamId: string | undefined, sessionId: string, stepIndex: number, error: ProcessingError): Promise<void>;
-  publishSessionCompleted(streamId: string | undefined, sessionId: string): Promise<void>;
-  publishSessionFailed(streamId: string | undefined, sessionId: string, error: ProcessingError): Promise<void>;
-}
-
-export interface StepProcessorEvent {
-  type: StepProcessorEventType;
-  sessionId: string;
-  stepIndex?: number;
-  timestamp: Date;
-  data?: Record<string, any>;
-}
-
-export enum StepProcessorEventType {
-  SESSION_CREATED = 'SESSION_CREATED',
-  SESSION_DESTROYED = 'SESSION_DESTROYED',
-  STEP_STARTED = 'STEP_STARTED',
-  STEP_COMPLETED = 'STEP_COMPLETED',
-  STEP_FAILED = 'STEP_FAILED',
-  EXECUTION_PAUSED = 'EXECUTION_PAUSED',
-  EXECUTION_RESUMED = 'EXECUTION_RESUMED',
-  EXECUTION_CANCELLED = 'EXECUTION_CANCELLED'
-}
-
-// Error Types
-export enum ProcessingErrorType {
-  VALIDATION_ERROR = 'VALIDATION_ERROR',
-  SESSION_CREATION_ERROR = 'SESSION_CREATION_ERROR',
-  STREAM_CREATION_ERROR = 'STREAM_CREATION_ERROR',
-  TASK_LOOP_ERROR = 'TASK_LOOP_ERROR',
-  SESSION_NOT_FOUND = 'SESSION_NOT_FOUND',
-  CONCURRENT_LIMIT_EXCEEDED = 'CONCURRENT_LIMIT_EXCEEDED',
-  TIMEOUT_ERROR = 'TIMEOUT_ERROR',
-  CONTEXT_MANAGER_ERROR = 'CONTEXT_MANAGER_ERROR',
-  CHECKPOINT_ERROR = 'CHECKPOINT_ERROR'
-}
-
-export interface ProcessingError extends Error {
-  type: ProcessingErrorType;
+export interface LogContext {
   sessionId?: string;
   stepIndex?: number;
+  workflowSession?: WorkflowSession;
+  error?: StandardError;
+  duration?: number;
   details?: Record<string, any>;
-  timestamp: Date;
 }
 
-// Validation Types
-export interface StepValidationResult {
-  isValid: boolean;
-  errors: StepValidationError[];
-  warnings: string[];
+// Configuration Types
+export interface StepProcessorConfig extends BaseModuleConfig {
+  moduleId: 'step-processor';
+  
+  // Step Processor specific configuration
+  workflow: {
+    maxConcurrentSessions: number;
+    enableCheckpoints: boolean;
+    checkpointInterval: number;           // milliseconds
+    sessionTTL: number;                   // milliseconds
+  };
+  
+  streaming: {
+    enabled: boolean;
+    bufferSize: number;
+    maxHistorySize: number;
+    compressionEnabled: boolean;
+  };
+  
+  // Batch processing
+  batch: {
+    enabled: boolean;
+    maxBatchSize: number;
+    maxConcurrentBatches: number;
+    batchTimeoutMs: number;
+  };
+  
+  // Recovery settings
+  recovery: {
+    enableCheckpoints: boolean;
+    checkpointInterval: number;
+    maxRecoveryAttempts: number;
+    recoveryTimeoutMs: number;
+  };
 }
 
-export interface StepValidationError {
-  stepIndex: number;
-  message: string;
-  severity: 'error' | 'warning';
+// Error Types and Handling
+export enum StepProcessorErrorType {
+  VALIDATION_FAILED = 'VALIDATION_FAILED',
+  SESSION_CREATION_FAILED = 'SESSION_CREATION_FAILED',
+  TASK_LOOP_TIMEOUT = 'TASK_LOOP_TIMEOUT',
+  CONCURRENT_LIMIT_EXCEEDED = 'CONCURRENT_LIMIT_EXCEEDED',
+  WORKFLOW_SESSION_NOT_FOUND = 'WORKFLOW_SESSION_NOT_FOUND',
+  MODULE_INITIALIZATION_FAILED = 'MODULE_INITIALIZATION_FAILED',
+  STREAMING_INITIALIZATION_FAILED = 'STREAMING_INITIALIZATION_FAILED',
+  STEP_PROCESSING_TIMEOUT = 'STEP_PROCESSING_TIMEOUT',
+  DEPENDENCY_RESOLUTION_FAILED = 'DEPENDENCY_RESOLUTION_FAILED',
+  SESSION_COORDINATOR_ERROR = 'SESSION_COORDINATOR_ERROR',
+  EVENT_PUBLISHING_FAILED = 'EVENT_PUBLISHING_FAILED'
 }
 
-export interface IStepValidator {
-  validateSteps(steps: string[]): Promise<StepValidationResult>;
-  validateStepContent(stepContent: string): boolean;
-  validateProcessingConfig(config: ProcessingConfig): boolean;
+export interface StepProcessorError extends StandardError {
+  type: StepProcessorErrorType;
+  workflowSessionId?: string;
+  stepIndex?: number;
+  batchId?: string;
 }
 
-// Metrics and Analytics Types
-export interface ProcessorMetrics {
-  totalSessions: number;
-  activeSessions: number;
-  completedSessions: number;
-  failedSessions: number;
-  averageSessionDuration: number;
-  averageStepsPerSession: number;
-  successRate: number;
-  resourceUsage: ResourceUsage;
-  errorBreakdown: Record<ProcessingErrorType, number>;
+// Error Handler Implementation
+export interface StepProcessorErrorHandler extends IErrorHandlerInterface {
+  categorizeError(code: string): import('./shared-types').ErrorCategory;
+  determineSeverity(code: string): import('./shared-types').ErrorSeverity;
+  isRecoverable(code: string): boolean;
+  isRetryable(code: string): boolean;
+  getSuggestedAction(code: string): string;
+  
+  // Step Processor specific error handling
+  handleSessionError(workflowSessionId: string, error: StandardError): Promise<void>;
+  handleStepError(workflowSessionId: string, stepIndex: number, error: StandardError): Promise<void>;
+  handleBatchError(batchId: string, error: StandardError): Promise<void>;
 }
 
-export interface ResourceUsage {
-  memoryUsage: number; // bytes
-  cpuUsage: number; // percentage
-  activeConnections: number;
-  streamingSessions: number;
-}
-
-export interface IProcessorAnalytics {
-  getMetrics(): Promise<ProcessorMetrics>;
-  getSessionMetrics(sessionId: string): Promise<SessionMetrics>;
-  getPerformanceReport(timeRange: [Date, Date]): Promise<PerformanceReport>;
-}
-
-export interface SessionMetrics {
-  sessionId: string;
-  totalSteps: number;
-  completedSteps: number;
-  duration: number;
-  iterations: number;
-  successRate: number;
-  averageStepDuration: number;
-  resourceUsage: ResourceUsage;
-}
-
-export interface PerformanceReport {
-  timeRange: [Date, Date];
-  totalSessions: number;
-  metrics: ProcessorMetrics;
-  topErrors: ErrorFrequency[];
-  performanceTrends: PerformanceTrend[];
-}
-
-export interface ErrorFrequency {
-  error: ProcessingErrorType;
-  count: number;
-  percentage: number;
-}
-
-export interface PerformanceTrend {
-  metric: string;
-  values: number[];
-  timestamps: Date[];
-  trend: 'increasing' | 'decreasing' | 'stable';
-}
-
-// Event Emitter Interface
-export interface IStepProcessorEventEmitter {
-  on(event: StepProcessorEventType, listener: (event: StepProcessorEvent) => void): void;
-  emit(event: StepProcessorEventType, data: StepProcessorEvent): void;
-  removeListener(event: StepProcessorEventType, listener: Function): void;
-}
-
-// Storage and Persistence Types
-export interface ISessionStorage {
-  saveSession(session: ProcessingSession): Promise<void>;
-  loadSession(sessionId: string): Promise<ProcessingSession | null>;
-  deleteSession(sessionId: string): Promise<void>;
-  listSessions(): Promise<string[]>;
-  saveCheckpoint(sessionId: string, checkpoint: SessionCheckpoint): Promise<void>;
-  loadCheckpoint(sessionId: string): Promise<SessionCheckpoint | null>;
-}
-
-export interface SessionCheckpoint {
-  sessionId: string;
-  stepIndex: number;
-  executionState: any;
-  timestamp: Date;
-  metadata?: Record<string, any>;
-}
-
-// Utility Types
-export type ProcessingStatusKey = keyof typeof ProcessingStatus;
-export type ProcessingErrorTypeKey = keyof typeof ProcessingErrorType;
-export type StepProcessorEventTypeKey = keyof typeof StepProcessorEventType;
-
-// Constants
+// Constants and Defaults
 export const STEP_PROCESSOR_VERSION = '1.0.0';
-export const DEFAULT_MAX_CONCURRENT_SESSIONS = 10;
-export const DEFAULT_SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
-export const DEFAULT_CHECKPOINT_INTERVAL_MS = 60 * 1000; // 1 minute
-export const DEFAULT_MAX_RETRIES = 3;
-export const DEFAULT_RETRY_DELAY_MS = 5000; // 5 seconds
 
-// Processing Constants
-export const PROCESSING_LIMITS = {
-  MAX_STEPS_PER_SESSION: 100,
-  MAX_STEP_CONTENT_LENGTH: 1000,
-  MAX_METADATA_SIZE: 10000, // bytes
-  MAX_CONCURRENT_SESSIONS: 50
+export const DEFAULT_STEP_PROCESSOR_CONFIG: StepProcessorConfig = {
+  moduleId: 'step-processor',
+  version: STEP_PROCESSOR_VERSION,
+  enabled: true,
+  
+  workflow: {
+    maxConcurrentSessions: 10,
+    enableCheckpoints: true,
+    checkpointInterval: 30000,           // 30 seconds
+    sessionTTL: 1800000                  // 30 minutes
+  },
+  
+  streaming: {
+    enabled: true,
+    bufferSize: 1000,
+    maxHistorySize: 10000,
+    compressionEnabled: true
+  },
+  
+  batch: {
+    enabled: false,
+    maxBatchSize: 5,
+    maxConcurrentBatches: 2,
+    batchTimeoutMs: 3600000              // 1 hour
+  },
+  
+  recovery: {
+    enableCheckpoints: true,
+    checkpointInterval: 60000,           // 1 minute
+    maxRecoveryAttempts: 3,
+    recoveryTimeoutMs: 300000            // 5 minutes
+  },
+  
+  logging: {
+    level: LogLevel.INFO,
+    prefix: '[StepProcessor]',
+    includeTimestamp: true,
+    includeSessionId: true,
+    includeModuleId: true,
+    structured: false
+  },
+  
+  performance: {
+    maxConcurrentOperations: 5,
+    cacheEnabled: true,
+    cacheTTLMs: 300000,                  // 5 minutes
+    metricsEnabled: true
+  },
+  
+  timeouts: {
+    workflowTimeoutMs: 1800000,          // 30 minutes
+    stepTimeoutMs: 300000,               // 5 minutes  
+    requestTimeoutMs: 30000,             // 30 seconds
+    connectionTimeoutMs: 10000,          // 10 seconds
+    defaultOperationTimeoutMs: 30000,
+    maxRetryAttempts: 3,
+    retryDelayMs: 1000,
+    exponentialBackoff: true
+  }
+};
+
+// Processing Limits and Constants
+export const STEP_PROCESSOR_LIMITS = {
+  MAX_STEPS_PER_WORKFLOW: 100,
+  MAX_STEP_CONTENT_LENGTH: 2000,
+  MAX_CONCURRENT_SESSIONS: 50,
+  MAX_WORKFLOW_DURATION_MS: 3600000,     // 1 hour
+  MAX_HISTORY_ENTRIES: 1000,
+  MAX_RETRY_ATTEMPTS: 5,
+  MIN_CHECKPOINT_INTERVAL_MS: 10000,     // 10 seconds
+  MAX_CHECKPOINT_INTERVAL_MS: 300000,    // 5 minutes
+  MAX_BATCH_SIZE: 20,
+  MAX_ERROR_DETAILS_SIZE: 10000         // 10KB
 } as const;
 
-// Event Constants
-export const EVENT_PRIORITIES = {
-  SESSION_CREATED: 1,
-  STEP_STARTED: 2,
-  STEP_COMPLETED: 2,
-  STEP_FAILED: 3,
-  SESSION_DESTROYED: 1
+// Error Code Mappings
+export const STEP_PROCESSOR_ERROR_CODES = {
+  VALIDATION_FAILED: 'SP001',
+  SESSION_CREATION_FAILED: 'SP002',
+  TASK_LOOP_TIMEOUT: 'SP003',
+  CONCURRENT_LIMIT_EXCEEDED: 'SP004',
+  WORKFLOW_SESSION_NOT_FOUND: 'SP005',
+  MODULE_INITIALIZATION_FAILED: 'SP006',
+  STREAMING_INITIALIZATION_FAILED: 'SP007',
+  STEP_PROCESSING_TIMEOUT: 'SP008',
+  DEPENDENCY_RESOLUTION_FAILED: 'SP009',
+  SESSION_COORDINATOR_ERROR: 'SP010',
+  EVENT_PUBLISHING_FAILED: 'SP011'
+} as const;
+
+// Event Type Mappings for Step Processor
+export const STEP_PROCESSOR_STREAM_EVENTS = {
+  WORKFLOW_STARTED: StreamEventType.WORKFLOW_STARTED,
+  WORKFLOW_PROGRESS: StreamEventType.WORKFLOW_PROGRESS,
+  WORKFLOW_COMPLETED: StreamEventType.WORKFLOW_COMPLETED,
+  WORKFLOW_FAILED: StreamEventType.WORKFLOW_FAILED,
+  WORKFLOW_PAUSED: StreamEventType.WORKFLOW_PAUSED,
+  WORKFLOW_RESUMED: StreamEventType.WORKFLOW_RESUMED,
+  STEP_STARTED: StreamEventType.STEP_STARTED,
+  STEP_COMPLETED: StreamEventType.STEP_COMPLETED,
+  STEP_FAILED: StreamEventType.STEP_FAILED
+} as const;
+
+// Task Loop Event Type Mappings
+export const STEP_PROCESSOR_TASK_LOOP_EVENTS = {
+  STEP_STARTED: TaskLoopEventType.STEP_STARTED,
+  STEP_COMPLETED: TaskLoopEventType.STEP_COMPLETED,
+  STEP_FAILED: TaskLoopEventType.STEP_FAILED,
+  AI_REASONING_UPDATE: TaskLoopEventType.AI_REASONING_UPDATE,
+  COMMAND_EXECUTED: TaskLoopEventType.COMMAND_EXECUTED,
+  PROGRESS_UPDATE: TaskLoopEventType.PROGRESS_UPDATE
 } as const;

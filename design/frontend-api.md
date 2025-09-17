@@ -22,14 +22,41 @@ import {
   ModuleSessionInfo,
   SessionStatus,
   SessionLifecycleCallbacks,
-  SessionCoordinator
+  SessionCoordinator,
+  DIContainer,
+  ModuleSessionConfig,
+  SessionManagerHealth
 } from './shared-types';
+
+interface FrontendAPISession extends ModuleSessionInfo {
+  moduleId: 'frontend-api';
+  clientConnections: ClientConnection[];
+  streamConnections: StreamConnection[];
+  // Inherits: sessionId, linkedWorkflowSessionId, status, createdAt, lastActivity, metadata
+}
+
+interface ClientConnection {
+  clientId: string;
+  type: 'http' | 'websocket' | 'sse';
+  connectedAt: Date;
+  lastActivity: Date;
+  isActive: boolean;
+}
+
+interface StreamConnection {
+  streamId: string;
+  clientId: string;
+  type: 'websocket' | 'sse';
+  filters?: StreamFilter[];
+  connectedAt: Date;
+  lastActivity: Date;
+}
 
 interface FrontendAPI extends ISessionManager {
   readonly moduleId: 'frontend-api';
   
   // Standardized Session Management (inherited from ISessionManager)
-  createSession(workflowSessionId: string, config?: APIConfig): Promise<string>;
+  createSession(workflowSessionId: string, config?: ModuleSessionConfig): Promise<string>;
   destroySession(workflowSessionId: string): Promise<void>;
   getSession(workflowSessionId: string): ModuleSessionInfo | null;
   sessionExists(workflowSessionId: string): boolean;
@@ -57,16 +84,22 @@ interface FrontendAPI extends ISessionManager {
   // Session Coordinator Integration
   setSessionCoordinator(coordinator: SessionCoordinator): void;
   getSessionCoordinator(): SessionCoordinator | null;
+  
+  // Dependency Injection
+  initialize(container: DIContainer): Promise<void>;
 }
 ```
 
 ### Integration Points (STANDARDIZED)
 ```typescript
 interface APIIntegrations {
-  stepProcessor: IStepProcessor;        // From step-processor module
-  executorStreamer: IStreamPublisher;   // From executor-streamer module
-  streamManager: IExecutorStreamerManager; // From executor-streamer module
-  sessionCoordinator: SessionCoordinator; // Session coordination
+  stepProcessor: IStepProcessor;                // From step-processor module
+  executorStreamer: IStreamPublisher;           // From executor-streamer module  
+  streamManager: IExecutorStreamerManager;      // From executor-streamer module
+  sessionCoordinator: SessionCoordinator;       // Session coordination
+  taskLoop: ITaskLoop;                          // From task-loop module
+  aiIntegration: IAIIntegrationManager;         // From ai-integration module
+  contextManager: IAIContextManager;            // From ai-context-manager module
 }
 ```
 
@@ -79,19 +112,16 @@ interface APIIntegrations {
 POST /api/automation/execute
 ```
 
-**Request (FIXED: Consistent with shared StepProcessingRequest):**
+**Request (FIXED: Uses shared StepProcessingRequest):**
 ```typescript
 // Import shared types for consistency
 import { StepProcessingRequest, ProcessingConfig } from './shared-types';
 
-interface ExecuteStepsRequest {
-  steps: string[];
-  config: ProcessingConfig;    // FIXED: Uses shared config structure
-  metadata?: Record<string, any>;
-}
+// Frontend API uses the same request format as Step Processor
+type ExecuteStepsRequest = StepProcessingRequest;
 ```
 
-**Response (FIXED: Standardized):**
+**Response (FIXED: Uses shared types):**
 ```typescript
 import { APIResponse, StepProcessingResult } from './shared-types';
 
@@ -133,12 +163,8 @@ async executeSteps(req: Request, res: Response): Promise<void> {
       return res.status(400).json(errorResponse);
     }
 
-    // 2. Create processing request (FIXED: No duplicate fields)
-    const processingRequest: StepProcessingRequest = {
-      steps: req.body.steps,
-      config: req.body.config || this.getDefaultProcessingConfig(),
-      metadata: req.body.metadata
-    };
+    // 2. Create processing request (FIXED: Uses shared type directly)
+    const processingRequest: StepProcessingRequest = req.body;
 
     // 3. Process steps via Step Processor
     const result = await this.stepProcessor.processSteps(processingRequest);
@@ -238,28 +264,20 @@ GET /api/automation/sessions/:sessionId
 
 **Response:**
 ```typescript
+import { SessionStatus, ExecutionProgress, StandardError } from './shared-types';
+
 interface SessionStatusResponse {
   sessionId: string;
   streamId?: string;
-  status: ProcessingStatus;
-  progress: {
-    currentStepIndex: number;
-    totalSteps: number;
-    percentage: number;
-    currentStepName: string;
-  };
+  status: SessionStatus;                    // FIXED: Uses shared enum
+  progress: ExecutionProgress;              // FIXED: Uses shared type
   timing: {
     startTime: string;
     lastActivity: string;
     estimatedTimeRemaining?: number;
     averageStepDuration?: number;
   };
-  error?: {
-    type: string;
-    message: string;
-    stepIndex?: number;
-    timestamp: string;
-  };
+  error?: StandardError;                   // FIXED: Uses shared error type
 }
 ```
 
@@ -274,7 +292,7 @@ POST /api/automation/sessions/:sessionId/cancel
 ```typescript
 interface SessionControlResponse {
   sessionId: string;
-  status: ProcessingStatus;
+  status: SessionStatus;                    // FIXED: Uses shared enum
   message: string;
   timestamp: string;
 }
@@ -301,7 +319,7 @@ interface SessionListResponse {
 
 interface SessionSummary {
   sessionId: string;
-  status: ProcessingStatus;
+  status: SessionStatus;                    // FIXED: Uses shared enum
   startTime: string;
   lastActivity: string;
   stepCount: number;
@@ -321,9 +339,11 @@ GET /api/automation/sessions/:sessionId/history
 
 **Response:**
 ```typescript
+import { StreamEvent } from './shared-types';
+
 interface SessionHistoryResponse {
   sessionId: string;
-  events: StreamEvent[];
+  events: StreamEvent[];                   // FIXED: Uses shared type
   total: number;
   filters: {
     eventTypes?: string[];
@@ -453,11 +473,13 @@ WS /api/stream/ws/:streamId
 
 #### Connection Protocol
 ```typescript
+import { StreamEventType, StreamFilter } from './shared-types';
+
 // Client connection with optional filters
 interface WSConnectionParams {
   streamId: string;
   filters?: {
-    eventTypes?: StreamEventType[];
+    eventTypes?: StreamEventType[];        // FIXED: Uses shared enum
     includeHistory?: boolean;
     historyLimit?: number;
   };
@@ -467,11 +489,11 @@ interface WSConnectionParams {
 interface WSClientMessage {
   type: 'subscribe' | 'unsubscribe' | 'replay' | 'ping' | 'filter_update';
   payload?: {
-    filters?: StreamFilter[];
+    filters?: StreamFilter[];                 // FIXED: Uses shared type
     replayOptions?: {
       fromTimestamp?: string;
       eventCount?: number;
-      eventTypes?: StreamEventType[];
+      eventTypes?: StreamEventType[];         // FIXED: Uses shared enum
     };
   };
 }
@@ -480,8 +502,8 @@ interface WSClientMessage {
 interface WSServerMessage {
   type: 'event' | 'error' | 'pong' | 'connection_ack' | 'replay_complete';
   payload?: {
-    event?: StreamEvent;
-    error?: APIError;
+    event?: StreamEvent;                     // FIXED: Uses shared type
+    error?: APIError;                        // FIXED: Uses shared type
     metadata?: Record<string, any>;
   };
 }
@@ -674,7 +696,8 @@ import {
   ErrorSeverity, 
   ERROR_CODES,
   APIResponse,
-  APIError 
+  APIError,
+  SYSTEM_VERSION
 } from './shared-types';
 
 class FrontendAPIErrorHandler {
@@ -859,9 +882,15 @@ interface RateLimitMiddleware {
 
 ## Configuration
 
-### API Server Configuration
+### Frontend API Configuration (STANDARDIZED)
 ```typescript
-interface FrontendAPIConfig {
+// Import shared configuration pattern
+import { BaseModuleConfig, LogLevel, DEFAULT_TIMEOUT_CONFIG } from './shared-types';
+
+interface FrontendAPIConfig extends BaseModuleConfig {
+  moduleId: 'frontend-api';
+  
+  // Frontend API specific configuration
   server: {
     port: number;
     host: string;
@@ -877,8 +906,8 @@ interface FrontendAPIConfig {
   
   stepProcessor: {
     serviceUrl: string;
-    timeout: number;
     retryAttempts: number;
+    // Note: timeout uses inherited timeouts.requestTimeoutMs
   };
   
   executorStreamer: {
@@ -899,12 +928,84 @@ interface FrontendAPIConfig {
     tempFileCleanupInterval: number;
   };
   
+  // Inherits from BaseModuleConfig:
+  // - logging: LoggingConfig (structured, includes sessionId, etc.)
+  // - performance: PerformanceConfig
+  // - timeouts: TimeoutConfig (provides request/connection timeout hierarchy)
+}
+
+// Default configuration
+const DEFAULT_FRONTEND_API_CONFIG: FrontendAPIConfig = {
+  moduleId: 'frontend-api',
+  version: '1.0.0',
+  enabled: true,
+  
+  server: {
+    port: 3000,
+    host: 'localhost',
+    cors: {
+      origins: ['http://localhost:3000'],
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization']
+    }
+  },
+  
+  authentication: {
+    enabled: false,
+    type: 'jwt',
+    jwtSecret: process.env.JWT_SECRET,
+    apiKeyHeader: 'X-API-Key',
+    sessionCookieName: 'session'
+  },
+  
+  rateLimit: {
+    windowMs: 900000,           // 15 minutes
+    maxRequests: 100,           // per window
+    maxConcurrentSessions: 10,  // per user
+    skipSuccessfulRequests: false,
+    keyGenerator: (req) => req.ip
+  },
+  
+  stepProcessor: {
+    serviceUrl: 'http://localhost:3001',
+    retryAttempts: 3
+  },
+  
+  executorStreamer: {
+    serviceUrl: 'http://localhost:3002',
+    websocketPath: '/ws',
+    ssePath: '/sse',
+    heartbeatInterval: 30000
+  },
+  
+  validation: {
+    maxStepsPerRequest: 100,
+    maxStepLength: 1000,
+    allowedStepFormats: ['natural_language', 'structured']
+  },
+  
+  storage: {
+    screenshotBaseUrl: '/api/screenshots',
+    tempFileCleanupInterval: 3600000  // 1 hour
+  },
+  
+  timeouts: DEFAULT_TIMEOUT_CONFIG,
+  
   logging: {
-    level: LogLevel;
-    logRequests: boolean;
-    logResponses: boolean;
-    logWebSocketEvents: boolean;
-  };
+    level: LogLevel.INFO,
+    prefix: '[FrontendAPI]',
+    includeTimestamp: true,
+    includeSessionId: true,
+    includeModuleId: true,
+    structured: false
+  },
+  
+  performance: {
+    maxConcurrentOperations: 100,
+    cacheEnabled: true,
+    cacheTTLMs: 300000,         // 5 minutes
+    metricsEnabled: true
+  }
 }
 ```
 

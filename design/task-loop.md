@@ -1,17 +1,21 @@
 # Task Loop Module Design Document
 
 ## Overview
-The Task Loop module implements the core ACT-REFLECT cycle for AI-driven web automation. It orchestrates the interaction between AI reasoning, prompt generation, executor commands, and context management to perform intelligent web automation with continuous learning and adaptation.
+The Task Loop module implements the core ACT-REFLECT cycle for AI-driven web automation with sophisticated page investigation capabilities. It orchestrates the interaction between AI reasoning, prompt generation, page investigation tools, executor commands, and context management to perform intelligent web automation with continuous learning and adaptation while preventing context overflow.
 
 ## Core Responsibilities
-- Implement ACT-REFLECT cycle for intelligent automation
-- Generate context-aware AI prompts for each step
-- Process AI responses and extract actionable commands (FIXED: supports multiple commands)
+- Implement ACT-REFLECT cycle with integrated page investigation phases
+- Orchestrate page investigation cycles (Initial Assessment → Focused Exploration → Selector Determination)
+- Generate context-aware AI prompts for both action and investigation phases
+- Process AI responses and extract actionable commands (supports multiple commands)
+- Execute investigation tools (screenshot analysis, text extraction, DOM retrieval, sub-DOM extraction)
 - Execute web automation commands through the Executor module with session ID injection
-- Store execution results and AI reasoning in Context Manager
+- Manage progressive context building and working memory integration
+- Store execution results, investigation findings, and AI reasoning in Context Manager
+- Implement context overflow prevention through filtered context integration
 - Publish real-time updates to Executor Streamer
-- Handle error recovery and retry mechanisms
-- Maintain execution state and decision history
+- Handle error recovery and retry mechanisms for both action and investigation phases
+- Maintain execution state, investigation state, and decision history
 - Coordinate session management with Step Processor
 
 ## Module Interface
@@ -34,15 +38,20 @@ import {
   TaskLoopEventData,
   ISessionManager,
   ModuleSessionInfo,
+  ModuleSessionConfig,
   SessionStatus,
-  SessionLifecycleCallbacks
+  SessionLifecycleCallbacks,
+  InvestigationPhase,
+  InvestigationTool,
+  ElementDiscovery,
+  PageInsight
 } from './shared-types';
 
 interface ITaskLoop extends ISessionManager {
   readonly moduleId: 'task-loop';
   
   // Standardized Session Management (inherited from ISessionManager)
-  createSession(workflowSessionId: string, config?: TaskLoopConfig): Promise<string>;
+  createSession(workflowSessionId: string, config?: ModuleSessionConfig): Promise<string>;
   destroySession(workflowSessionId: string): Promise<void>;
   getSession(workflowSessionId: string): ModuleSessionInfo | null;
   sessionExists(workflowSessionId: string): boolean;
@@ -56,10 +65,16 @@ interface ITaskLoop extends ISessionManager {
   // Main Processing (uses workflowSessionId consistently)
   processStep(request: TaskLoopStepRequest): Promise<StepResult>;
   
+  // Investigation Processing (NEW)
+  processInvestigationPhase(request: InvestigationPhaseRequest): Promise<InvestigationPhaseResult>;
+  executeInvestigationTool(request: InvestigationToolRequest): Promise<InvestigationToolResult>;
+  
   // Flow Control (uses workflowSessionId consistently)
   pauseExecution(workflowSessionId: string, stepIndex: number): Promise<void>;
   resumeExecution(workflowSessionId: string, stepIndex: number): Promise<void>;
   cancelExecution(workflowSessionId: string, stepIndex: number): Promise<void>;
+  pauseInvestigation(workflowSessionId: string, stepIndex: number): Promise<void>;
+  resumeInvestigation(workflowSessionId: string, stepIndex: number): Promise<void>;
   
   // Event-Driven Architecture
   setEventPublisher(publisher: IEventPublisher): void;
@@ -78,9 +93,18 @@ All core data structures now use shared types:
 - `TaskLoopStepRequest` - From shared types (replaces old StepProcessingRequest)
 - `StepResult` - Shared type (FIXED: was missing, now defined)
 - `ProcessingOptions` - From shared ProcessingConfig
-- `ExecutionState` - Enhanced with shared error types
+- `ExecutionState` - Enhanced with shared error types and investigation state
 - `AIResponse` - FIXED: Now supports multiple commands array
 - `ExecutorCommand` - Shared type with session ID included
+
+### Investigation Data Structures (NEW)
+Investigation-specific data structures for page exploration:
+- `InvestigationPhaseRequest` - Request to process an investigation phase
+- `InvestigationPhaseResult` - Result of investigation phase processing
+- `InvestigationToolRequest` - Request to execute specific investigation tool
+- `InvestigationToolResult` - Result of investigation tool execution
+- `InvestigationState` - State tracking for investigation cycles
+- `PageInvestigationContext` - Context for current page investigation
 
 ### Processing Options
 Processing options are now defined in `shared-types.md` as `ProcessingOptions` interface.
@@ -88,7 +112,7 @@ Processing options are now defined in `shared-types.md` as `ProcessingOptions` i
 - Configurable reflection, validation, timeouts, and retry behavior
 - All options inherit from the shared ProcessingOptions interface
 
-### Execution State (Enhanced)
+### Execution State (Enhanced with Investigation)
 ```typescript
 interface ExecutionState {
   phase: ExecutionPhase;
@@ -97,6 +121,7 @@ interface ExecutionState {
   lastCommands?: ExecutorCommand[]; // FIXED: Array of commands
   aiResponse?: AIResponse;          // FIXED: Full AI response
   reflectionData?: ReflectionData;
+  investigationState?: InvestigationState; // NEW: Investigation state
   error?: StandardError;            // FIXED: Standardized error
 }
 
@@ -105,35 +130,216 @@ enum ExecutionPhase {
   GENERATING_PROMPT = 'GENERATING_PROMPT',
   QUERYING_AI = 'QUERYING_AI',
   PROCESSING_RESPONSE = 'PROCESSING_RESPONSE',
+  // NEW: Investigation phases
+  INVESTIGATING = 'INVESTIGATING',
+  INITIAL_ASSESSMENT = 'INITIAL_ASSESSMENT',
+  FOCUSED_EXPLORATION = 'FOCUSED_EXPLORATION',
+  SELECTOR_DETERMINATION = 'SELECTOR_DETERMINATION',
+  BUILDING_CONTEXT = 'BUILDING_CONTEXT',
+  // Existing phases
   EXECUTING_COMMANDS = 'EXECUTING_COMMANDS',  // FIXED: plural
   REFLECTING = 'REFLECTING',
   VALIDATING = 'VALIDATING',
   COMPLETED = 'COMPLETED',
   FAILED = 'FAILED'
 }
+
+### Investigation State and Interfaces (NEW)
+```typescript
+interface InvestigationState {
+  currentPhase: InvestigationPhase;
+  phasesCompleted: InvestigationPhase[];
+  investigationRound: number;
+  maxInvestigationRounds: number;
+  toolsUsed: InvestigationTool[];
+  elementsDiscovered: ElementDiscovery[];
+  pageInsight?: PageInsight;
+  workingMemory?: WorkingMemoryState;
+  investigationStrategy?: InvestigationStrategy;
+  startTime: Date;
+  phaseStartTime: Date;
+  error?: StandardError;
+}
+
+// Investigation types are defined in shared-types.md to prevent duplication
+// enum InvestigationPhase and enum InvestigationTool imported from shared-types
+
+interface InvestigationPhaseRequest {
+  sessionId: string;
+  stepIndex: number;
+  stepContent: string;
+  phase: InvestigationPhase;
+  investigationOptions?: InvestigationOptions;
+  context?: PageInvestigationContext;
+}
+
+interface InvestigationPhaseResult {
+  success: boolean;
+  phase: InvestigationPhase;
+  toolsExecuted: InvestigationTool[];
+  elementsDiscovered: ElementDiscovery[];
+  pageInsight?: PageInsight;
+  workingMemoryUpdates?: WorkingMemoryUpdate[];
+  nextPhaseRecommendation?: InvestigationPhase;
+  readyForAction: boolean;
+  confidence: number;
+  duration: number;
+  error?: StandardError;
+}
+
+interface InvestigationToolRequest {
+  sessionId: string;
+  stepIndex: number;
+  tool: InvestigationTool;
+  parameters?: InvestigationToolParameters;
+  context?: PageInvestigationContext;
+}
+
+interface InvestigationToolResult {
+  success: boolean;
+  tool: InvestigationTool;
+  output: InvestigationOutput;
+  elementsDiscovered?: ElementDiscovery[];
+  pageInsightUpdates?: Partial<PageInsight>;
+  workingMemoryUpdates?: WorkingMemoryUpdate[];
+  confidence: number;
+  duration: number;
+  error?: StandardError;
+}
+
+interface InvestigationToolParameters {
+  selector?: string;          // For text/DOM extraction
+  screenshotId?: string;      // For screenshot analysis
+  maxDomSize?: number;        // For DOM retrieval
+  includeStyles?: boolean;    // For DOM extraction
+  includeHiddenText?: boolean; // For text extraction
+  maxTextLength?: number;     // For text extraction
+}
+
+interface PageInvestigationContext {
+  sessionId: string;
+  stepIndex: number;
+  stepObjective: string;
+  currentUrl?: string;
+  previousInvestigations: InvestigationResult[];
+  elementsKnown: ElementKnowledge[];
+  workingMemory: WorkingMemoryState;
+  investigationStrategy: InvestigationStrategy;
+  contextSize: number;
+  maxContextSize: number;
+}
+
+interface InvestigationOptions {
+  enableInvestigation: boolean;
+  maxInvestigationRounds: number;
+  confidenceThreshold: number;
+  preferredTools: InvestigationTool[];
+  contextManagementApproach: 'minimal' | 'standard' | 'comprehensive';
+  enableWorkingMemory: boolean;
+  enableElementKnowledge: boolean;
+  enableProgressiveContext: boolean;
+  investigationTimeoutMs: number;
+}
+
+// Types imported from shared-types (to prevent duplication)
+// interface ElementDiscovery - imported from shared-types.md
+
+interface ElementKnowledge {
+  selector: string;
+  elementType: string;
+  purpose: string;
+  reliability: number;
+  lastSeen: Date;
+  discoveryHistory: string[];
+  alternativeSelectors?: string[];
+  interactionNotes?: string;
+}
+
+// interface PageInsight - imported from shared-types.md
+
+interface InvestigationOutput {
+  textContent?: string;       // For text extraction
+  domContent?: string;        // For DOM retrieval (excluded from context)
+  visualDescription?: string; // For screenshot analysis
+  elementCount?: number;      // For DOM queries
+  summary?: string;           // High-level summary for context
+}
+
+interface InvestigationStrategy {
+  currentPhase: 'initial_assessment' | 'focused_exploration' | 'selector_determination';
+  recommendedInvestigations: SuggestedInvestigation[];
+  investigationPriority: InvestigationPriority;
+  contextManagementApproach: 'minimal' | 'standard' | 'comprehensive';
+  confidenceThreshold: number;
+  maxInvestigationRounds: number;
+}
+
+interface SuggestedInvestigation {
+  type: InvestigationTool;
+  purpose: string;
+  parameters?: Record<string, any>;
+  priority: number;
+  reasoning: string;
+}
+
+interface InvestigationPriority {
+  primary: InvestigationTool;
+  fallbacks: InvestigationTool[];
+  reasoning: string;
+}
+
+interface WorkingMemoryUpdate {
+  updateType: 'element_discovery' | 'page_insight' | 'variable_extraction' | 'pattern_learning' | 'investigation_preference';
+  data: any;
+  confidence: number;
+  source: string;
+}
+
+interface WorkingMemoryState {
+  sessionId: string;
+  lastUpdated: Date;
+  currentPageInsight?: PageInsight;
+  knownElements: Map<string, ElementKnowledge>;
+  navigationPattern?: NavigationPattern;
+  extractedVariables: Map<string, VariableContext>;
+  successfulPatterns: SuccessPattern[];
+  failurePatterns: FailurePattern[];
+  investigationPreferences: InvestigationPreferences;
+}
+
+interface InvestigationResult {
+  investigationId: string;
+  investigationType: InvestigationTool;
+  timestamp: Date;
+  input: InvestigationInput;
+  output: InvestigationOutput;
+  success: boolean;
+  error?: string;
+  metadata?: Record<string, any>;
+}
 ```
 
 ## Core Functionality
 
-### 1. ACT-REFLECT Cycle Implementation
+### 1. ACT-REFLECT Cycle Implementation with Investigation
 
 ```typescript
-async processStep(request: StepProcessingRequest): Promise<StepProcessingResult>
+async processStep(request: TaskLoopStepRequest): Promise<StepResult>
 ```
 
-#### Main Processing Flow:
+#### Main Processing Flow (Enhanced with Investigation):
 ```typescript
-async processStep(request: StepProcessingRequest): Promise<StepProcessingResult> {
+async processStep(request: TaskLoopStepRequest): Promise<StepResult> {
   const { sessionId, stepIndex, stepContent, streamId } = request;
   const executionState = this.initializeExecutionState(request);
   
   try {
-    // ACT-REFLECT Loop
+    // ACT-REFLECT Loop with Investigation
     while (!this.isExecutionComplete(executionState) && 
            executionState.currentIteration < executionState.maxIterations) {
       
-      // ACT Phase
-      const actResult = await this.executeActPhase(sessionId, stepIndex, stepContent, executionState);
+      // ACT Phase (Enhanced with Investigation)
+      const actResult = await this.executeEnhancedActPhase(sessionId, stepIndex, stepContent, executionState);
       
       // REFLECT Phase (if enabled and needed)
       if (request.options?.reflectionEnabled && this.shouldReflect(actResult)) {
@@ -160,9 +366,104 @@ async processStep(request: StepProcessingRequest): Promise<StepProcessingResult>
     return this.handleProcessingError(sessionId, stepIndex, error, executionState);
   }
 }
+
+#### Enhanced ACT Phase with Investigation Cycle:
+async executeEnhancedActPhase(sessionId: string, stepIndex: number, stepContent: string, state: ExecutionState): Promise<ActResult> {
+  const investigationOptions = this.getInvestigationOptions(state);
+  
+  // Check if investigation is enabled
+  if (investigationOptions.enableInvestigation) {
+    // Execute Investigation Cycle
+    const investigationResult = await this.executeInvestigationCycle(sessionId, stepIndex, stepContent, investigationOptions);
+    
+    // Store investigation state
+    state.investigationState = investigationResult.investigationState;
+    
+    // Generate action prompt with investigation context
+    return await this.executeActionWithInvestigationContext(sessionId, stepIndex, stepContent, investigationResult, state);
+  } else {
+    // Execute traditional ACT phase
+    return await this.executeActPhase(sessionId, stepIndex, stepContent, state);
+  }
+}
 ```
 
-### 2. ACT Phase Implementation (FIXED)
+### 2. Investigation Cycle Implementation (NEW)
+
+The investigation cycle follows the three-phase approach defined in the overall architecture:
+
+1. **Initial Assessment**: High-level page understanding via screenshot analysis
+2. **Focused Exploration**: Targeted exploration using text extraction and sub-DOM analysis  
+3. **Selector Determination**: Synthesize findings to determine optimal selectors
+
+```typescript
+async executeInvestigationCycle(sessionId: string, stepIndex: number, stepContent: string, options: InvestigationOptions): Promise<InvestigationCycleResult> {
+  const investigationState = this.initializeInvestigationState(options);
+  const investigationContext = await this.buildInvestigationContext(sessionId, stepIndex, stepContent);
+  
+  try {
+    // Phase 1: Initial Assessment
+    investigationState.currentPhase = InvestigationPhase.INITIAL_ASSESSMENT;
+    const initialResult = await this.executeInvestigationPhase({
+      sessionId, stepIndex, stepContent,
+      phase: InvestigationPhase.INITIAL_ASSESSMENT,
+      investigationOptions: options,
+      context: investigationContext
+    });
+    
+    // Phase 2: Focused Exploration  
+    investigationState.currentPhase = InvestigationPhase.FOCUSED_EXPLORATION;
+    const explorationResult = await this.executeInvestigationPhase({
+      sessionId, stepIndex, stepContent,
+      phase: InvestigationPhase.FOCUSED_EXPLORATION,
+      investigationOptions: options,
+      context: investigationContext
+    });
+    
+    // Phase 3: Selector Determination
+    investigationState.currentPhase = InvestigationPhase.SELECTOR_DETERMINATION;
+    const determinationResult = await this.executeInvestigationPhase({
+      sessionId, stepIndex, stepContent,
+      phase: InvestigationPhase.SELECTOR_DETERMINATION,
+      investigationOptions: options,
+      context: investigationContext
+    });
+    
+    // Store investigation results and update working memory
+    await this.storeInvestigationResults(sessionId, stepIndex, investigationState);
+    await this.updateWorkingMemoryFromInvestigation(sessionId, stepIndex, investigationState);
+    
+    return {
+      success: true,
+      investigationState,
+      investigationContext,
+      readyForAction: determinationResult.readyForAction,
+      totalDuration: Date.now() - investigationState.startTime.getTime()
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      investigationState,
+      investigationContext,
+      readyForAction: false,
+      totalDuration: Date.now() - investigationState.startTime.getTime(),
+      error: this.wrapError(error, 'INVESTIGATION_CYCLE_FAILED')
+    };
+  }
+}
+
+interface InvestigationCycleResult {
+  success: boolean;
+  investigationState: InvestigationState;
+  investigationContext: PageInvestigationContext;
+  readyForAction: boolean;
+  totalDuration: number;
+  error?: StandardError;
+}
+```
+
+### 3. Traditional ACT Phase Implementation (FIXED)
 
 ```typescript
 async executeActPhase(sessionId: string, stepIndex: number, stepContent: string, state: ExecutionState): Promise<ActResult>
@@ -226,7 +527,7 @@ async executeActPhase(sessionId: string, stepIndex: number, stepContent: string,
     await this.publishCommandExecution(sessionId, stepIndex, executorCommand, result);
     
     // Store in context manager (FIXED: Use correct method signature)
-    await this.contextManager.addExecutionEvent(sessionId, stepIndex, executorCommand, result, parsedResponse.reasoning?.analysis);
+    await this.contextManager.addExecutionEvent(sessionId, stepIndex, executorCommand, result, parsedResponse.reasoning?.analysis, result.screenshotId);
   }
   
   // Store state for reflection
@@ -242,6 +543,172 @@ async executeActPhase(sessionId: string, stepIndex: number, stepContent: string,
   };
 }
 
+// Investigation Tool Execution Implementation
+async executeInvestigationTool(request: InvestigationToolRequest): Promise<InvestigationToolResult> {
+  const { sessionId, stepIndex, tool, parameters, context } = request;
+  const startTime = Date.now();
+  
+  try {
+    let toolResult: Partial<InvestigationToolResult>;
+    
+    switch (tool) {
+      case InvestigationTool.SCREENSHOT_ANALYSIS:
+        toolResult = await this.executeScreenshotAnalysis(sessionId, parameters);
+        break;
+        
+      case InvestigationTool.TEXT_EXTRACTION:
+        toolResult = await this.executeTextExtraction(sessionId, parameters);
+        break;
+        
+      case InvestigationTool.FULL_DOM_RETRIEVAL:
+        toolResult = await this.executeFullDomRetrieval(sessionId, parameters);
+        break;
+        
+      case InvestigationTool.SUB_DOM_EXTRACTION:
+        toolResult = await this.executeSubDomExtraction(sessionId, parameters);
+        break;
+        
+      default:
+        throw this.createStandardError(
+          'UNSUPPORTED_INVESTIGATION_TOOL',
+          `Unsupported investigation tool: ${tool}`,
+          { tool, parameters }
+        );
+    }
+    
+    return {
+      success: true,
+      tool,
+      output: toolResult.output || {},
+      elementsDiscovered: toolResult.elementsDiscovered,
+      pageInsightUpdates: toolResult.pageInsightUpdates,
+      workingMemoryUpdates: toolResult.workingMemoryUpdates,
+      confidence: toolResult.confidence || 0.8,
+      duration: Date.now() - startTime
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      tool,
+      output: {},
+      confidence: 0,
+      duration: Date.now() - startTime,
+      error: this.wrapError(error, 'INVESTIGATION_TOOL_FAILED')
+    };
+  }
+}
+
+// Individual investigation tool implementations
+private async executeScreenshotAnalysis(sessionId: string, parameters?: InvestigationToolParameters): Promise<Partial<InvestigationToolResult>> {
+  // Capture screenshot through executor
+  const screenshotResult = await this.executor.getDom(sessionId);
+  
+  if (!screenshotResult.success) {
+    throw new Error(`Screenshot capture failed: ${screenshotResult.error?.message}`);
+  }
+  
+  // TODO: Integrate with AI Vision for detailed screenshot analysis
+  // For now, return basic screenshot info with ID for future analysis
+  return {
+    output: {
+      visualDescription: `Screenshot captured with ID: ${screenshotResult.screenshotId}`,
+      summary: 'Page screenshot taken and available for visual analysis'
+    },
+    confidence: 0.8,
+    pageInsightUpdates: {
+      visualDescription: `Screenshot available: ${screenshotResult.screenshotId}`
+    }
+  };
+}
+
+private async executeTextExtraction(sessionId: string, parameters?: InvestigationToolParameters): Promise<Partial<InvestigationToolResult>> {
+  const selector = parameters?.selector || 'body';
+  const maxTextLength = parameters?.maxTextLength || 5000;
+  
+  // Use executor's GET_CONTENT command
+  const textResult = await this.executor.getContent(sessionId, selector, 'textContent', false);
+  
+  if (!textResult.success) {
+    throw new Error(`Text extraction failed: ${textResult.error?.message}`);
+  }
+  
+  const textContent = textResult.metadata?.content as string || '';
+  const truncatedText = textContent.length > maxTextLength 
+    ? textContent.substring(0, maxTextLength) + '...' 
+    : textContent;
+  
+  return {
+    output: {
+      textContent: truncatedText,
+      summary: `Extracted ${textContent.length} characters from ${selector}`
+    },
+    confidence: 0.9,
+    pageInsightUpdates: {
+      keyElements: [`Text content from ${selector}: ${textContent.substring(0, 100)}...`]
+    }
+  };
+}
+
+private async executeFullDomRetrieval(sessionId: string, parameters?: InvestigationToolParameters): Promise<Partial<InvestigationToolResult>> {
+  const maxDomSize = parameters?.maxDomSize || 100000;
+  
+  // Get full DOM through executor
+  const domResult = await this.executor.getDom(sessionId);
+  
+  if (!domResult.success) {
+    throw new Error(`DOM retrieval failed: ${domResult.error?.message}`);
+  }
+  
+  const fullDom = domResult.dom;
+  
+  // Check size limits
+  if (fullDom.length > maxDomSize) {
+    throw new Error(`DOM size (${fullDom.length}) exceeds limit (${maxDomSize})`);
+  }
+  
+  const elementCount = (fullDom.match(/<[^>]+>/g) || []).length;
+  
+  return {
+    output: {
+      domContent: fullDom,
+      elementCount,
+      summary: `Retrieved full DOM with ${fullDom.length} characters and ${elementCount} elements`
+    },
+    confidence: 1.0,
+    pageInsightUpdates: {
+      complexity: elementCount > 500 ? 'high' : elementCount > 100 ? 'medium' : 'low'
+    }
+  };
+}
+
+private async executeSubDomExtraction(sessionId: string, parameters?: InvestigationToolParameters): Promise<Partial<InvestigationToolResult>> {
+  const selector = parameters?.selector || 'main, .content, #content, article, section';
+  const maxDomSize = parameters?.maxDomSize || 50000;
+  
+  // Use executor's GET_SUBDOM command
+  const subDomResult = await this.executor.getSubDOM(sessionId, selector, maxDomSize);
+  
+  if (!subDomResult.success) {
+    throw new Error(`Sub-DOM extraction failed: ${subDomResult.error?.message}`);
+  }
+  
+  const subDomElements = subDomResult.metadata?.subDomElements as string[] || [];
+  const totalSize = subDomElements.join('').length;
+  
+  return {
+    output: {
+      domContent: subDomElements.join('\n'),
+      elementCount: subDomElements.length,
+      summary: `Extracted ${subDomElements.length} elements (${totalSize} characters) matching ${selector}`
+    },
+    confidence: 0.9,
+    pageInsightUpdates: {
+      mainSections: [`Content sections found: ${subDomElements.length} elements`]
+    }
+  };
+}
+
 // FIXED: Session ID Injection Logic
 private injectSessionIds(sessionId: string, aiCommands: AIGeneratedCommand[]): ExecutorCommand[] {
   return aiCommands.map((aiCommand, index) => ({
@@ -254,7 +721,91 @@ private injectSessionIds(sessionId: string, aiCommands: AIGeneratedCommand[]): E
 }
 ```
 
-### 3. REFLECT Phase Implementation
+### 3. Action Execution with Investigation Context (NEW)
+
+```typescript
+async executeActionWithInvestigationContext(sessionId: string, stepIndex: number, stepContent: string, investigationResult: InvestigationCycleResult, state: ExecutionState): Promise<ActResult> {
+  // Generate investigation context summary for AI prompt
+  const investigationContextSummary = await this.buildInvestigationContextSummary(investigationResult);
+  
+  // Generate action prompt with investigation context
+  const actionPrompt = await this.promptManager.generateActionWithInvestigationPrompt({
+    sessionId,
+    stepIndex,
+    stepContent,
+    investigationContext: investigationContextSummary,
+    promptOptions: this.buildPromptOptions(state)
+  });
+  
+  // Query AI for action with full investigation context
+  const aiRequest: AIRequest = {
+    messages: this.buildAIMessages(actionPrompt),
+    parameters: this.buildAIParameters()
+  };
+  
+  const aiResponse = await this.aiIntegration.sendRequest(this.aiConnectionId, aiRequest);
+  
+  // Parse and execute commands using discovered elements and context
+  const parsedResponse: AIResponse = await this.parseAIResponse(aiResponse);
+  const executorCommands: ExecutorCommand[] = this.injectSessionIds(sessionId, parsedResponse.commands);
+  
+  // Execute commands with enhanced error context from investigation
+  const commandResults: CommandResponse[] = [];
+  for (const executorCommand of executorCommands) {
+    const result = await this.executeCommand(executorCommand);
+    commandResults.push(result);
+    
+    // Store execution with investigation context
+    await this.contextManager.addExecutionEvent(sessionId, stepIndex, executorCommand, result, parsedResponse.reasoning?.analysis, result.screenshotId);
+  }
+  
+  // Update working memory with action results
+  await this.updateWorkingMemoryFromAction(sessionId, stepIndex, parsedResponse, commandResults, investigationResult);
+  
+  return {
+    success: commandResults.every(r => r.success),
+    commandResults,
+    executorCommands,
+    aiResponse: parsedResponse,
+    investigationContext: investigationContextSummary,
+    duration: Date.now() - state.startTime
+  };
+}
+
+// Working Memory and Context Management Implementation
+async updateWorkingMemoryFromInvestigation(sessionId: string, stepIndex: number, investigationState: InvestigationState): Promise<void> {
+  const workingMemoryUpdates: WorkingMemoryUpdate[] = [];
+  
+  // Add element discoveries to working memory
+  for (const element of investigationState.elementsDiscovered) {
+    workingMemoryUpdates.push({
+      updateType: 'element_discovery',
+      data: {
+        selector: element.selector,
+        elementType: element.elementType,
+        reliability: element.confidence,
+        discoveryMethod: element.discoveryMethod
+      },
+      confidence: element.confidence,
+      source: 'investigation_cycle'
+    });
+  }
+  
+  // Update working memory through context manager
+  for (const update of workingMemoryUpdates) {
+    await this.contextManager.updateWorkingMemory(sessionId, stepIndex, update);
+  }
+}
+
+async storeInvestigationResults(sessionId: string, stepIndex: number, investigationState: InvestigationState): Promise<void> {
+  // Store investigation results and element discoveries in context manager
+  for (const element of investigationState.elementsDiscovered) {
+    await this.contextManager.addPageElementDiscovery(sessionId, stepIndex, element);
+  }
+}
+```
+
+### 4. REFLECT Phase Implementation
 
 ```typescript
 async executeReflectPhase(sessionId: string, stepIndex: number, actResult: ActResult, state: ExecutionState): Promise<ReflectResult>
@@ -422,11 +973,11 @@ interface ExecutorIntegration {
 ```typescript
 interface ContextManagerIntegration {
   // FIXED: Method signature now matches AI Context Manager interface
-  addExecutionEvent(sessionId: string, stepIndex: number, command: ExecutorCommand, result: CommandResponse, reasoning?: string): Promise<string>;
-  addExecutionEventFromStream(sessionId: string, stepIndex: number, streamEvent: StreamEvent): Promise<string>;
-  updateStepExecution(sessionId: string, stepIndex: number, updates: Partial<StepExecution>): Promise<void>;
-  generateContextJson(sessionId: string, targetStep: number): Promise<AIContextJson>;
-  linkExecutorSession(sessionId: string, executorSessionId: string): Promise<void>;
+  addExecutionEvent(workflowSessionId: string, stepIndex: number, command: ExecutorCommand, result: CommandResponse, reasoning?: string, screenshotId?: string): Promise<string>;
+  addExecutionEventFromStream(workflowSessionId: string, stepIndex: number, streamEvent: StreamEvent): Promise<string>;
+  updateStepExecution(workflowSessionId: string, stepIndex: number, updates: Partial<StepExecution>): Promise<void>;
+  generateContextJson(workflowSessionId: string, targetStep: number): Promise<AIContextJson>;
+  linkExecutorSession(workflowSessionId: string, executorSessionId: string): Promise<void>;
 }
 ```
 
@@ -574,6 +1125,7 @@ interface SuccessPattern {
 ### Error Types
 ```typescript
 enum TaskLoopErrorType {
+  // Traditional error types
   PROMPT_GENERATION_ERROR = 'PROMPT_GENERATION_ERROR',
   AI_COMMUNICATION_ERROR = 'AI_COMMUNICATION_ERROR',
   RESPONSE_PARSING_ERROR = 'RESPONSE_PARSING_ERROR',
@@ -582,7 +1134,18 @@ enum TaskLoopErrorType {
   STREAMING_ERROR = 'STREAMING_ERROR',
   TIMEOUT_ERROR = 'TIMEOUT_ERROR',
   VALIDATION_ERROR = 'VALIDATION_ERROR',
-  UNSUPPORTED_COMMAND = 'UNSUPPORTED_COMMAND'
+  UNSUPPORTED_COMMAND = 'UNSUPPORTED_COMMAND',
+  
+  // Investigation-specific error types (NEW)
+  INVESTIGATION_CYCLE_FAILED = 'INVESTIGATION_CYCLE_FAILED',
+  INVESTIGATION_PHASE_FAILED = 'INVESTIGATION_PHASE_FAILED',
+  INVESTIGATION_TOOL_FAILED = 'INVESTIGATION_TOOL_FAILED',
+  INVESTIGATION_TIMEOUT = 'INVESTIGATION_TIMEOUT',
+  UNSUPPORTED_INVESTIGATION_TOOL = 'UNSUPPORTED_INVESTIGATION_TOOL',
+  WORKING_MEMORY_UPDATE_FAILED = 'WORKING_MEMORY_UPDATE_FAILED',
+  CONTEXT_FILTERING_FAILED = 'CONTEXT_FILTERING_FAILED',
+  ELEMENT_DISCOVERY_FAILED = 'ELEMENT_DISCOVERY_FAILED',
+  INVESTIGATION_CONTEXT_GENERATION_FAILED = 'INVESTIGATION_CONTEXT_GENERATION_FAILED'
 }
 
 interface TaskLoopError extends Error {
@@ -601,6 +1164,15 @@ interface TaskLoopError extends Error {
 - Fallback prompt generation strategies
 - Command execution error recovery
 - State preservation during failures
+
+#### Investigation-Specific Recovery (NEW)
+- **Investigation Cycle Fallback**: Skip investigation and use traditional ACT phase when investigation fails
+- **Investigation Tool Fallback**: Use alternative tools when preferred tools fail
+- **Working Memory Recovery**: Initialize empty working memory when corruption detected
+- **Context Filtering Fallback**: Use traditional context when filtered context generation fails
+- **Element Discovery Fallback**: Continue with manual selectors when element discovery fails
+- **Investigation Timeout Recovery**: Proceed with partial investigation results when timeout occurs
+- **Progressive Context Fallback**: Use static context when progressive building fails
 
 ## Performance Considerations
 
@@ -650,6 +1222,34 @@ interface TaskLoopConfig extends BaseModuleConfig {
     publishReasoningUpdates: boolean;
     publishCommandUpdates: boolean;
     publishScreenshots: boolean;
+  };
+  
+  // Investigation Configuration (NEW)
+  investigation: {
+    enabled: boolean;
+    maxInvestigationRounds: number;
+    investigationTimeoutMs: number;
+    confidenceThreshold: number;
+    enabledTools: InvestigationTool[];
+    toolPriorityOrder: InvestigationTool[];
+    contextManagementApproach: 'minimal' | 'standard' | 'comprehensive';
+    enableWorkingMemory: boolean;
+    enableElementKnowledge: boolean;
+    enableProgressiveContext: boolean;
+    maxContextSize: number;
+    investigationPromptOptions: PromptOptions;
+  };
+  
+  // Context Management Configuration (NEW)
+  contextManagement: {
+    enableFilteredContext: boolean;
+    maxHistorySteps: number;
+    excludeFullDom: boolean;
+    includePreviousInvestigations: boolean;
+    summarizationLevel: 'minimal' | 'standard' | 'detailed';
+    workingMemoryEnabled: boolean;
+    elementKnowledgeEnabled: boolean;
+    patternLearningEnabled: boolean;
   };
   
   // Inherits from BaseModuleConfig:
@@ -709,6 +1309,8 @@ Examples:
 ```
 
 ## Testing Requirements
+
+### Traditional Testing
 - Unit tests for ACT-REFLECT cycle implementation
 - Integration tests with all dependent modules
 - AI response parsing and validation tests
@@ -716,6 +1318,18 @@ Examples:
 - Performance benchmarks for execution cycles
 - Mock AI responses for deterministic testing
 - Streaming integration validation
+
+### Investigation-Specific Testing (NEW)
+- **Investigation Cycle Testing**: Unit tests for complete investigation cycle (Initial Assessment → Focused Exploration → Selector Determination)
+- **Investigation Tool Testing**: Individual tool testing (screenshot analysis, text extraction, DOM retrieval, sub-DOM extraction)
+- **Working Memory Testing**: Working memory persistence, updates, and corruption recovery
+- **Context Management Testing**: Filtered context generation, progressive context building, overflow prevention
+- **Element Discovery Testing**: Element discovery accuracy, reliability scoring, knowledge accumulation
+- **Investigation Integration Testing**: End-to-end investigation flow with AI Context Manager and AI Prompt Manager
+- **Investigation Error Handling**: Tool failures, timeout scenarios, partial results handling
+- **Investigation Performance Testing**: Investigation cycle latency, memory usage, context generation performance
+- **Investigation Fallback Testing**: Graceful degradation when investigation tools fail
+- **Investigation Configuration Testing**: Various investigation configuration scenarios and their impacts
 
 ## Security Considerations
 - Input sanitization for AI prompts and responses
@@ -725,11 +1339,26 @@ Examples:
 - Rate limiting for AI service calls
 
 ## Future Enhancements
+
+### Traditional Enhancements
 - Multi-model AI support with fallback strategies
 - Advanced prompt optimization using reinforcement learning
-- Visual element recognition and interaction
 - Natural language step interpretation
 - Cross-browser automation support
 - Integration with testing frameworks
 - Advanced debugging and step-by-step execution
 - Collaborative AI decision making
+
+### Investigation-Specific Enhancements (NEW)
+- **AI-Powered Visual Analysis**: Integration with computer vision APIs for enhanced screenshot analysis
+- **Intelligent Element Recognition**: Machine learning models for automatic element identification and classification
+- **Adaptive Investigation Strategies**: Dynamic investigation approach optimization based on page complexity and success rates
+- **Cross-Session Learning**: Share investigation patterns and element knowledge across different automation sessions
+- **Predictive Element Discovery**: Predict likely elements and selectors before investigation begins
+- **Visual Investigation Guidance**: Interactive visual guides showing investigation progress and findings
+- **Investigation Pattern Mining**: Automated discovery of successful investigation patterns for specific site types
+- **Multi-Modal Investigation**: Integration of visual, textual, and structural investigation methods
+- **Investigation Quality Metrics**: Automated assessment and optimization of investigation effectiveness
+- **Collaborative Investigation**: Multi-user investigation scenarios with shared working memory and findings
+- **Real-time Investigation Streaming**: Live investigation progress monitoring and collaborative debugging
+- **Investigation Analytics**: Detailed analytics and reporting for investigation performance and success rates

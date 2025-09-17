@@ -56,7 +56,7 @@ interface IStepProcessor extends ISessionManager {
   cancelExecution(workflowSessionId: string): Promise<void>;
   
   // Session Coordination (works with SessionCoordinator)
-  getWorkflowSession(workflowSessionId: string): Promise<WorkflowSession | null>;
+  getWorkflowSession(workflowSessionId: string): WorkflowSession | null;
   listActiveWorkflowSessions(): string[];
   destroyWorkflowSession(workflowSessionId: string): Promise<void>;
   
@@ -64,9 +64,7 @@ interface IStepProcessor extends ISessionManager {
   getExecutionProgress(workflowSessionId: string): Promise<ExecutionProgress>;
   getStepHistory(workflowSessionId: string): Promise<StepExecutionSummary[]>;
   
-  // Session Coordinator Integration
-  setSessionCoordinator(coordinator: SessionCoordinator): void;
-  getSessionCoordinator(): SessionCoordinator | null;
+  // Session Coordinator Integration (via DI Container)
   
   // Dependency Injection
   initialize(container: DIContainer): Promise<void>;
@@ -153,8 +151,9 @@ return {
 ### 2. Session Coordination (NEW)
 ```typescript
 private async initializeModulesForSession(session: WorkflowSession): Promise<void> {
-  // Initialize AI Context Manager with both session IDs
-  await this.contextManager.createSession(session.sessionId, session.executorSessionId);
+  // Initialize AI Context Manager with workflow session
+  await this.contextManager.createSession(session.sessionId);
+  await this.contextManager.linkExecutorSession(session.sessionId, session.executorSessionId);
   await this.contextManager.setSteps(session.sessionId, session.steps);
 
   // Initialize Executor Module with specific executor session ID  
@@ -170,7 +169,7 @@ private async initializeModulesForSession(session: WorkflowSession): Promise<voi
 }
 
 private async cleanupModulesForSession(sessionId: string): Promise<void> {
-  const session = await this.getWorkflowSession(sessionId);
+  const session = this.sessionCoordinator.getWorkflowSession(sessionId);
   if (!session) return;
 
   // Cleanup in reverse order
@@ -294,7 +293,7 @@ class StepProcessor implements IStepProcessor, IEventPublisher {
 
   private async handleStepCompleted(sessionId: string, stepIndex: number, result: StepResult): Promise<void> {
     // Update workflow session status
-    const workflowSession = await this.getWorkflowSession(sessionId);
+    const workflowSession = this.sessionCoordinator.getWorkflowSession(sessionId);
     if (!workflowSession) return;
 
     // Update session progress
@@ -330,7 +329,7 @@ class StepProcessor implements IStepProcessor, IEventPublisher {
 
   private async handleStepFailed(sessionId: string, stepIndex: number, error: StandardError): Promise<void> {
     // Update workflow session with error
-    const workflowSession = await this.getWorkflowSession(sessionId);
+    const workflowSession = this.sessionCoordinator.getWorkflowSession(sessionId);
     if (workflowSession) {
       workflowSession.status = SessionStatus.FAILED;
       workflowSession.lastActivity = new Date();
@@ -398,17 +397,30 @@ interface StepProcessorDependencies {
 
 class StepProcessor implements IStepProcessor {
   private dependencies: StepProcessorDependencies;
+  
+  // Session coordination methods (delegated to SessionCoordinator)
+  getWorkflowSession(workflowSessionId: string): WorkflowSession | null {
+    return this.dependencies.sessionCoordinator.getWorkflowSession(workflowSessionId);
+  }
+  
+  listActiveWorkflowSessions(): string[] {
+    return this.dependencies.sessionCoordinator.listActiveWorkflowSessions();
+  }
+  
+  async destroyWorkflowSession(workflowSessionId: string): Promise<void> {
+    return this.dependencies.sessionCoordinator.destroyWorkflowSession(workflowSessionId);
+  }
 
   async initialize(container: DIContainer): Promise<void> {
     this.dependencies = {
-      sessionCoordinator: container.resolve(DEPENDENCY_TOKENS.SESSION_COORDINATOR),
-      contextManager: container.resolve(DEPENDENCY_TOKENS.CONTEXT_MANAGER),
-      taskLoop: container.resolve(DEPENDENCY_TOKENS.TASK_LOOP),
-      executor: container.resolve(DEPENDENCY_TOKENS.EXECUTOR),
-      executorStreamer: container.resolve(DEPENDENCY_TOKENS.EXECUTOR_STREAMER),
-      aiIntegration: container.resolve(DEPENDENCY_TOKENS.AI_INTEGRATION),
-      errorHandler: container.resolve(DEPENDENCY_TOKENS.ERROR_HANDLER),
-      logger: container.resolve(DEPENDENCY_TOKENS.LOGGER)
+      sessionCoordinator: container.resolve<SessionCoordinator>(DEPENDENCY_TOKENS.SESSION_COORDINATOR),
+      contextManager: container.resolve<IAIContextManager>(DEPENDENCY_TOKENS.CONTEXT_MANAGER),
+      taskLoop: container.resolve<ITaskLoop>(DEPENDENCY_TOKENS.TASK_LOOP),
+      executor: container.resolve<IExecutor>(DEPENDENCY_TOKENS.EXECUTOR),
+      executorStreamer: container.resolve<IExecutorStreamer>(DEPENDENCY_TOKENS.EXECUTOR_STREAMER),
+      aiIntegration: container.resolve<IAIIntegration>(DEPENDENCY_TOKENS.AI_INTEGRATION),
+      errorHandler: container.resolve<IErrorHandler>(DEPENDENCY_TOKENS.ERROR_HANDLER),
+      logger: container.resolve<ILogger>(DEPENDENCY_TOKENS.LOGGER)
     };
 
     // Register as event publisher for Task Loop
@@ -419,37 +431,32 @@ class StepProcessor implements IStepProcessor {
 
 ### AI Context Manager Integration (Fixed)
 ```typescript
-// Using shared types for consistency
-interface IContextManagerIntegration {
-  createSession(sessionId: string): Promise<void>;
-  setSteps(sessionId: string, steps: string[]): Promise<void>;
-  destroySession(sessionId: string): Promise<void>;
-  addExecutionEvent(sessionId: string, stepIndex: number, event: ExecutionEvent): Promise<void>;
-  generateContextJson(sessionId: string, targetStep: number): Promise<AIContextJson>;
-}
+// Using shared types and actual IAIContextManager interface
+// No separate integration interface needed - use IAIContextManager directly
+import { IAIContextManager } from './ai-context-manager-types';
+
+// Step Processor uses the actual IAIContextManager interface
+// All method signatures match the interface defined in ai-context-manager.md
 ```
 
 ### Executor Streamer Integration (Fixed)
 ```typescript
-// Using shared StreamEvent types
-interface IExecutorStreamerIntegration {
-  createStream(streamId: string, sessionId: string, config?: StreamProcessingConfig): Promise<void>;
-  publishEvent(streamId: string, event: StreamEvent): Promise<void>;
-  destroyStream(streamId: string): Promise<void>;
-  getStreamStatus(streamId: string): Promise<StreamStatus>;
-}
+// Using shared StreamEvent types and actual IExecutorStreamer interface
+// No separate integration interface needed - use IExecutorStreamer directly
+import { IExecutorStreamer } from './executor-streamer-types';
+
+// Step Processor uses the actual IExecutorStreamer interface
+// All method signatures match the interface defined in executor-streamer.md
 ```
 
 ### Task Loop Integration (Fixed)
 ```typescript
-// Using shared types and proper interface
-interface ITaskLoopIntegration {
-  processStep(request: TaskLoopStepRequest): Promise<void>;
-  setEventPublisher(publisher: IEventPublisher): void;
-  pauseStep(sessionId: string, stepIndex: number): Promise<void>;
-  resumeStep(sessionId: string, stepIndex: number): Promise<void>;
-  getExecutionState(sessionId: string, stepIndex: number): Promise<ExecutionState>;
-}
+// Using shared types and the actual ITaskLoop interface from task-loop.md
+// No separate integration interface needed - use ITaskLoop directly
+import { ITaskLoop } from './task-loop-types';
+
+// Step Processor dependencies use the actual ITaskLoop interface
+// All methods match the ITaskLoop interface defined in task-loop.md
 
 // TaskLoopStepRequest and ExecutionProgress are now defined in shared-types.md
 // This ensures consistency across all modules

@@ -173,6 +173,92 @@ The system implements continuous learning through:
 - Decide: proceed, retry, or abort
 - Learn from successes and failures
 
+### Page Investigation Logic
+
+Within each step, the AI employs a sophisticated investigation cycle to understand the current page state and determine optimal selectors for actions. This subtask loop uses multiple investigation methods:
+
+#### Investigation Tools Available to AI
+
+**1. Screenshot Analysis**
+```
+AI Request → Executor → Screenshot Capture → AI Vision Analysis → Text Description
+```
+- Captures current page state visually
+- AI Vision models provide detailed word descriptions of page content
+- Identifies UI elements, layout, and visual context
+- Helps understand page structure when DOM is complex
+
+**2. Targeted Text Extraction**
+```
+AI Request → Executor → Playwright Selector → Text Content → AI Analysis
+```
+- Extracts specific text content using CSS/XPath selectors
+- Lightweight method for focused content retrieval
+- Validates element presence and accessibility
+- Efficient for checking specific element properties
+
+**3. Full DOM Retrieval** 
+```
+AI Request → Executor → Full DOM Extraction → Size Check → AI Analysis (if feasible)
+```
+- Attempts to retrieve complete page DOM structure
+- Falls back gracefully if DOM exceeds size limits
+- Provides comprehensive page understanding when possible
+- Used for complex page analysis requiring full context
+
+**4. Sub-DOM by Selector**
+```
+AI Request → Executor → Targeted DOM Extraction → Filtered Content → AI Analysis
+```
+- Extracts DOM subtree using specific selectors
+- Focuses on relevant page sections to avoid context overflow
+- Balances detail with context window limitations
+- Ideal for analyzing specific containers or components
+
+#### Investigation Cycle Process
+
+**Phase 1: Initial Assessment**
+1. AI receives high-level step description
+2. Requests screenshot for visual understanding
+3. Analyzes page layout and identifies key areas
+4. Determines investigation strategy based on step requirements
+
+**Phase 2: Focused Exploration**
+1. Uses targeted text extraction to verify element presence
+2. Employs sub-DOM extraction for detailed analysis of relevant sections
+3. Attempts full DOM retrieval if page complexity requires it
+4. Builds comprehensive understanding while managing context limits
+
+**Phase 3: Selector Determination**
+1. Synthesizes information from all investigation methods
+2. Identifies most reliable and specific selectors
+3. Validates selector uniqueness and stability
+4. Chooses optimal interaction approach for the step
+
+#### Context Management Strategy
+
+To prevent context window overflow, the AI maintains:
+
+**High-Level Execution Summary**:
+- Step names and outcomes (success/failure)
+- AI reasoning and confidence levels
+- Key variables extracted and their values
+- Screenshot timestamps and descriptions
+
+**Filtered Content Inclusion**:
+- Excludes full DOM content from context history
+- Summarizes page content discoveries
+- Maintains only selector-relevant information
+- Preserves critical error messages and validation results
+
+**Progressive Context Building**:
+- Each investigation builds upon previous knowledge
+- Maintains working memory of page elements discovered
+- Updates understanding as page state changes
+- Learns optimal investigation patterns for similar pages
+
+This investigation cycle ensures the AI makes informed decisions while efficiently managing computational resources and context limitations.
+
 ### Context Awareness
 - **Execution History**: Complete log of previous actions
 - **Page State**: DOM snapshots and screenshots
