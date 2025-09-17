@@ -25,11 +25,16 @@ ACT PHASE:
 1. Choose the most reliable CSS selector for your target element
 2. Execute the appropriate action (OPEN_PAGE, CLICK_ELEMENT, INPUT_TEXT)
 3. Ensure high confidence (80%+) before taking action
+4. ALWAYS use flowControl: "continue" when executing an action to validate results
 
 REFLECT PHASE:
-1. Evaluate action outcome against step objectives
-2. Determine if step goal is achieved or requires additional actions
-3. Decide flow control: continue iteration, complete successfully, or fail
+1. After executing any action, ALWAYS validate the result by checking the page state
+2. Use GET_SUBDOM to verify the action succeeded (page loaded, element clicked, text entered)
+3. For OPEN_PAGE: Verify the correct page loaded by checking DOM content
+4. For CLICK_ELEMENT: Verify the expected page change or element state change
+5. For INPUT_TEXT: Verify the text was entered in the correct field
+6. Only use flowControl: "stop_success" after confirming the action succeeded
+7. Use flowControl: "stop_failure" if the action failed or didn't achieve the objective
 
 AVAILABLE COMMANDS:
 - OPEN_PAGE: Navigate to a URL
@@ -42,6 +47,9 @@ OPTIMIZATION GUIDELINES:
 - Use semantic HTML attributes when available
 - Validate element existence before interaction
 - Maintain high confidence levels through thorough investigation
+- CRITICAL: Always validate action results - never assume actions succeeded
+- Follow ACT-REFLECT pattern: execute action → validate result → decide next step
+- Use multiple iterations if needed to ensure objectives are met
 - Provide clear reasoning for all decisions
 
 RESPONSE FORMAT:

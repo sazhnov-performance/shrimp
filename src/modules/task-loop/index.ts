@@ -143,6 +143,11 @@ export class TaskLoop implements ITaskLoop {
         
         const aiResponse = await this.aiIntegration.sendRequest(prompt);
         
+        // Debug logging for raw AI response
+        if (this.config.enableLogging) {
+          console.log(`[TaskLoop] DEBUG - Raw AI response data:`, JSON.stringify(aiResponse.data, null, 2));
+        }
+        
         if (aiResponse.status === 'error') {
           throw this.createTaskLoopError(
             TaskLoopErrorType.AI_REQUEST_FAILED,
@@ -161,9 +166,14 @@ export class TaskLoop implements ITaskLoop {
         
         const validatedResponse = validateAIResponse(aiResponse.data, sessionId, stepId);
         finalResponse = validatedResponse;
+        
+        // Debug logging for AI response validation
+        if (this.config.enableLogging && validatedResponse.action) {
+          console.log(`[TaskLoop] DEBUG - Validated response action:`, JSON.stringify(validatedResponse.action, null, 2));
+        }
 
-        // 4. Execute action if specified and flowControl is continue
-        if (validatedResponse.flowControl === 'continue' && validatedResponse.action) {
+        // 4. Execute action if specified (regardless of flow control)
+        if (validatedResponse.action) {
           if (this.config.enableLogging) {
             console.log(`[TaskLoop] Executing action for session ${sessionId}, step ${stepId}, iteration ${iterations}`, {
               command: validatedResponse.action.command,
@@ -279,6 +289,12 @@ export class TaskLoop implements ITaskLoop {
 
       // Convert string command to CommandAction enum
       const commandAction = this.convertStringToCommandAction(action.command);
+      
+      // Debug logging for parameters
+      if (this.config.enableLogging) {
+        console.log(`[TaskLoop] DEBUG - Action object:`, JSON.stringify(action, null, 2));
+        console.log(`[TaskLoop] DEBUG - Parameters being passed:`, JSON.stringify(action.parameters, null, 2));
+      }
       
       // Execute the command through the executor
       const command = {
