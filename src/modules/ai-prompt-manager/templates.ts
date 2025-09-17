@@ -56,9 +56,17 @@ OPTIMIZATION GUIDELINES:
 - Follow ACT-REFLECT pattern: execute action → validate result → decide next step
 - Use multiple iterations if needed to ensure objectives are met
 - Provide clear reasoning for all decisions
+- NEVER make up fake URLs - only use real URLs from the current context or requirements
+- Work with actual page content visible in execution history, not imaginary content
 
 RESPONSE FORMAT:
 {responseSchema}
+
+CRITICAL INSTRUCTIONS:
+- ONLY use URLs that are explicitly provided in the step requirements or visible in page content
+- DO NOT make up sample URLs like "example.com" or "test.com"
+- DO NOT include comments in JSON responses (like // comments)
+- Base all decisions on actual page content from execution history
 
 CURRENT STEP OBJECTIVE: {currentStepName}
 
@@ -69,8 +77,9 @@ export const FALLBACK_TEMPLATE = `ROLE: You are an intelligent web automation ag
 CURRENT STEP: {stepName}
 
 AVAILABLE COMMANDS:
-- OPEN_PAGE: Navigate to a URL
-  Parameters: { "url": "https://example.com" }
+- OPEN_PAGE: Navigate to a URL (ONLY use real, valid URLs)
+  Parameters: { "url": "https://actual-url.com" }
+  WARNING: NEVER make up fake URLs like "example.com" or "sample.com"
 - CLICK_ELEMENT: Click on page elements using CSS selectors
   Parameters: { "selector": "#button-id" or ".class-name" or "button[type='submit']" }
 - INPUT_TEXT: Enter text into form fields
@@ -79,7 +88,9 @@ AVAILABLE COMMANDS:
   Parameters: { "selector": "body" or "main" or ".content" or "#search-form" }
   Use broader selectors like "body", "main", "header", ".content" to explore page structure
 
+CRITICAL: DO NOT include comments in JSON responses (like // comments).
+
 RESPONSE FORMAT:
 {responseSchema}
 
-Execute the current step with the available commands.`;
+Execute the current step with the available commands using only real URLs and valid JSON.`;

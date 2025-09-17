@@ -153,10 +153,12 @@ export class RequestProcessor {
         return this.createErrorResponse('EMPTY_RESPONSE', 'Empty response content from OpenAI');
       }
 
-      // Parse the JSON content
+      // Clean and parse the JSON content
       let parsedContent;
       try {
-        parsedContent = JSON.parse(content);
+        // Remove comments and clean up the JSON before parsing
+        const cleanedContent = this.cleanJsonContent(content);
+        parsedContent = JSON.parse(cleanedContent);
       } catch (parseError) {
         return this.createErrorResponse('INVALID_JSON', `Failed to parse AI response as JSON: ${content}`);
       }
@@ -167,6 +169,36 @@ export class RequestProcessor {
       };
     } catch (error) {
       return this.createErrorResponse('REQUEST_ERROR', 'Failed to parse response');
+    }
+  }
+
+  /**
+   * Clean JSON content by removing comments and extra whitespace
+   */
+  private cleanJsonContent(content: string): string {
+    try {
+      // Remove single-line comments (// comments)
+      let cleaned = content.replace(/\/\/.*$/gm, '');
+      
+      // Remove multi-line comments (/* comments */)
+      cleaned = cleaned.replace(/\/\*[\s\S]*?\*\//g, '');
+      
+      // Extract JSON from code blocks if present
+      const jsonMatch = cleaned.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+      if (jsonMatch) {
+        cleaned = jsonMatch[1];
+      }
+      
+      // Try to find JSON object if it's embedded in text
+      const objectMatch = cleaned.match(/\{[\s\S]*\}/);
+      if (objectMatch) {
+        cleaned = objectMatch[0];
+      }
+      
+      return cleaned.trim();
+    } catch (error) {
+      // If cleaning fails, return original content
+      return content;
     }
   }
 

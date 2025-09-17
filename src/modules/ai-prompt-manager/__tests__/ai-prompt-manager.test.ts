@@ -341,7 +341,7 @@ describe('AIPromptManager', () => {
       const prompt = smallPromptManager.getStepPrompt('small-session', 0);
       
       // Should fallback to shorter template due to length limit
-      expect(prompt.length).toBeLessThan(1000);
+      expect(prompt.length).toBeLessThan(1200); // Adjusted for additional safety instructions
     });
 
     it('should handle different template versions', () => {
