@@ -99,10 +99,10 @@ RESPONSE FORMAT:
       const currentStepLogs = context.stepLogs[currentStepId] || [];
       if (currentStepLogs.length > 0) {
         history += 'CURRENT STEP ATTEMPTS:\n';
-        const lastFiveLogs = currentStepLogs.slice(-5); // Show last 5 attempts
-        const startingAttemptNumber = Math.max(1, currentStepLogs.length - 4); // Calculate correct starting attempt number
+        const lastTenLogs = currentStepLogs.slice(-10); // Show last 10 attempts
+        const startingAttemptNumber = Math.max(1, currentStepLogs.length - 9); // Calculate correct starting attempt number
         
-        lastFiveLogs.forEach((log, index) => {
+        lastTenLogs.forEach((log, index) => {
           const attemptNumber = startingAttemptNumber + index;
           const attempt = this.formatLogEntry(log, attemptNumber);
           history += `${attempt}\n`;
