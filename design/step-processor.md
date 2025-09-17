@@ -30,22 +30,29 @@ This is the ENTIRE algorithm:
 ## Implementation
 
 ```typescript
+import { ExecutorStreamer } from '../executor-streamer';
+import { TaskLoop } from '../task-loop';
+
+// Simple instances - no complex DI needed
+const executorStreamer = new ExecutorStreamer();
+const taskLoop = new TaskLoop({} as any, {} as any, {} as any, {} as any, {} as any);
+
 async function processSteps(steps: string[]): Promise<string> {
   // Create session
   const sessionId = generateId();
   
   // Create stream - handle internally
-  // await executorStreamer.createStream(sessionId);
+  await executorStreamer.createStream(sessionId);
   
   // Execute steps sequentially - handle internally  
-  // for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
-  //   const result = await taskLoop.executeStep(sessionId, stepIndex);
-  //   
-  //   // Stop on failure, continue on success
-  //   if (result.status === 'failure' || result.status === 'error') {
-  //     break;
-  //   }
-  // }
+  for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
+    const result = await taskLoop.executeStep(sessionId, stepIndex);
+    
+    // Stop on failure, continue on success
+    if (result.status === 'failure' || result.status === 'error') {
+      break;
+    }
+  }
   
   return sessionId;
 }
@@ -62,6 +69,7 @@ export { processSteps };
 ```
 /src/modules/step-processor/
   └── index.ts           # Just the processSteps function
+  └── types.ts           # Types
 ```
 
 ## Usage

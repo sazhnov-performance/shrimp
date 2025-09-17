@@ -5,16 +5,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  ERROR_CODES, 
-  StepProcessingRequest, 
-  StreamEvent,
-  StreamEventType,
-  SessionStatus 
-} from '../../../../../types/shared-types';
-import { StepProcessor } from '../../../../../src/modules/step-processor';
+import { processSteps } from '../../../../modules/step-processor';
 
-// Updated types to match UI integration
+// Simple request interface
+interface StepProcessingRequest {
+  steps: string[];
+  config?: Record<string, any>;
+}
+
 interface ExecuteStepsResponse {
   sessionId: string;
   streamId?: string;
@@ -59,26 +57,8 @@ function validateRequest(body: any): { isValid: boolean; error?: string } {
 }
 
 /**
- * Creates StepProcessor instance with dependencies
- * TODO: Replace with proper dependency injection
- */
-function createStepProcessor(): StepProcessor {
-  // For now, we need to pass the required dependencies
-  // In a real implementation, these would be injected via DI container
-  const mockSessionCoordinator = {} as any;
-  const mockTaskLoop = {} as any;
-  const mockExecutorStreamer = {} as any;
-  
-  return new StepProcessor(
-    mockSessionCoordinator,
-    mockTaskLoop,
-    mockExecutorStreamer
-  );
-}
-
-/**
- * Initializes step processing using the step processor module
- * As per design: calls stepProcessor.init(steps) to get session ID
+ * Initializes step processing using the simple processSteps function
+ * SIMPLE: just pass steps array and get session ID back!
  */
 async function initializeStepProcessing(request: StepProcessingRequest): Promise<{sessionId: string, streamId?: string}> {
   console.log('[Frontend API] Initializing step processing for request:', {
@@ -87,11 +67,8 @@ async function initializeStepProcessing(request: StepProcessingRequest): Promise
   });
   
   try {
-    // Create step processor instance
-    const stepProcessor = createStepProcessor();
-    
-    // Call stepProcessor.init(steps) as per design
-    const sessionId = await stepProcessor.init(request.steps);
+    // SIMPLE: just call processSteps with steps array
+    const sessionId = await processSteps(request.steps);
     const streamId = sessionId; // Use same ID for stream simplicity
     
     console.log('[Frontend API] Step processing initialized with session ID:', sessionId);
@@ -115,7 +92,7 @@ export async function POST(request: NextRequest) {
       body = await request.json();
     } catch (error) {
       const apiError: APIError = {
-        code: ERROR_CODES.FRONTEND_API.REQUEST_VALIDATION_FAILED,
+        code: 'REQUEST_VALIDATION_FAILED',
         message: 'Invalid JSON in request body',
         retryable: false,
         timestamp: new Date().toISOString()
@@ -131,7 +108,7 @@ export async function POST(request: NextRequest) {
     const validation = validateRequest(body);
     if (!validation.isValid) {
       const apiError: APIError = {
-        code: ERROR_CODES.FRONTEND_API.REQUEST_VALIDATION_FAILED,
+        code: 'REQUEST_VALIDATION_FAILED',
         message: validation.error!,
         retryable: false,
         timestamp: new Date().toISOString()
