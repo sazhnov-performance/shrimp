@@ -1,46 +1,139 @@
 /**
  * Step Processor Module Implementation
- * SIMPLE function that executes steps sequentially. That's it.
- * Based on design/step-processor.md specifications
+ * A SIMPLE function that executes steps sequentially
  */
 
-import { ExecutorStreamer } from '../executor-streamer';
-import { TaskLoop } from '../task-loop';
-
-// Simple instances - no complex DI needed
-const executorStreamer = new ExecutorStreamer();
-const taskLoop = new TaskLoop({} as any, {} as any, {} as any, {} as any, {} as any); // TODO: Proper deps
+import { 
+  IStepProcessor, 
+  IStepProcessorConstructor,
+  StepProcessorConfig 
+} from './types';
+import { IExecutorStreamer } from '../executor-streamer/types';
+import getExecutorStreamer from '../executor-streamer/index';
+import { ITaskLoop } from '../task-loop/types';
+import TaskLoop from '../task-loop/index';
 
 /**
- * Process steps sequentially
- * Simple function - no class, no constructor, no complexity
- * Just pass steps and GO!
+ * StepProcessor - Singleton implementation of sequential step execution
  */
-async function processSteps(steps: string[]): Promise<string> {
-  // Create session
-  const sessionId = generateId();
-  
-  // Create stream - handle internally
-  await executorStreamer.createStream(sessionId);
-  
-  // Execute steps sequentially - handle internally  
-  for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
-    const result = await taskLoop.executeStep(sessionId, stepIndex);
+export class StepProcessor implements IStepProcessor {
+  private static instance: StepProcessor | null = null;
+  private config: StepProcessorConfig;
+  private executorStreamer: IExecutorStreamer;
+  private taskLoop: ITaskLoop;
+
+  private constructor(config: StepProcessorConfig = {}) {
+    this.config = {
+      maxConcurrentSessions: 10,
+      timeoutMs: 300000, // 5 minutes
+      enableLogging: true,
+      ...config
+    };
     
-    // Stop on failure, continue on success
-    if (result.status === 'failure' || result.status === 'error') {
-      break;
+    // Resolve dependencies internally using singleton instances
+    this.executorStreamer = getExecutorStreamer();
+    this.taskLoop = TaskLoop.getInstance();
+    
+    if (this.config.enableLogging) {
+      console.log('[StepProcessor] Step Processor module initialized', {
+        maxConcurrentSessions: this.config.maxConcurrentSessions,
+        timeoutMs: this.config.timeoutMs,
+        enableLogging: this.config.enableLogging
+      });
     }
   }
-  
-  return sessionId;
+
+  /**
+   * Get singleton instance of StepProcessor
+   * @param config Optional configuration for the step processor
+   * @returns StepProcessor instance
+   */
+  static getInstance(config?: StepProcessorConfig): IStepProcessor {
+    if (!StepProcessor.instance) {
+      StepProcessor.instance = new StepProcessor(config);
+    }
+    return StepProcessor.instance;
+  }
+
+  /**
+   * Process steps sequentially 
+   * This is the ENTIRE algorithm:
+   * 1. Create Session: Generate unique session ID
+   * 2. Create Stream: Create streaming session with same session ID  
+   * 3. Execute Steps: For each step, call taskLoop.executeStep(sessionId, stepIndex)
+   *    - If failure: STOP
+   *    - If success: CONTINUE to next step
+   * 4. Return Session ID: Return the session ID
+   * 
+   * @param steps Array of step strings to execute
+   * @returns Promise<string> Session ID
+   */
+  async processSteps(steps: string[]): Promise<string> {
+    // Create session
+    const sessionId = this.generateId();
+    
+    if (this.config.enableLogging) {
+      console.log(`[StepProcessor] Starting step processing for session ${sessionId} with ${steps.length} steps`);
+    }
+    
+    try {
+      // Create stream - handle internally
+      await this.executorStreamer.createStream(sessionId);
+      
+      if (this.config.enableLogging) {
+        console.log(`[StepProcessor] Created stream for session ${sessionId}`);
+      }
+      
+      // Execute steps sequentially - handle internally  
+      for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
+        if (this.config.enableLogging) {
+          console.log(`[StepProcessor] Executing step ${stepIndex} for session ${sessionId}`);
+        }
+        
+        const result = await this.taskLoop.executeStep(sessionId, stepIndex);
+        
+        // Stop on failure, continue on success
+        if (result.status === 'failure' || result.status === 'error') {
+          if (this.config.enableLogging) {
+            console.log(`[StepProcessor] Step ${stepIndex} failed for session ${sessionId}. Status: ${result.status}. Stopping execution.`);
+          }
+          break;
+        }
+        
+        if (this.config.enableLogging) {
+          console.log(`[StepProcessor] Step ${stepIndex} completed successfully for session ${sessionId}. Continuing to next step.`);
+        }
+      }
+      
+      if (this.config.enableLogging) {
+        console.log(`[StepProcessor] Step processing completed for session ${sessionId}`);
+      }
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (this.config.enableLogging) {
+        console.error(`[StepProcessor] Error during step processing for session ${sessionId}: ${errorMessage}`);
+      }
+      // Still return the session ID even if there were errors
+    }
+    
+    return sessionId;
+  }
+
+  /**
+   * Generate unique session ID
+   * @returns Unique session identifier
+   */
+  private generateId(): string {
+    return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
 }
 
-/**
- * Generate unique session ID
- */
-function generateId(): string {
-  return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
+// Export the main interface and implementation
+export { StepProcessor as default };
 
-export { processSteps };
+// Export types
+export type { 
+  IStepProcessor, 
+  StepProcessorConfig 
+} from './types';
