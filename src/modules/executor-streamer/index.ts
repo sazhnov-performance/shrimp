@@ -251,16 +251,21 @@ export class ExecutorStreamer implements IExecutorStreamer {
       return;
     }
 
-    // Handle disconnection based on client type
-    switch (client.type) {
-      case ClientType.WEBSOCKET:
-        await this.webSocketHandler.handleDisconnection(clientId);
-        break;
-      case ClientType.SERVER_SENT_EVENTS:
-        await this.sseHandler.closeConnection(clientId);
-        break;
-      default:
-        await this.clientManager.disconnectClient(clientId, reason);
+    try {
+      // Handle disconnection based on client type
+      switch (client.type) {
+        case ClientType.WEBSOCKET:
+          await this.webSocketHandler.handleDisconnection(clientId);
+          break;
+        case ClientType.SERVER_SENT_EVENTS:
+          await this.sseHandler.closeConnection(clientId);
+          break;
+        default:
+          await this.clientManager.disconnectClient(clientId, reason);
+      }
+    } catch (error) {
+      // Log error but don't throw to prevent cascade failures
+      console.error(`Error disconnecting client ${clientId}:`, error);
     }
   }
 

@@ -402,6 +402,57 @@ Focus on the most relevant sections identified in your initial assessment.`,
       lastModified: new Date()
     });
 
+    // Investigation Selector Determination Template
+    templates.set(TEMPLATE_IDS.INVESTIGATION_SELECTOR, {
+      templateId: TEMPLATE_IDS.INVESTIGATION_SELECTOR,
+      name: 'Investigation Selector Determination',
+      description: 'Prompt for selector determination investigation phase',
+      template: `{{systemMessage}}
+
+## Investigation Phase: Selector Determination
+{{investigationSection}}
+
+## Current Task
+{{stepContent}}
+
+## Context
+{{contextSection}}
+
+## Investigation Results Summary
+{{workingMemorySection}}
+
+## Available Investigation Tools
+{{investigationToolsSection}}
+
+## Instructions
+Synthesize all investigation findings to determine optimal selectors and interaction approach for completing the step.
+
+Your objectives:
+- Analyze all investigation findings and discoveries
+- Identify most reliable and specific selectors for target elements
+- Validate selector uniqueness and stability
+- Choose optimal interaction approach with high confidence
+
+{{instructionSection}}
+
+## Response Format
+{{schemaSection}}
+
+Provide final selector recommendations and complete action plan.`,
+      variables: [
+        { name: 'systemMessage', type: 'string', required: true, description: 'System message content' },
+        { name: 'investigationSection', type: 'string', required: true, description: 'Investigation phase guidance' },
+        { name: 'stepContent', type: 'string', required: true, description: 'Current step description' },
+        { name: 'contextSection', type: 'string', required: true, description: 'Formatted context information' },
+        { name: 'workingMemorySection', type: 'string', required: false, description: 'Working memory content' },
+        { name: 'investigationToolsSection', type: 'string', required: true, description: 'Available investigation tools' },
+        { name: 'instructionSection', type: 'string', required: true, description: 'Phase-specific instructions' },
+        { name: 'schemaSection', type: 'string', required: true, description: 'Response schema instructions' }
+      ],
+      version: '1.0.0',
+      lastModified: new Date()
+    });
+
     // Add more templates as needed...
     this.addUtilityTemplates(templates);
   }
@@ -410,6 +461,158 @@ Focus on the most relevant sections identified in your initial assessment.`,
    * Add utility templates
    */
   private addUtilityTemplates(templates: Map<string, PromptTemplate>): void {
+    // Validation Template
+    templates.set(TEMPLATE_IDS.VALIDATION, {
+      templateId: TEMPLATE_IDS.VALIDATION,
+      name: 'Validation Template',
+      description: 'Template for validation section',
+      template: `### Previous Action Validation
+
+Expected Outcome: {{expectedOutcome}}
+Actual State: {{actualState}}
+
+Validation Criteria:
+{{validationCriteria}}
+
+Success Indicators:
+{{successIndicators}}
+
+Analysis Instructions:
+{{analysisInstructions}}
+
+Decision Framework:
+- Proceed if all success indicators are met
+- Retry if action failed but is recoverable
+- Investigate if page state is unclear
+- Abort if unrecoverable error occurred`,
+      variables: [
+        { name: 'expectedOutcome', type: 'string', required: true, description: 'Expected outcome of previous action' },
+        { name: 'actualState', type: 'string', required: true, description: 'Actual state after action' },
+        { name: 'validationCriteria', type: 'string', required: true, description: 'Validation criteria list' },
+        { name: 'successIndicators', type: 'string', required: true, description: 'Success indicators list' },
+        { name: 'analysisInstructions', type: 'string', required: true, description: 'Analysis instructions' }
+      ],
+      version: '1.0.0',
+      lastModified: new Date()
+    });
+
+    // Action with Investigation Template
+    templates.set(TEMPLATE_IDS.ACTION_WITH_INVESTIGATION, {
+      templateId: TEMPLATE_IDS.ACTION_WITH_INVESTIGATION,
+      name: 'Action with Investigation Context',
+      description: 'Template for action prompts with investigation context',
+      template: `{{systemMessage}}
+
+## Investigation-Enhanced Action
+Based on comprehensive page investigation, proceed with the following step:
+
+## Current Task
+{{stepContent}}
+
+## Investigation Context
+{{contextSection}}
+
+## Discovered Elements and Insights
+{{workingMemorySection}}
+
+## Recommended Action Plan
+{{investigationSection}}
+
+## Instructions
+Use the investigation findings to execute this step with high confidence and precision.
+
+{{instructionSection}}
+
+## Response Format
+{{schemaSection}}
+
+Execute the action based on investigation insights.`,
+      variables: [
+        { name: 'systemMessage', type: 'string', required: true, description: 'System message content' },
+        { name: 'stepContent', type: 'string', required: true, description: 'Current step description' },
+        { name: 'contextSection', type: 'string', required: true, description: 'Formatted context information' },
+        { name: 'workingMemorySection', type: 'string', required: false, description: 'Working memory content' },
+        { name: 'investigationSection', type: 'string', required: false, description: 'Investigation insights' },
+        { name: 'instructionSection', type: 'string', required: true, description: 'Step-specific instructions' },
+        { name: 'schemaSection', type: 'string', required: true, description: 'Response schema instructions' }
+      ],
+      version: '1.0.0',
+      lastModified: new Date()
+    });
+
+    // Working Memory Template
+    templates.set(TEMPLATE_IDS.WORKING_MEMORY, {
+      templateId: TEMPLATE_IDS.WORKING_MEMORY,
+      name: 'Working Memory Template',
+      description: 'Template for working memory section',
+      template: `### Working Memory
+
+Known Elements: {{knownElements}}
+Extracted Variables: {{extractedVariables}}
+Successful Patterns: {{successfulPatterns}}
+Investigation Preferences: {{investigationPreferences}}
+
+Last Updated: {{memoryLastUpdated}}
+Confidence Level: {{confidenceLevel}}`,
+      variables: [
+        { name: 'knownElements', type: 'string', required: false, description: 'Known elements list' },
+        { name: 'extractedVariables', type: 'string', required: false, description: 'Extracted variables list' },
+        { name: 'successfulPatterns', type: 'string', required: false, description: 'Successful patterns list' },
+        { name: 'investigationPreferences', type: 'string', required: false, description: 'Investigation preferences' },
+        { name: 'memoryLastUpdated', type: 'string', required: false, description: 'Last update timestamp' },
+        { name: 'confidenceLevel', type: 'string', required: false, description: 'Overall confidence level' }
+      ],
+      version: '1.0.0',
+      lastModified: new Date()
+    });
+
+    // Context Filtering Template
+    templates.set(TEMPLATE_IDS.CONTEXT_FILTERING, {
+      templateId: TEMPLATE_IDS.CONTEXT_FILTERING,
+      name: 'Context Filtering Template',
+      description: 'Template for filtered context section',
+      template: `### Filtered Context
+
+Execution Summary: {{executionSummary}}
+Page Insights: {{pageInsights}}
+Element Knowledge: {{elementKnowledge}}
+
+Filtering Level: {{filteringLevel}}
+Context Source: {{contextSource}}`,
+      variables: [
+        { name: 'executionSummary', type: 'string', required: false, description: 'Execution summary' },
+        { name: 'pageInsights', type: 'string', required: false, description: 'Page insights' },
+        { name: 'elementKnowledge', type: 'string', required: false, description: 'Element knowledge' },
+        { name: 'filteringLevel', type: 'string', required: false, description: 'Filtering level used' },
+        { name: 'contextSource', type: 'string', required: false, description: 'Context source type' }
+      ],
+      version: '1.0.0',
+      lastModified: new Date()
+    });
+
+    // Investigation Tools Template
+    templates.set('investigation_tools', {
+      templateId: 'investigation_tools',
+      name: 'Investigation Tools Template',
+      description: 'Template for investigation tools section',
+      template: `### Available Investigation Tools
+
+{{toolDescriptions}}
+
+Tool Usage Guidelines:
+- Use screenshot analysis for initial page understanding
+- Use text extraction for specific content verification
+- Use sub-DOM extraction for focused analysis
+- Use full DOM retrieval as last resort for comprehensive analysis
+
+Choose tools based on investigation phase and objectives.`,
+      variables: [
+        { name: 'toolDescriptions', type: 'string', required: true, description: 'Descriptions of available tools' }
+      ],
+      version: '1.0.0',
+      lastModified: new Date()
+    });
+
     // Schema Template
     templates.set(TEMPLATE_IDS.SCHEMA, {
       templateId: TEMPLATE_IDS.SCHEMA,

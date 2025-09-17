@@ -407,7 +407,7 @@ export class StreamManager implements IExecutorStreamerManager {
     const totalSessions = this.sessions.size;
     const activeSessions = Array.from(this.sessions.values()).filter(s => s.isActive).length;
     const totalClients = this.getTotalClientCount();
-    const uptime = Date.now() - this.startTime.getTime();
+    const uptime = Math.max(0, Date.now() - this.startTime.getTime());
 
     return {
       totalSessions,
