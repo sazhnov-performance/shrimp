@@ -25,6 +25,14 @@ describe('ExecutorStreamer', () => {
     (ExecutorStreamer as any).resetInstance();
   });
 
+  afterAll(() => {
+    // Final cleanup to ensure all resources are released
+    (ExecutorStreamer as any).resetInstance();
+    
+    // Clear any remaining timers
+    jest.clearAllTimers();
+  });
+
   describe('Singleton Pattern', () => {
     it('should return the same instance when called multiple times', () => {
       const instance1 = ExecutorStreamer.getInstance();

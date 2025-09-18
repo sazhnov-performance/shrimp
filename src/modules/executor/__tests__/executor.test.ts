@@ -118,6 +118,24 @@ describe('Executor - GET_TEXT functionality', () => {
     (Executor as any).instance = null;
   });
 
+  afterAll(async () => {
+    // Final cleanup to ensure all resources are released
+    try {
+      // Shutdown executor to clean up all sessions and resources
+      if (executor) {
+        await executor.shutdown();
+      }
+    } catch (error) {
+      // Ignore cleanup errors during shutdown
+    }
+    
+    // Reset singleton instance completely
+    (Executor as any).instance = null;
+    
+    // Clear any remaining timers
+    jest.clearAllTimers();
+  });
+
   describe('getText method', () => {
     it('should successfully extract readable text using readability', async () => {
       const command: ExecutorCommand = {

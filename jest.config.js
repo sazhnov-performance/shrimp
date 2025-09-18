@@ -29,4 +29,10 @@ module.exports = {
   maxWorkers: 4,
   clearMocks: true,
   restoreMocks: true,
+  // Force Jest to exit after tests complete to prevent hanging
+  forceExit: true,
+  // Detect open handles to help identify what's keeping the process alive
+  detectOpenHandles: true,
+  // Exit after all tests complete, even if there are open handles
+  openHandlesTimeout: 5000,
 };
