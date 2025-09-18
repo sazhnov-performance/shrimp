@@ -257,6 +257,7 @@ export interface ScreenshotInfo {
     height: number;
   };
   metadata?: Record<string, any>;
+  mediaManagerUuid?: string;
 }
 
 export interface CleanupResult {

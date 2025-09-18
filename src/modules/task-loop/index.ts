@@ -28,6 +28,7 @@ import { IExecutor, Executor } from '../executor/index';
 import { CommandAction } from '../executor/types';
 import { IExecutorStreamer } from '@/modules/executor-streamer/types';
 import { ExecutorStreamer } from '@/modules/executor-streamer';
+import { MediaManager, IMediaManager } from '../media-manager';
 
 /**
  * TaskLoop - Singleton implementation of the core ACT-REFLECT cycle
@@ -40,6 +41,7 @@ export class TaskLoop implements ITaskLoop {
   private schemaManager: IAISchemaManager;
   private executor: IExecutor;
   private streamer: IExecutorStreamer;
+  private mediaManager: IMediaManager;
   private config: TaskLoopConfig;
 
   private constructor(config: TaskLoopConfig = DEFAULT_CONFIG) {
@@ -62,6 +64,7 @@ export class TaskLoop implements ITaskLoop {
     this.schemaManager = AISchemaManager.getInstance();
     this.executor = Executor.getInstance(); // Use singleton instance
     this.streamer = ExecutorStreamer.getInstance(); // Use singleton instance
+    this.mediaManager = MediaManager.getInstance(); // Use singleton instance
     
     if (this.config.enableLogging) {
       console.log('[TaskLoop] Task Loop module initialized', {
@@ -177,14 +180,19 @@ export class TaskLoop implements ITaskLoop {
         // 3a. Push AI reasoning to streamer
         await this.pushReasoningToStreamer(sessionId, stepId, iterations, validatedResponse.reasoning);
 
+
+
         // 4. Execute action if specified and flowControl is continue
         let executionResult: {success: boolean, result?: any, error?: string} | undefined;
         if (validatedResponse.flowControl === 'continue' && validatedResponse.action) {
+          await this.pushReasoningToStreamer(sessionId, stepId, iterations, validatedResponse.action.command);
+
           if (this.config.enableLogging) {
             console.log(`[TaskLoop] Executing action for session ${sessionId}, step ${stepId}, iteration ${iterations}`, {
               command: validatedResponse.action.command,
               parameters: validatedResponse.action.parameters
             });
+
           }
           
           executionResult = await this.executeAction(sessionId, validatedResponse.action);
@@ -317,6 +325,17 @@ export class TaskLoop implements ITaskLoop {
       };
 
       const response = await this.executor.executeCommand(command);
+      
+      // Log screenshot URL if screenshot was captured
+      if (response.success && response.screenshotId && this.config.enableLogging) {
+        try {
+          const screenshotUrl = this.mediaManager.getImageUrl(response.screenshotId);
+          console.log(`[TaskLoop] Screenshot captured for ${action.command}: ${screenshotUrl}`);
+        } catch (error) {
+          // Log warning if URL generation fails, but don't fail the operation
+          console.warn(`[TaskLoop] Failed to generate screenshot URL for ${response.screenshotId}: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
       
       if (!response.success && response.error) {
         // Return error instead of throwing - include original Playwright error if available

@@ -16,12 +16,14 @@ import {
 } from './types';
 import { ExecutorErrorHandler } from './error-handler';
 import { IExecutorLogger } from './types';
+import { MediaManager, IMediaManager } from '../media-manager';
 
 export class ScreenshotManager implements IScreenshotManager {
   private config: ScreenshotConfig;
   private errorHandler: ExecutorErrorHandler;
   private logger: IExecutorLogger;
   private screenshots: Map<string, ScreenshotInfo> = new Map();
+  private mediaManager: IMediaManager;
 
   constructor(
     config: ScreenshotConfig, 
@@ -31,6 +33,7 @@ export class ScreenshotManager implements IScreenshotManager {
     this.config = config;
     this.errorHandler = errorHandler;
     this.logger = logger;
+    this.mediaManager = MediaManager.getInstance();
   }
 
   /**
@@ -90,15 +93,44 @@ export class ScreenshotManager implements IScreenshotManager {
       // Store in memory
       this.screenshots.set(screenshotId, screenshotInfo);
 
-      this.logger.logScreenshotCapture(
-        sessionId, 
-        screenshotId, 
-        actionType, 
-        true,
-        { fileName, fileSize: stats.size, dimensions }
-      );
-
-      return screenshotId;
+      // Store screenshot in media manager and get UUID
+      let mediaManagerUuid = '';
+      try {
+        mediaManagerUuid = await this.mediaManager.storeImage(filePath);
+        
+        // Update screenshot info with media manager UUID
+        screenshotInfo.mediaManagerUuid = mediaManagerUuid;
+        
+        this.logger.logScreenshotCapture(
+          sessionId, 
+          screenshotId, 
+          actionType, 
+          true,
+          { fileName, fileSize: stats.size, dimensions, mediaManagerUuid }
+        );
+        
+        // Return media manager UUID instead of internal screenshot ID
+        return mediaManagerUuid;
+        
+      } catch (mediaError) {
+        // Log warning but continue - media manager integration is not critical
+        this.logger.warn(
+          `Failed to store screenshot in media manager: ${mediaError instanceof Error ? mediaError.message : String(mediaError)}`,
+          sessionId,
+          { screenshotId, fileName }
+        );
+        
+        this.logger.logScreenshotCapture(
+          sessionId, 
+          screenshotId, 
+          actionType, 
+          true,
+          { fileName, fileSize: stats.size, dimensions, mediaManagerError: mediaError instanceof Error ? mediaError.message : String(mediaError) }
+        );
+        
+        // Return original screenshot ID as fallback
+        return screenshotId;
+      }
 
     } catch (error) {
       this.logger.logScreenshotCapture(
