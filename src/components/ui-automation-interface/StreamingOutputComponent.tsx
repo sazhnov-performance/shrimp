@@ -48,9 +48,9 @@ export function StreamingOutputComponent({
   const logEntries: SimpleLogEntry[] = events.map(formatLogEntry);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Header */}
-      <div className="flex items-center justify-between p-5 border-b border-slate-600/30 bg-slate-700/20">
+      <div className="flex items-center justify-between p-5 border-b border-slate-600/30 bg-slate-700/20 flex-shrink-0">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
             <Activity className="text-white" size={16} />
@@ -95,7 +95,7 @@ export function StreamingOutputComponent({
 
       {/* Error Display */}
       {error && (
-        <div className="p-5 bg-red-900/20 border-b border-red-400/20 backdrop-blur-sm">
+        <div className="p-5 bg-red-900/20 border-b border-red-400/20 backdrop-blur-sm flex-shrink-0">
           <div className="flex items-center space-x-3 text-red-300">
             <div className="w-6 h-6 rounded-lg bg-red-500/20 flex items-center justify-center flex-shrink-0">
               <AlertCircle size={14} />
@@ -108,7 +108,8 @@ export function StreamingOutputComponent({
       {/* Log Output */}
       <div 
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden p-5 space-y-3 min-h-0 max-h-full"
+        className="flex-1 overflow-y-auto overflow-x-hidden p-5 space-y-3 min-h-0"
+        style={{ maxHeight: '100%' }}
       >
         {logEntries.length === 0 ? (
           <div className="text-center text-slate-400 py-16">
@@ -147,7 +148,7 @@ export function StreamingOutputComponent({
       </div>
       
       {/* Footer */}
-      <div className="p-4 border-t border-slate-600/30 bg-slate-700/20">
+      <div className="p-4 border-t border-slate-600/30 bg-slate-700/20 flex-shrink-0">
         <div className="flex items-center justify-between text-xs text-slate-400 font-light">
           <span className="bg-slate-700/40 px-2 py-1 rounded-lg">
             {logEntries.length} {logEntries.length === 1 ? 'event' : 'events'}

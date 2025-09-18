@@ -9993,3 +9993,114 @@
 2025-09-18T19:42:57.852Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
 2025-09-18T19:42:57.877Z [Executor][INFO] Shutting down executor module
 2025-09-18T19:42:57.889Z [Executor][INFO] Executor module shutdown complete
+2025-09-18T19:53:38.821Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
+2025-09-18T19:54:19.764Z [Executor][INFO] [session-1758225247417-vgxhl2kzj] Session created {"sessionId":"507a3296-ce70-4c8b-9a98-3c1b04d1ee67","browserType":"chromium"}
+2025-09-18T19:54:25.072Z [Executor][INFO] [session-1758225247417-vgxhl2kzj] Executing command: OPEN_PAGE {"commandId":"taskloop_1758225265069_ewphe43da","action":"OPEN_PAGE","parameters":{"url":"https://www.google.com"}}
+2025-09-18T19:54:33.068Z [Executor][INFO] [session-1758225247417-vgxhl2kzj] Command OPEN_PAGE completed in 7995ms {"action":"OPEN_PAGE","duration":7995,"success":true,"commandId":"taskloop_1758225265069_ewphe43da"}
+2025-09-18T19:55:33.891Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
+2025-09-18T19:55:37.521Z [Executor][INFO] [session-1758225247417-vgxhl2kzj] Session destroyed {"sessionId":"507a3296-ce70-4c8b-9a98-3c1b04d1ee67"}
+2025-09-18T19:56:00.657Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:00.799Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:00.865Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:00.929Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:00.997Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:01.057Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:01.200Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:01.289Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:01.340Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:01.399Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:01.486Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:01.539Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:01.605Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:01.677Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:01.736Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:01.811Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:01.865Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:01.917Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:01.976Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:02.030Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:02.093Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:02.164Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:02.247Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:02.323Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T19:56:00.697Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"898927a9-7134-44ab-86a9-7884d2e5e6b0","browserType":"chromium"}
+2025-09-18T19:56:00.727Z [Executor][INFO] [test-workflow-session] Executing command: GET_TEXT {"commandId":"test-cmd-1","action":"GET_TEXT","parameters":{"selector":"article"}}
+2025-09-18T19:56:00.757Z [Executor][INFO] [test-workflow-session] Command GET_TEXT completed in 30ms {"action":"GET_TEXT","duration":30,"success":true,"commandId":"test-cmd-1"}
+2025-09-18T19:56:00.775Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"898927a9-7134-44ab-86a9-7884d2e5e6b0"}
+2025-09-18T19:56:00.828Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"f1e31d5f-48e1-41fc-9d6d-f460f48b144a","browserType":"chromium"}
+2025-09-18T19:56:00.845Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"f1e31d5f-48e1-41fc-9d6d-f460f48b144a"}
+2025-09-18T19:56:00.891Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"2c01f720-4248-4398-ab9b-6ff29f0a1cde","browserType":"chromium"}
+2025-09-18T19:56:00.906Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"2c01f720-4248-4398-ab9b-6ff29f0a1cde"}
+2025-09-18T19:56:00.951Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"54f9b9af-810e-417f-8c85-6d3482522ea4","browserType":"chromium"}
+2025-09-18T19:56:00.975Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"54f9b9af-810e-417f-8c85-6d3482522ea4"}
+2025-09-18T19:56:01.015Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"8e4905b9-f1be-4ef1-976e-b755020dd538","browserType":"chromium"}
+2025-09-18T19:56:01.034Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"8e4905b9-f1be-4ef1-976e-b755020dd538"}
+2025-09-18T19:56:01.081Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"7f19c7cc-56fc-4178-8f49-54f6bb085435","browserType":"chromium"}
+2025-09-18T19:56:01.095Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"7f19c7cc-56fc-4178-8f49-54f6bb085435"}
+2025-09-18T19:56:01.223Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"585c4f32-0230-4f2f-ae1f-038a2eca0af9","browserType":"chromium"}
+2025-09-18T19:56:01.237Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"585c4f32-0230-4f2f-ae1f-038a2eca0af9"}
+2025-09-18T19:56:01.311Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"ed765160-c3b6-447d-96f3-3c8fbeb82c69","browserType":"chromium"}
+2025-09-18T19:56:01.323Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"ed765160-c3b6-447d-96f3-3c8fbeb82c69"}
+2025-09-18T19:56:01.361Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"4f7df201-72cc-4300-a267-4a17bf935d33","browserType":"chromium"}
+2025-09-18T19:56:01.376Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"4f7df201-72cc-4300-a267-4a17bf935d33"}
+2025-09-18T19:56:01.447Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"75c5b813-8c4b-4cbc-b681-a3a0c5cfdc31","browserType":"chromium"}
+2025-09-18T19:56:01.463Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"75c5b813-8c4b-4cbc-b681-a3a0c5cfdc31"}
+2025-09-18T19:56:01.507Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"21972989-2eaa-4fe4-92cc-1d8a7811b3a9","browserType":"chromium"}
+2025-09-18T19:56:01.521Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"21972989-2eaa-4fe4-92cc-1d8a7811b3a9"}
+2025-09-18T19:56:01.563Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"1582eb7d-a41a-4344-9842-c276d7356e2f","browserType":"chromium"}
+2025-09-18T19:56:01.572Z [Executor][INFO] [test-workflow-session] Executing command: GET_TEXT {"commandId":"test-get-text-cmd","action":"GET_TEXT","parameters":{"selector":".content"}}
+2025-09-18T19:56:01.579Z [Executor][INFO] [test-workflow-session] Command GET_TEXT completed in 7ms {"action":"GET_TEXT","duration":7,"success":true,"commandId":"test-get-text-cmd"}
+2025-09-18T19:56:01.586Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"1582eb7d-a41a-4344-9842-c276d7356e2f"}
+2025-09-18T19:56:01.618Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"21fec106-e2b3-4d9c-8f94-dfd25bc7a0c5","browserType":"chromium"}
+2025-09-18T19:56:01.631Z [Executor][INFO] [test-workflow-session] Executing command: GET_TEXT {"commandId":"test-invalid-cmd","action":"GET_TEXT","parameters":{}}
+2025-09-18T19:56:01.642Z [Executor][ERROR] [test-workflow-session] Command GET_TEXT failed in 11ms {"action":"GET_TEXT","duration":11,"success":false,"commandId":"test-invalid-cmd","error":"[object Object]"}
+2025-09-18T19:56:01.655Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"21fec106-e2b3-4d9c-8f94-dfd25bc7a0c5"}
+2025-09-18T19:56:01.693Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"2f2fc643-10f0-4f74-a461-dfb3104ce43b","browserType":"chromium"}
+2025-09-18T19:56:01.702Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"[object Object]"}
+2025-09-18T19:56:01.711Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"2f2fc643-10f0-4f74-a461-dfb3104ce43b"}
+2025-09-18T19:56:01.719Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T19:56:01.756Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"5f73c8e7-fe6f-402c-aa15-8d7e6c2c4b2e","browserType":"chromium"}
+2025-09-18T19:56:01.770Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"[object Object]"}
+2025-09-18T19:56:01.783Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"5f73c8e7-fe6f-402c-aa15-8d7e6c2c4b2e"}
+2025-09-18T19:56:01.791Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T19:56:01.825Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"bef35e73-8da7-4753-b67f-58a7f593f2d9","browserType":"chromium"}
+2025-09-18T19:56:01.831Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"[object Object]"}
+2025-09-18T19:56:01.842Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"bef35e73-8da7-4753-b67f-58a7f593f2d9"}
+2025-09-18T19:56:01.851Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T19:56:01.878Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"6aba4ae2-2b6a-4c89-b6c5-561c5b118f94","browserType":"chromium"}
+2025-09-18T19:56:01.884Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"[object Object]"}
+2025-09-18T19:56:01.891Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"6aba4ae2-2b6a-4c89-b6c5-561c5b118f94"}
+2025-09-18T19:56:01.899Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T19:56:01.932Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"df6f7cd6-2b69-4abe-b954-7aa7b477dd3e","browserType":"chromium"}
+2025-09-18T19:56:01.940Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"[object Object]"}
+2025-09-18T19:56:01.951Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"df6f7cd6-2b69-4abe-b954-7aa7b477dd3e"}
+2025-09-18T19:56:01.961Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T19:56:01.984Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"1f5c1430-ff0b-4ae9-8bcf-07843d8385aa","browserType":"chromium"}
+2025-09-18T19:56:01.992Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"[object Object]"}
+2025-09-18T19:56:02.002Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"1f5c1430-ff0b-4ae9-8bcf-07843d8385aa"}
+2025-09-18T19:56:02.009Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T19:56:02.047Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"e493b2e5-28c7-4378-a67b-837542dc941f","browserType":"chromium"}
+2025-09-18T19:56:02.060Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"[object Object]"}
+2025-09-18T19:56:02.068Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"e493b2e5-28c7-4378-a67b-837542dc941f"}
+2025-09-18T19:56:02.075Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T19:56:02.108Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"d2273a6d-1f20-4ade-bc6c-be7995d4d8ce","browserType":"chromium"}
+2025-09-18T19:56:02.116Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"[object Object]"}
+2025-09-18T19:56:02.126Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"d2273a6d-1f20-4ade-bc6c-be7995d4d8ce"}
+2025-09-18T19:56:02.133Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T19:56:02.185Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"d41af132-a6cf-470e-832c-e28bb26d6715","browserType":"chromium"}
+2025-09-18T19:56:02.196Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"[object Object]"}
+2025-09-18T19:56:02.209Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"d41af132-a6cf-470e-832c-e28bb26d6715"}
+2025-09-18T19:56:02.218Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T19:56:02.264Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"7cf35733-6d83-44b1-a257-78fddb3d6753","browserType":"chromium"}
+2025-09-18T19:56:02.278Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"[object Object]"}
+2025-09-18T19:56:02.293Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"7cf35733-6d83-44b1-a257-78fddb3d6753"}
+2025-09-18T19:56:02.301Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T19:56:02.344Z [Executor][INFO] [test-workflow-session] Session created {"sessionId":"91b12f2e-b551-4e94-8198-22664af970ec","browserType":"chromium"}
+2025-09-18T19:56:02.359Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"[object Object]"}
+2025-09-18T19:56:02.371Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"91b12f2e-b551-4e94-8198-22664af970ec"}
+2025-09-18T19:56:02.380Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T19:56:02.395Z [Executor][INFO] Shutting down executor module
+2025-09-18T19:56:02.403Z [Executor][INFO] Executor module shutdown complete
+2025-09-18T19:56:20.416Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
+2025-09-18T19:56:20.678Z [Executor][INFO] Shutting down executor module
+2025-09-18T19:56:20.694Z [Executor][INFO] Executor module shutdown complete

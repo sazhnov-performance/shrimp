@@ -376,11 +376,11 @@ export function UIAutomationInterface() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 h-[calc(100vh-280px)]">
+      <div className="max-w-6xl mx-auto px-6 py-8 h-[calc(100vh-200px)] flex flex-col">
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 flex-1 min-h-0">
           
           {/* Left Panel - Step Input */}
-          <div className="xl:col-span-2">
+          <div className="xl:col-span-2 min-h-0">
             <div className="bg-slate-800/40 backdrop-blur-xl border border-slate-600/30 rounded-2xl p-6 h-full shadow-2xl">
               <StepInputComponent
                 stepText={state.stepText}
@@ -393,8 +393,8 @@ export function UIAutomationInterface() {
           </div>
 
           {/* Right Panel - Streaming Output */}
-          <div className="xl:col-span-3">
-            <div className="bg-slate-800/40 backdrop-blur-xl border border-slate-600/30 rounded-2xl overflow-hidden h-full shadow-2xl">
+          <div className="xl:col-span-3 min-h-0">
+            <div className="bg-slate-800/40 backdrop-blur-xl border border-slate-600/30 rounded-2xl overflow-hidden h-full shadow-2xl flex flex-col">
               <StreamingOutputComponent
                 events={state.events}
                 sessionId={state.sessionId}
@@ -405,10 +405,12 @@ export function UIAutomationInterface() {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Reset Button */}
-        {(state.sessionId || state.events.length > 0) && (
-          <div className="flex justify-center mt-8">
+      {/* Reset Button */}
+      {(state.sessionId || state.events.length > 0) && (
+        <div className="max-w-6xl mx-auto px-6 pb-8">
+          <div className="flex justify-center">
             <button
               onClick={reset}
               className="group px-6 py-3 bg-slate-700/50 hover:bg-slate-600/50 text-slate-200 rounded-xl border border-slate-600/50 hover:border-slate-500/50 transition-all duration-200 font-light tracking-wide backdrop-blur-sm"
@@ -422,8 +424,8 @@ export function UIAutomationInterface() {
               </div>
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="border-t border-slate-700/30 bg-slate-900/30 backdrop-blur-xl mt-12">
