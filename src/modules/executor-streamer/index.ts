@@ -22,6 +22,8 @@ import { EventPublisher } from './event-publisher';
  */
 class ExecutorStreamer implements IExecutorStreamer {
   private static instance: ExecutorStreamer | null = null;
+  private static instanceCounter = 0;
+  private instanceId: number;
   private streamManager: StreamManager;
   private eventPublisher: EventPublisher;
   private config: ExecutorStreamerConfig;
@@ -31,9 +33,12 @@ class ExecutorStreamer implements IExecutorStreamer {
    * @param config Configuration options
    */
   private constructor(config: ExecutorStreamerConfig = DEFAULT_CONFIG) {
+    this.instanceId = ++ExecutorStreamer.instanceCounter;
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.streamManager = new StreamManager(this.config);
     this.eventPublisher = new EventPublisher(this.streamManager, this.config);
+    
+    console.log(`[ExecutorStreamer] Instance #${this.instanceId} created`);
   }
 
   /**
@@ -44,6 +49,8 @@ class ExecutorStreamer implements IExecutorStreamer {
   static getInstance(config?: ExecutorStreamerConfig): IExecutorStreamer {
     if (!ExecutorStreamer.instance) {
       ExecutorStreamer.instance = new ExecutorStreamer(config);
+    } else {
+      console.log(`[ExecutorStreamer] Returning existing instance #${ExecutorStreamer.instance.instanceId}`);
     }
     return ExecutorStreamer.instance;
   }
@@ -217,6 +224,7 @@ class ExecutorStreamer implements IExecutorStreamer {
     totalStreams: number;
     maxStreams: number;
     streamUtilization: number;
+    instanceId: number;
     config: ExecutorStreamerConfig;
   } {
     const totalStreams = this.getStreamCount();
@@ -226,8 +234,17 @@ class ExecutorStreamer implements IExecutorStreamer {
       totalStreams,
       maxStreams,
       streamUtilization: totalStreams / maxStreams,
+      instanceId: this.instanceId,
       config: this.getConfig()
     };
+  }
+
+  /**
+   * Get the instance ID for verification purposes
+   * @returns The unique instance ID
+   */
+  getInstanceId(): number {
+    return this.instanceId;
   }
 }
 

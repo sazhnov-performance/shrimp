@@ -42,6 +42,10 @@ export class StepProcessor implements IStepProcessor {
     this.promptManager = AIPromptManager.getInstance();
     this.executor = Executor.getInstance();
     
+    // Verify singleton instance
+    const instanceId = (this.executorStreamer as any).getInstanceId?.() || 'unknown';
+    console.log(`[StepProcessor] Using ExecutorStreamer instance #${instanceId}`);
+    
     if (this.config.enableLogging) {
       console.log('[StepProcessor] Step Processor module initialized', {
         maxConcurrentSessions: this.config.maxConcurrentSessions,

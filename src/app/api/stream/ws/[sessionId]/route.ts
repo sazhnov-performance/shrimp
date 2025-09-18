@@ -23,6 +23,10 @@ export async function GET(
   try {
     // Get executor streamer instance
     const executorStreamer = getExecutorStreamer();
+    
+    // Verify singleton instance
+    const instanceId = (executorStreamer as any).getInstanceId?.() || 'unknown';
+    console.log(`[SSE API] Using ExecutorStreamer instance #${instanceId}`);
 
     // Check if stream exists by trying to get events
     try {
