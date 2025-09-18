@@ -226,6 +226,17 @@ export interface CommandResponse {
 }
 
 // Screenshot Configuration
+export interface ActionScreenshotConfig {
+  [CommandAction.OPEN_PAGE]: boolean;
+  [CommandAction.CLICK_ELEMENT]: boolean;
+  [CommandAction.INPUT_TEXT]: boolean;
+  [CommandAction.SAVE_VARIABLE]: boolean;
+  [CommandAction.GET_DOM]: boolean;
+  [CommandAction.GET_CONTENT]: boolean;
+  [CommandAction.GET_SUBDOM]: boolean;
+  [CommandAction.GET_TEXT]: boolean;
+}
+
 export interface ScreenshotConfig {
   enabled: boolean;
   directory: string;
@@ -234,6 +245,7 @@ export interface ScreenshotConfig {
   fullPage: boolean;
   nameTemplate: string;
   cleanup: ScreenshotCleanupConfig;
+  actionConfig: ActionScreenshotConfig;
 }
 
 export interface ScreenshotCleanupConfig {
@@ -324,6 +336,16 @@ export const DEFAULT_EXECUTOR_CONFIG: ExecutorConfig = {
       maxAge: 86400000, // 24 hours
       maxCount: 100,
       schedule: 'daily'
+    },
+    actionConfig: {
+      [CommandAction.OPEN_PAGE]: true,
+      [CommandAction.CLICK_ELEMENT]: true,
+      [CommandAction.INPUT_TEXT]: false,
+      [CommandAction.SAVE_VARIABLE]: false,
+      [CommandAction.GET_DOM]: false,
+      [CommandAction.GET_CONTENT]: false,
+      [CommandAction.GET_SUBDOM]: false,
+      [CommandAction.GET_TEXT]: false
     }
   },
   

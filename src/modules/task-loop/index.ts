@@ -339,15 +339,42 @@ export class TaskLoop implements ITaskLoop {
       const response = await this.executor.executeCommand(command);
       
       // Log action result to streamer (before screenshot)
-      await this.streamLogger.logAction(
-        sessionId, 
-        stepId, 
-        this.getDisplayActionName(action.command), 
-        response.success, 
-        response.dom || 'Command executed successfully', 
-        response.error?.message, 
-        iteration
-      );
+      try {
+        // Ensure all string parameters are safe for logging
+        const actionName = this.getDisplayActionName(action.command);
+        const result = response.dom || 'Command executed successfully';
+        const errorMessage = response.error?.message;
+        
+        // Debug logging for problematic data
+        if (this.config.enableLogging) {
+          console.log(`[TaskLoop] Action logging details:`, {
+            actionName,
+            success: response.success,
+            resultLength: result?.length || 0,
+            hasError: !!errorMessage,
+            iteration
+          });
+        }
+        
+        await this.streamLogger.logAction(
+          sessionId, 
+          stepId, 
+          actionName, 
+          response.success, 
+          result, 
+          errorMessage, 
+          iteration || 1  // Ensure iteration is always a valid number
+        );
+      } catch (actionLogError) {
+        // Log the specific action logging error for debugging
+        console.error(`[TaskLoop] Failed to log action for session ${sessionId}:`, {
+          error: actionLogError,
+          actionCommand: action.command,
+          responseSuccess: response.success,
+          responseType: typeof response.dom,
+          hasError: !!response.error
+        });
+      }
 
       // Log screenshot to streamer if screenshot was captured
       if (response.success && response.screenshotId) {
@@ -381,32 +408,55 @@ export class TaskLoop implements ITaskLoop {
             const aiAnalysisResponse = await this.aiIntegration.sendRequest(promptRequest, imageFilePath);
             
             if (aiAnalysisResponse.status === 'success' && aiAnalysisResponse.data) {
-              // Log AI screenshot description as reasoning
+              // Parse AI screenshot analysis response according to IMAGE_ANALYSIS_SCHEMA
               const analysisData = typeof aiAnalysisResponse.data === 'string' ? 
                 JSON.parse(aiAnalysisResponse.data) : aiAnalysisResponse.data;
               
-              const screenshotDescription = analysisData.reasoning || analysisData.description || 
-                'Screenshot analysis completed';
+              // Extract structured content from IMAGE_ANALYSIS_SCHEMA response
+              const overallDescription = analysisData.overallDescription || 'No description provided';
+              const interactibleElements = analysisData.interactibleElements || [];
+              
+              // Format rich screenshot analysis content
+              let formattedAnalysis = `📸 **Overall Description:**\n${overallDescription}`;
+              
+              if (interactibleElements.length > 0) {
+                formattedAnalysis += `\n\n🎯 **Interactive Elements (${interactibleElements.length}):**`;
+                interactibleElements.forEach((element: any, index: number) => {
+                  const elementText = element.containsText ? ` - "${element.containsText}"` : '';
+                  formattedAnalysis += `\n${index + 1}. **${element.type}** at ${element.location}: ${element.description}${elementText}`;
+                });
+              } else {
+                formattedAnalysis += '\n\n🎯 **Interactive Elements:** None detected';
+              }
+              
+              // Determine confidence level based on content quality
+              let confidence: 'low' | 'medium' | 'high' = 'medium';
+              if (overallDescription.length > 100 && interactibleElements.length > 0) {
+                confidence = 'high';
+              } else if (overallDescription.length < 50 || interactibleElements.length === 0) {
+                confidence = 'low';
+              }
               
               await this.streamLogger.logReasoning(
                 sessionId, 
                 stepId, 
-                `Screenshot Analysis: ${screenshotDescription}`, 
-                'medium', 
+                formattedAnalysis, 
+                confidence, 
                 iteration
               );
               
-              // Store screenshot description in context for future AI prompts
+              // Store detailed screenshot description in context for future AI prompts
               this.contextManager.addScreenshotDescription(sessionId, stepId, {
                 screenshotId: response.screenshotId,
-                description: screenshotDescription,
+                description: overallDescription,
+                interactibleElements: interactibleElements,
                 actionType: action.command,
                 iteration: iteration,
                 timestamp: new Date()
               });
               
               if (this.config.enableLogging) {
-                console.log(`[TaskLoop] Screenshot analysis logged as reasoning and stored in context for ${action.command}`);
+                console.log(`[TaskLoop] Detailed screenshot analysis logged as reasoning (${confidence} confidence) and stored in context for ${action.command}`);
               }
             }
           } catch (error) {

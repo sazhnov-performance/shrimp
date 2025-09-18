@@ -62,6 +62,16 @@ export class ScreenshotManager implements IScreenshotManager {
       return '';
     }
 
+    // Check if screenshots are enabled for this specific action
+    if (!this.config.actionConfig[actionType]) {
+      this.logger.debug(
+        `Screenshot disabled for action type: ${actionType}`,
+        sessionId,
+        { actionType, configuredValue: this.config.actionConfig[actionType] }
+      );
+      return '';
+    }
+
     if (!page) {
       throw this.errorHandler.createScreenshotError(
         sessionId, 

@@ -85,13 +85,14 @@ export class StreamerLogger implements IStreamerLogger {
     try {
       await this.ensureStreamExists(sessionId);
 
-      // Sanitize result and error strings to remove problematic control characters
+      // Sanitize all string fields to remove problematic control characters
+      const sanitizedActionName = this.sanitizeString(actionName);
       const sanitizedResult = result ? this.sanitizeString(result) : result;
       const sanitizedError = error ? this.sanitizeString(error) : error;
 
       const message: ActionLogMessage = {
         type: LogMessageType.ACTION,
-        actionName,
+        actionName: sanitizedActionName,
         success,
         result: sanitizedResult,
         error: sanitizedError,
@@ -105,11 +106,11 @@ export class StreamerLogger implements IStreamerLogger {
         sessionId,
         LogMessageType.ACTION,
         JSON.stringify(message),
-        { actionName, success, stepId, iteration }
+        { actionName: sanitizedActionName, success, stepId, iteration }
       );
 
       if (this.enableLogging) {
-        console.log(`[StreamerLogger] Action logged for session ${sessionId}, step ${stepId}: ${actionName} ${success ? 'succeeded' : 'failed'}`);
+        console.log(`[StreamerLogger] Action logged for session ${sessionId}, step ${stepId}: ${sanitizedActionName} ${success ? 'succeeded' : 'failed'}`);
       }
     } catch (error) {
       console.warn(`[StreamerLogger] Failed to log action for session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`);
@@ -206,9 +207,15 @@ export class StreamerLogger implements IStreamerLogger {
 
     // Remove problematic control characters while preserving meaningful whitespace
     // Remove: NULL bytes, most control chars except \n (newline), \t (tab), \r (carriage return)
-    const sanitized = text
+    let sanitized = text
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove control chars except \t, \n, \r
       .replace(/\0/g, ''); // Explicitly remove null bytes
+
+    // Truncate very long content (especially DOM content) to prevent size issues
+    const maxLength = 8192; // 8KB limit for individual field
+    if (sanitized.length > maxLength) {
+      sanitized = sanitized.substring(0, maxLength) + '... [truncated]';
+    }
 
     return sanitized;
   }

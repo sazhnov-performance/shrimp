@@ -46,4 +46,5 @@ export interface ScreenshotDescription {
   actionType: string;
   iteration?: number;
   timestamp: Date;
+  interactibleElements?: any[]; // Array of interactive elements from IMAGE_ANALYSIS_SCHEMA
 }

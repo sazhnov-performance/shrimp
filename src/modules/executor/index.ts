@@ -464,7 +464,9 @@ export type {
   CommandResponse,
   ExecutorConfig,
   CleanupResult,
-  ScreenshotInfo
+  ScreenshotInfo,
+  ActionScreenshotConfig,
+  ScreenshotConfig
 } from './types';
 
 export {
