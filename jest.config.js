@@ -12,8 +12,11 @@ module.exports = {
   },
   collectCoverageFrom: [
     'src/modules/executor/**/*.ts',
+    'src/modules/media-manager/**/*.ts',
     '!src/modules/executor/**/*.d.ts',
     '!src/modules/executor/**/index.ts',
+    '!src/modules/media-manager/**/*.d.ts',
+    '!src/modules/media-manager/**/index.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
