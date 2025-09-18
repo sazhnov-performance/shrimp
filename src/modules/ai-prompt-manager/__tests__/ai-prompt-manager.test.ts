@@ -200,7 +200,7 @@ describe('AIPromptManager', () => {
     it('should include role definition', () => {
       const prompt = promptManager.getStepPrompt(sessionId, 0);
       
-      expect(prompt).toContain('ROLE: You are an intelligent web automation agent');
+      expect(prompt).toContain('You are an intelligent web automation agent specialized in browser testing and interaction');
     });
 
     it('should include current context section', () => {
@@ -223,15 +223,15 @@ describe('AIPromptManager', () => {
       expect(prompt).toContain('YOUR MISSION:');
       expect(prompt).toContain('INVESTIGATE PHASE:');
       expect(prompt).toContain('ACT PHASE:');
-      expect(prompt).toContain('REFLECT PHASE:');
+      expect(prompt).toContain('REFLECT PHASE (Mandatory Decision Gate):');
     });
 
     it('should include optimization guidelines', () => {
       const prompt = promptManager.getStepPrompt(sessionId, 0);
       
       expect(prompt).toContain('OPTIMIZATION GUIDELINES:');
-      expect(prompt).toContain('Prioritize stable, unique selectors');
-      expect(prompt).toContain('Maintain HIGH confidence levels');
+      expect(prompt).toContain('Prefer semantic roles/labels');
+      expect(prompt).toContain('Validate element existence/visibility before interaction');
     });
 
     it('should include current step objective', () => {

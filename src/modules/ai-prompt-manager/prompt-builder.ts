@@ -65,31 +65,9 @@ export class PromptBuilder {
         .replace('{currentStepName}', stepName)
         .replace('{contextualHistory}', history);
       
-      // Check total length and handle DOM size limits
+      // Check total length - let context manager handle DOM truncation
       const totalLength = systemMessage.length + userMessage.length;
       if (totalLength > this.maxPromptLength) {
-        // Check if the issue is caused by large DOM content from GET_SUBDOM
-        if (history.includes('DOM CONTENT:')) {
-          return {
-            system: `You are an intelligent web automation agent. Respond with JSON containing reasoning, confidence, and flowControl fields.`,
-            user: `CRITICAL ERROR: GET_SUBDOM returned DOM content that exceeds context limits.
-
-The DOM content is too large (${totalLength} characters, limit: ${this.maxPromptLength}) to fit in the AI context.
-
-This GET_SUBDOM operation must FAIL. Please:
-1. Use a more specific selector to get a smaller DOM section
-2. Target specific elements instead of large containers
-3. Consider using GET_CONTENT for specific data extraction
-
-RESPONSE FORMAT:
-{
-  "reasoning": "DOM content too large for context - need more specific selector",
-  "confidence": "LOW",
-  "flowControl": "stop_failure"
-}`
-          };
-        }
-        
         return this.buildFallbackMessages(stepName, '{"type": "object", "required": ["reasoning", "confidence", "flowControl"]}');
       }
 
@@ -118,27 +96,8 @@ RESPONSE FORMAT:
       const messages = this.buildMessages(context, stepId, schema);
       const prompt = `${messages.system}\n\n---\n\n${messages.user}`;
 
-      // Check prompt length and handle DOM size limits
+      // Check prompt length - let context manager handle DOM truncation
       if (prompt.length > this.maxPromptLength) {
-        // Check if the issue is caused by large DOM content from GET_SUBDOM
-        if (messages.user.includes('DOM CONTENT:')) {
-          return `CRITICAL ERROR: GET_SUBDOM returned DOM content that exceeds context limits.
-
-The DOM content is too large (${prompt.length} characters, limit: ${this.maxPromptLength}) to fit in the AI context.
-
-This GET_SUBDOM operation must FAIL. Please:
-1. Use a more specific selector to get a smaller DOM section
-2. Target specific elements instead of large containers
-3. Consider using GET_CONTENT for specific data extraction
-
-RESPONSE FORMAT:
-{
-  "reasoning": "DOM content too large for context - need more specific selector",
-  "confidence": "LOW",
-  "flowControl": "stop_failure"
-}`;
-        }
-        
         const stepName = context.steps[stepId] || 'Unknown Step';
         return this.buildFallbackPrompt(stepName, '{"type": "object", "required": ["reasoning", "confidence", "flowControl"]}');
       }

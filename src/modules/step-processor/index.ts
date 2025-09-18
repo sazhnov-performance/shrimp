@@ -100,30 +100,12 @@ export class StepProcessor implements IStepProcessor {
     try {
       // Mark session as active
       this.activeSessions.add(sessionId);
-      
-      // Initialize AI context with steps - this is critical for task loop execution
-      this.promptManager.init(sessionId, steps);
-      
-      if (this.config.enableLogging) {
-        console.log(`[StepProcessor] Initialized AI context for session ${sessionId}`);
-      }
-      
+
       // Create stream - handle internally
       await this.executorStreamer.createStream(sessionId);
+
+      await this.executorStreamer.putEvent(sessionId, 'Stream Initiated');
       
-      if (this.config.enableLogging) {
-        console.log(`[StepProcessor] Created stream for session ${sessionId}`);
-      }
-      
-      // Create executor session - this is critical for browser automation
-      await this.executor.createSession(sessionId);
-      
-      if (this.config.enableLogging) {
-        console.log(`[StepProcessor] Created executor session for session ${sessionId}`);
-      }
-      
-      // Return session ID immediately after session setup
-      // Execute steps asynchronously without blocking the return
       this.executeStepsAsync(sessionId, steps);
       
       return sessionId;
@@ -152,6 +134,29 @@ export class StepProcessor implements IStepProcessor {
     let shouldCleanup = true;
     
     try {
+        // Initialize AI context with steps - this is critical for task loop execution
+      this.promptManager.init(sessionId, steps);
+      
+      if (this.config.enableLogging) {
+        console.log(`[StepProcessor] Initialized AI context for session ${sessionId}`);
+      }
+      
+
+      
+      if (this.config.enableLogging) {
+        console.log(`[StepProcessor] Created stream for session ${sessionId}`);
+      }
+      
+      // Create executor session - this is critical for browser automation
+      await this.executor.createSession(sessionId);
+      
+      if (this.config.enableLogging) {
+        console.log(`[StepProcessor] Created executor session for session ${sessionId}`);
+      }
+      
+      // Return session ID immediately after session setup
+      // Execute steps asynchronously without blocking the return
+      
       if (this.config.enableLogging) {
         console.log(`[StepProcessor] Starting async step execution for session ${sessionId}`);
       }

@@ -11,3 +11,5 @@ run unit tests once changes are done
 commit results to git once unit tests passed
 all types should be in /types
 Overall architecture is in /design/overall-architecure.md. Refer to it processing every request
+DO NOT BUILD SIMULTAIONS TO SATISFY EXPECTATIONS
+BUILD WORKING CODE WHEN DEALING WITH ISSUE
