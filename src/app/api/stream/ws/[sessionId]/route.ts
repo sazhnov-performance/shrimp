@@ -27,7 +27,9 @@ export async function GET(
     // Check if stream exists by trying to get events
     try {
       await executorStreamer.getEvents(sessionId);
+      console.log(`[SSE API] Stream found for session ${sessionId}`);
     } catch (error) {
+      console.error(`[SSE API] Stream not found for session ${sessionId}:`, error instanceof Error ? error.message : error);
       return new Response(`Stream not found for session ${sessionId}`, { status: 404 });
     }
 

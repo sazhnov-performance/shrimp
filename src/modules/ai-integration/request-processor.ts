@@ -184,8 +184,8 @@ export class RequestProcessor {
         
         // Log the cleaned content for debugging
         if (process.env.NODE_ENV === 'development') {
-          console.log('[RequestProcessor] Original content:', content);
-          console.log('[RequestProcessor] Cleaned content:', cleanedContent);
+          //console.log('[RequestProcessor] Original content:', content);
+          //console.log('[RequestProcessor] Cleaned content:', cleanedContent);
         }
         
         parsedContent = JSON.parse(cleanedContent);

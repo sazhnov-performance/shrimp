@@ -12,6 +12,7 @@ import {
 export class PromptBuilder {
   private maxPromptLength: number;
   private contextTruncateLimit: number;
+  private contextHistoryLimit: number;
 
   constructor(maxPromptLength: number = 8000) {
     this.maxPromptLength = maxPromptLength;
@@ -19,6 +20,11 @@ export class PromptBuilder {
     const envValue = process.env.CONTEXT_TRUNCATE_RESULT;
     const parsedValue = envValue ? parseInt(envValue, 10) : 1000;
     this.contextTruncateLimit = isNaN(parsedValue) ? 1000 : parsedValue;
+    
+    // Get history limit from environment variable, default to 2000 characters
+    const historyEnvValue = process.env.CONTEXT_HISTORY_LIMIT;
+    const historyParsedValue = historyEnvValue ? parseInt(historyEnvValue, 10) : 2000;
+    this.contextHistoryLimit = isNaN(historyParsedValue) ? 2000 : historyParsedValue;
   }
 
   /**
@@ -63,22 +69,46 @@ export class PromptBuilder {
         .replace('{currentStepName}', stepName)
         .replace('{contextualHistory}', history);
       
-      // Check total length - let context manager handle DOM truncation
+      // Check total length and apply progressive truncation if needed
       const totalLength = systemMessage.length + userMessage.length;
       if (totalLength > this.maxPromptLength) {
-        // Use main templates with minimal history to keep within limits
-        const minimalHistory = 'History truncated due to length limits.';
-        const userMessageMinimal = USER_TEMPLATE
+        // Try with reduced history limit for aggressive truncation
+        const originalLimit = this.contextHistoryLimit;
+        this.contextHistoryLimit = Math.min(originalLimit, 1000); // Reduce to 1000 chars max
+        
+        const reducedHistory = this.formatExecutionHistory(context, stepId);
+        const userMessageReduced = USER_TEMPLATE
           .replace('{sessionId}', context.contextId)
           .replace('{stepNumber}', (stepId + 1).toString())
           .replace('{totalSteps}', context.steps.length.toString())
           .replace('{stepName}', stepName)
           .replace('{currentStepName}', stepName)
-          .replace('{contextualHistory}', minimalHistory);
+          .replace('{contextualHistory}', reducedHistory);
+        
+        // Restore original limit
+        this.contextHistoryLimit = originalLimit;
+        
+        // If still too long, use minimal history
+        const reducedTotalLength = systemMessage.length + userMessageReduced.length;
+        if (reducedTotalLength > this.maxPromptLength) {
+          const minimalHistory = 'History truncated due to length limits.';
+          const userMessageMinimal = USER_TEMPLATE
+            .replace('{sessionId}', context.contextId)
+            .replace('{stepNumber}', (stepId + 1).toString())
+            .replace('{totalSteps}', context.steps.length.toString())
+            .replace('{stepName}', stepName)
+            .replace('{currentStepName}', stepName)
+            .replace('{contextualHistory}', minimalHistory);
+          
+          return {
+            system: systemMessage,
+            user: userMessageMinimal
+          };
+        }
         
         return {
           system: systemMessage,
-          user: userMessageMinimal
+          user: userMessageReduced
         };
       }
 
@@ -118,19 +148,9 @@ export class PromptBuilder {
    */
   buildPrompt(context: ContextData, stepId: number, schema: object): string {
     try {
-      // Use the new buildMessages method and combine for backward compatibility
+      // Use the new buildMessages method which handles truncation internally
       const messages = this.buildMessages(context, stepId, schema);
-      const prompt = `${messages.system}\n\n---\n\n${messages.user}`;
-
-      // Check prompt length - let context manager handle DOM truncation
-      if (prompt.length > this.maxPromptLength) {
-        // Use main templates with minimal history to keep within limits
-        const stepName = context.steps[stepId] || 'Unknown Step';
-        const minimalMessages = this.buildMessages(context, stepId, schema);
-        return `${minimalMessages.system}\n\n---\n\n${minimalMessages.user}`;
-      }
-
-      return prompt;
+      return `${messages.system}\n\n---\n\n${messages.user}`;
     } catch (error) {
       // Use main templates with minimal context if building fails
       const stepName = context.steps?.[stepId] || 'Unknown Step';
@@ -190,6 +210,16 @@ export class PromptBuilder {
           const attempt = this.formatLogEntry(log, attemptNumber);
           history += `${attempt}\n`;
         });
+      }
+
+      // Apply tail-based truncation if history exceeds the limit
+      if (history.length > this.contextHistoryLimit) {
+        const tailHistory = history.substring(history.length - this.contextHistoryLimit);
+        // Find the first complete line break to avoid cutting in the middle of a line
+        const firstLineBreak = tailHistory.indexOf('\n');
+        const cleanTailHistory = firstLineBreak > 0 ? tailHistory.substring(firstLineBreak + 1) : tailHistory;
+        
+        return `EXECUTION HISTORY:\nHistory truncated due to length limits.\n\n${cleanTailHistory}`;
       }
 
       return history || 'No execution history available.';

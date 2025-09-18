@@ -101,10 +101,27 @@ export class StepProcessor implements IStepProcessor {
       // Mark session as active
       this.activeSessions.add(sessionId);
 
-      // Create stream - handle internally
+      // Create stream - handle internally with better error handling
+      if (this.config.enableLogging) {
+        console.log(`[StepProcessor] Creating stream for session ${sessionId}`);
+      }
+      
       await this.executorStreamer.createStream(sessionId);
+      
+      if (this.config.enableLogging) {
+        console.log(`[StepProcessor] Stream created successfully for session ${sessionId}`);
+      }
+
+      // Verify stream was created by checking if it exists
+      if (!this.executorStreamer.streamExists(sessionId)) {
+        throw new Error(`Stream was not created properly for session ${sessionId}`);
+      }
 
       await this.executorStreamer.putEvent(sessionId, 'Stream Initiated');
+      
+      if (this.config.enableLogging) {
+        console.log(`[StepProcessor] Initial event pushed to stream for session ${sessionId}`);
+      }
       
       this.executeStepsAsync(sessionId, steps);
       
@@ -114,6 +131,7 @@ export class StepProcessor implements IStepProcessor {
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (this.config.enableLogging) {
         console.error(`[StepProcessor] Error during session setup for session ${sessionId}: ${errorMessage}`);
+        console.error(`[StepProcessor] Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
       }
       
       // Remove from active sessions and clean up on setup error

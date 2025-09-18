@@ -163,35 +163,59 @@ export class FrontendAPIIntegration implements SimpleFrontendAPIIntegration {
 
         eventSource.onerror = (error) => {
           console.error('SSE error:', error);
+          console.log('SSE readyState:', eventSource.readyState);
+          console.log('Reconnect attempts:', this.reconnectAttempts, 'Max:', this.maxReconnectAttempts);
+          console.log('Is reconnecting:', this.isReconnecting);
           
-          // Only attempt reconnection if we have attempts left and aren't already reconnecting
-          if (this.reconnectAttempts < this.maxReconnectAttempts && !this.isReconnecting) {
-            this.attemptReconnection(streamId, resolve, reject);
-          } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            // Exhausted all reconnection attempts
-            this.errorCallbacks.forEach(callback => {
-              try {
-                callback(ERROR_MESSAGES.RECONNECTION_FAILED);
-              } catch (error) {
-                console.error('Error in error callback:', error);
-              }
-            });
+          // If we're in CONNECTING state and get an error, it likely means the stream doesn't exist
+          if (eventSource.readyState === EventSource.CONNECTING) {
+            console.log('SSE connection failed during initial connection');
             
-            if (eventSource.readyState === EventSource.CONNECTING) {
+            // Only attempt reconnection if we have attempts left and aren't already reconnecting
+            if (this.reconnectAttempts < this.maxReconnectAttempts && !this.isReconnecting) {
+              console.log('Attempting reconnection due to connection failure');
+              this.attemptReconnection(streamId, resolve, reject);
+            } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+              console.log('Exhausted all reconnection attempts');
+              // Exhausted all reconnection attempts
+              this.errorCallbacks.forEach(callback => {
+                try {
+                  callback(ERROR_MESSAGES.RECONNECTION_FAILED);
+                } catch (error) {
+                  console.error('Error in error callback:', error);
+                }
+              });
               reject(new Error(ERROR_MESSAGES.RECONNECTION_FAILED));
-            }
-          } else {
-            // Initial connection error or already reconnecting
-            this.errorCallbacks.forEach(callback => {
-              try {
-                callback(ERROR_MESSAGES.CONNECTION_LOST);
-              } catch (error) {
-                console.error('Error in error callback:', error);
+            } else {
+              console.log('Initial connection error or already reconnecting');
+              // Initial connection error or already reconnecting
+              this.errorCallbacks.forEach(callback => {
+                try {
+                  callback(ERROR_MESSAGES.CONNECTION_LOST);
+                } catch (error) {
+                  console.error('Error in error callback:', error);
+                }
+              });
+              if (!this.isReconnecting) {
+                reject(new Error(ERROR_MESSAGES.CONNECTION_LOST));
               }
-            });
+            }
+          } else if (eventSource.readyState === EventSource.OPEN || eventSource.readyState === EventSource.CLOSED) {
+            // Connection was established but then lost
+            console.log('SSE connection lost after being established');
             
-            if (eventSource.readyState === EventSource.CONNECTING && !this.isReconnecting) {
-              reject(new Error(ERROR_MESSAGES.CONNECTION_LOST));
+            if (this.reconnectAttempts < this.maxReconnectAttempts && !this.isReconnecting) {
+              console.log('Attempting reconnection due to connection loss');
+              this.attemptReconnection(streamId, resolve, reject);
+            } else {
+              console.log('Not attempting reconnection: attempts =', this.reconnectAttempts, 'isReconnecting =', this.isReconnecting);
+              this.errorCallbacks.forEach(callback => {
+                try {
+                  callback(ERROR_MESSAGES.CONNECTION_LOST);
+                } catch (error) {
+                  console.error('Error in error callback:', error);
+                }
+              });
             }
           }
         };
@@ -211,6 +235,7 @@ export class FrontendAPIIntegration implements SimpleFrontendAPIIntegration {
     reject: (reason?: any) => void
   ): void {
     if (this.isReconnecting) {
+      console.log('Already attempting reconnection, skipping...');
       return; // Already attempting reconnection
     }
     
@@ -219,7 +244,7 @@ export class FrontendAPIIntegration implements SimpleFrontendAPIIntegration {
     
     const delay = this.reconnectDelays[this.reconnectAttempts - 1] || this.reconnectDelays[this.reconnectDelays.length - 1];
     
-    console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${delay}ms`);
+    console.log(`[APIIntegration] Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${delay}ms to stream ${streamId}`);
     
     // Notify UI about reconnection attempt
     this.reconnectingCallbacks.forEach(callback => {
@@ -231,15 +256,32 @@ export class FrontendAPIIntegration implements SimpleFrontendAPIIntegration {
     });
     
     setTimeout(async () => {
+      console.log(`[APIIntegration] Executing reconnection attempt ${this.reconnectAttempts}`);
       try {
+        // Close the current event source if it exists
+        if (this.currentEventSource) {
+          this.currentEventSource.close();
+        }
+        
         const newEventSource = await this.connectToStreamWithRetry(streamId);
+        console.log(`[APIIntegration] Reconnection attempt ${this.reconnectAttempts} successful`);
         resolve(newEventSource);
       } catch (error) {
+        console.error(`[APIIntegration] Reconnection attempt ${this.reconnectAttempts} failed:`, error);
+        this.isReconnecting = false;
+        
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-          this.isReconnecting = false;
+          console.log(`[APIIntegration] Max reconnection attempts reached, giving up`);
+          this.errorCallbacks.forEach(callback => {
+            try {
+              callback(ERROR_MESSAGES.RECONNECTION_FAILED);
+            } catch (error) {
+              console.error('Error in error callback:', error);
+            }
+          });
           reject(error);
         }
-        // If not at max attempts, the error handler in connectToStreamWithRetry will handle the next attempt
+        // If not at max attempts, the next error will trigger another attempt
       }
     }, delay);
   }

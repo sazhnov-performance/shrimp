@@ -134,7 +134,7 @@ export class TaskLoop implements ITaskLoop {
       try {
         // 1. Get prompt from AI Prompt Manager
         if (this.config.enableLogging) {
-          console.log(`[TaskLoop] Getting prompt for session ${sessionId}, step ${stepId}, iteration ${iterations}`);
+          //console.log(`[TaskLoop] Getting prompt for session ${sessionId}, step ${stepId}, iteration ${iterations}`);
         }
         
         // Get system and user messages
@@ -168,7 +168,7 @@ export class TaskLoop implements ITaskLoop {
 
         // 3. Validate response against schema
         if (this.config.enableLogging) {
-          console.log(`[TaskLoop] Validating AI response for session ${sessionId}, step ${stepId}, iteration ${iterations}`);
+          //console.log(`[TaskLoop] Validating AI response for session ${sessionId}, step ${stepId}, iteration ${iterations}`);
         }
         
         const validatedResponse = validateAIResponse(aiResponse.data, sessionId, stepId);
@@ -196,7 +196,7 @@ export class TaskLoop implements ITaskLoop {
 
         // 5. Log execution in context manager (include execution result)
         if (this.config.enableLogging) {
-          console.log(`[TaskLoop] Logging task execution for session ${sessionId}, step ${stepId}, iteration ${iterations}`);
+          //console.log(`[TaskLoop] Logging task execution for session ${sessionId}, step ${stepId}, iteration ${iterations}`);
         }
         
         this.contextManager.logTask(sessionId, stepId, {
@@ -534,7 +534,7 @@ export class TaskLoop implements ITaskLoop {
       await this.streamer.putEvent(sessionId, reasoning);
       
       if (this.config.enableLogging) {
-        console.log(`[TaskLoop] Pushed reasoning to stream for session ${sessionId}, step ${stepId}, iteration ${iteration}`);
+        //console.log(`[TaskLoop] Pushed reasoning to stream for session ${sessionId}, step ${stepId}, iteration ${iteration}`);
       }
     } catch (error) {
       if (this.config.enableLogging) {
