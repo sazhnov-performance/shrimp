@@ -33,6 +33,23 @@ interface AIPromptManagerConfig {
 }
 ```
 
+## Environment Variables
+
+The AI Prompt Manager supports configuration through environment variables for runtime optimization:
+
+### CONTEXT_HISTORY_LIMIT
+- **Purpose**: Controls the maximum character limit for execution history in prompts
+- **Default**: 2000 characters
+- **Behavior**: When execution history exceeds this limit, the system performs tail-based truncation, showing the most recent history within the specified limit
+- **Usage**: `CONTEXT_HISTORY_LIMIT=1500` for more aggressive truncation
+- **Note**: Tail truncation ensures the most relevant (recent) execution context is preserved
+
+### CONTEXT_TRUNCATE_RESULT  
+- **Purpose**: Controls the character limit for individual command results (e.g., GET_TEXT output)
+- **Default**: 1000 characters
+- **Behavior**: Truncates long command results with informative messages
+- **Usage**: `CONTEXT_TRUNCATE_RESULT=500` for shorter result summaries
+
 ## Dependencies
 
 ### Module Integration (Singleton Pattern)

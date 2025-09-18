@@ -160,11 +160,11 @@ export function UIAutomationInterface() {
         streamId: response.data.streamId || null
       }));
 
-      // Connect to stream if available - wait a bit for stream to be fully created
+      // Connect to stream if available - small delay to ensure "Stream Initiated" is sent first
       if (response.data.streamId) {
         try {
-          // Give the backend time to fully create the stream
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Small delay to ensure proper message ordering
+          await new Promise(resolve => setTimeout(resolve, 100));
           
           const sse = await apiRef.current!.connectToStream(response.data.streamId);
           sseRef.current = sse;

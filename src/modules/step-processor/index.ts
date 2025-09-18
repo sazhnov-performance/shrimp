@@ -118,7 +118,10 @@ export class StepProcessor implements IStepProcessor {
         console.log(`[StepProcessor] Initial event pushed to stream for session ${sessionId}`);
       }
       
-      this.executeStepsAsync(sessionId, steps);
+      // Schedule async execution to run after sessionId is returned
+      setImmediate(() => {
+        this.executeStepsAsync(sessionId, steps);
+      });
       
       return sessionId;
       
