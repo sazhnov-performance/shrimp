@@ -124,7 +124,11 @@ describe('TaskLoop', () => {
         logTask: jest.fn()
       };
       mockPromptManager = {
-        getStepPrompt: jest.fn().mockReturnValue('Test prompt')
+        getStepPrompt: jest.fn().mockReturnValue('Test prompt'),
+        getStepMessages: jest.fn().mockReturnValue({
+          system: 'Test system message',
+          user: 'Test user message'
+        })
       };
       mockAIIntegration = {
         sendRequest: jest.fn()
@@ -272,7 +276,11 @@ describe('TaskLoop', () => {
         logTask: jest.fn()
       };
       mockPromptManager = {
-        getStepPrompt: jest.fn().mockReturnValue('Test prompt')
+        getStepPrompt: jest.fn().mockReturnValue('Test prompt'),
+        getStepMessages: jest.fn().mockReturnValue({
+          system: 'Test system message',
+          user: 'Test user message'
+        })
       };
       mockAIIntegration = {
         sendRequest: jest.fn()

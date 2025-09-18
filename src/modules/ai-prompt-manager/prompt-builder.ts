@@ -172,6 +172,102 @@ export class PromptBuilder {
   }
 
   /**
+   * Smart truncation that preserves important content structure
+   * @param history Full history string to truncate
+   * @returns Intelligently truncated history
+   */
+  private smartTruncateHistory(history: string): string {
+    try {
+      // Strategy: Preserve the most recent content and important structure
+      const targetLength = this.contextHistoryLimit;
+      
+      // Split history into sections to identify important parts
+      const sections = history.split('\n\n');
+      let truncatedHistory = '';
+      let remainingLength = targetLength - 100; // Reserve space for truncation message
+      
+      // Always try to preserve current step attempts (most important)
+      const currentStepIndex = sections.findIndex(section => section.includes('CURRENT STEP ATTEMPTS:'));
+      if (currentStepIndex >= 0) {
+        const currentStepSection = sections[currentStepIndex];
+        if (currentStepSection.length <= remainingLength) {
+          truncatedHistory = currentStepSection;
+          remainingLength -= currentStepSection.length;
+          sections.splice(currentStepIndex, 1); // Remove from consideration
+        }
+      }
+      
+      // Then try to add previous steps summary (working backwards for most recent)
+      const previousStepsIndex = sections.findIndex(section => section.includes('PREVIOUS STEPS:'));
+      if (previousStepsIndex >= 0 && remainingLength > 200) {
+        const previousStepsSection = sections[previousStepsIndex];
+        if (previousStepsSection.length <= remainingLength) {
+          if (truncatedHistory) {
+            truncatedHistory = previousStepsSection + '\n\n' + truncatedHistory;
+          } else {
+            truncatedHistory = previousStepsSection;
+          }
+          remainingLength -= previousStepsSection.length;
+        } else {
+          // Truncate previous steps section intelligently
+          const lines = previousStepsSection.split('\n');
+          let partialSection = lines[0] + '\n'; // Keep the header
+          remainingLength -= partialSection.length;
+          
+          // Add as many recent lines as possible
+          for (let i = lines.length - 1; i >= 1 && remainingLength > 0; i--) {
+            const line = lines[i];
+            if (line.length < remainingLength) {
+              partialSection += line + '\n';
+              remainingLength -= (line.length + 1);
+            } else {
+              break;
+            }
+          }
+          
+          if (truncatedHistory) {
+            truncatedHistory = partialSection + '\n' + truncatedHistory;
+          } else {
+            truncatedHistory = partialSection;
+          }
+        }
+      }
+      
+      // If still no content, take the last portion of history with better boundary detection
+      if (!truncatedHistory) {
+        const tailLength = Math.min(targetLength - 200, history.length);
+        const tailHistory = history.substring(history.length - tailLength);
+        
+        // Find a good starting point (prefer start of a line that's not mid-sentence)
+        let startIndex = 0;
+        const lines = tailHistory.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          // Look for lines that start with recognizable patterns
+          if (line.match(/^(PREVIOUS STEPS:|CURRENT STEP ATTEMPTS:|Step \d+:|Attempt \d+:|- )/)) {
+            startIndex = tailHistory.indexOf(lines[i]);
+            break;
+          }
+        }
+        
+        truncatedHistory = tailHistory.substring(startIndex);
+      }
+      
+      // Add truncation message
+      const originalLength = history.length;
+      const truncatedLength = truncatedHistory.length;
+      const message = `EXECUTION HISTORY:\nHistory truncated due to length limits. Showing ${truncatedLength} of ${originalLength} characters (most recent content preserved).\n\n`;
+      
+      return message + truncatedHistory;
+    } catch (error) {
+      // Fallback to simple tail truncation if smart truncation fails
+      const simpleLimit = Math.max(500, this.contextHistoryLimit - 200);
+      const simpleTail = history.substring(history.length - simpleLimit);
+      return `EXECUTION HISTORY:\nHistory truncated due to length limits.\n\n${simpleTail}`;
+    }
+  }
+
+  /**
    * Format execution history for inclusion in prompts
    * @param context Execution context data
    * @param currentStepId Current step index
@@ -212,14 +308,9 @@ export class PromptBuilder {
         });
       }
 
-      // Apply tail-based truncation if history exceeds the limit
+      // Apply intelligent truncation if history exceeds the limit
       if (history.length > this.contextHistoryLimit) {
-        const tailHistory = history.substring(history.length - this.contextHistoryLimit);
-        // Find the first complete line break to avoid cutting in the middle of a line
-        const firstLineBreak = tailHistory.indexOf('\n');
-        const cleanTailHistory = firstLineBreak > 0 ? tailHistory.substring(firstLineBreak + 1) : tailHistory;
-        
-        return `EXECUTION HISTORY:\nHistory truncated due to length limits.\n\n${cleanTailHistory}`;
+        return this.smartTruncateHistory(history);
       }
 
       return history || 'No execution history available.';

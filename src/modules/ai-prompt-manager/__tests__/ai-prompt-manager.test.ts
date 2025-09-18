@@ -600,4 +600,108 @@ describe('AIPromptManager', () => {
       expect(prompt).not.toContain('A'.repeat(101)); // Should not contain 101 A's
     });
   });
+
+  describe('History Truncation Improvements', () => {
+    const steps = ['Test smart history truncation'];
+    
+    afterEach(() => {
+      delete process.env.CONTEXT_HISTORY_LIMIT;
+    });
+
+    it('should preserve current step attempts when truncating history', () => {
+      // Set a small history limit to force truncation
+      process.env.CONTEXT_HISTORY_LIMIT = '500';
+      
+      (AIPromptManager as any).instance = null;
+      const truncatingManager = AIPromptManager.getInstance();
+      const sessionId = 'smart-truncation-test-session';
+      truncatingManager.init(sessionId, ['Step 1', 'Step 2', 'Step 3']);
+      
+      // Add previous step logs to create a long history
+      for (let i = 0; i < 5; i++) {
+        contextManager.logTask(sessionId, 0, {
+          aiResponse: {
+            action: { command: 'CLICK_ELEMENT', parameters: { selector: `button-${i}` } },
+            reasoning: `Long reasoning text for attempt ${i} that adds to the history length and should eventually cause truncation`,
+            confidence: 'HIGH',
+            flowControl: 'continue'
+          },
+          executionResult: { success: true, result: 'Success' }
+        });
+      }
+      
+      // Add current step attempts (should be preserved)
+      contextManager.logTask(sessionId, 2, {
+        aiResponse: {
+          action: { command: 'INPUT_TEXT', parameters: { selector: 'input', text: 'important data' } },
+          reasoning: 'This is current step reasoning that should be preserved',
+          confidence: 'HIGH',
+          flowControl: 'continue'
+        },
+        executionResult: { success: true, result: 'Input successful' }
+      });
+      
+      const prompt = truncatingManager.getStepPrompt(sessionId, 2);
+      
+      // Should contain smart truncation message with preserved content info
+      expect(prompt).toContain('History truncated due to length limits. Showing');
+      expect(prompt).toContain('most recent content preserved');
+      
+      // Should preserve current step attempts
+      expect(prompt).toContain('CURRENT STEP ATTEMPTS:');
+      expect(prompt).toContain('This is current step reasoning that should be preserved');
+      expect(prompt).toContain('important data');
+    });
+
+    it('should provide meaningful content even with very small limits', () => {
+      // Set a very small history limit
+      process.env.CONTEXT_HISTORY_LIMIT = '200';
+      
+      (AIPromptManager as any).instance = null;
+      const truncatingManager = AIPromptManager.getInstance();
+      const sessionId = 'minimal-truncation-test-session';
+      truncatingManager.init(sessionId, ['Step 1']);
+      
+      // Add a lot of history to force aggressive truncation
+      for (let i = 0; i < 10; i++) {
+        contextManager.logTask(sessionId, 0, {
+          aiResponse: {
+            action: { command: 'GET_TEXT', parameters: { selector: `element-${i}` } },
+            reasoning: `Very long reasoning text for attempt ${i} that definitely exceeds the tiny limit and should trigger the fallback truncation logic`,
+            confidence: 'HIGH',
+            flowControl: 'continue'
+          },
+          executionResult: { success: true, result: `Result ${i}` }
+        });
+      }
+      
+      const prompt = truncatingManager.getStepPrompt(sessionId, 0);
+      
+      // Should not be empty even with tiny limit
+      expect(prompt).toContain('EXECUTION HISTORY:');
+      expect(prompt).toContain('History truncated due to length limits');
+      
+      // Should have some meaningful content, not just the message
+      const historyStart = prompt.indexOf('EXECUTION HISTORY:');
+      const historySection = prompt.substring(historyStart);
+      expect(historySection.length).toBeGreaterThan(100); // Should have reasonable content
+    });
+
+    it('should handle empty history gracefully', () => {
+      process.env.CONTEXT_HISTORY_LIMIT = '100';
+      
+      (AIPromptManager as any).instance = null;
+      const truncatingManager = AIPromptManager.getInstance();
+      const sessionId = 'empty-history-test-session';
+      truncatingManager.init(sessionId, ['Step 1']);
+      
+      // No logs added - empty history
+      const prompt = truncatingManager.getStepPrompt(sessionId, 0);
+      
+      // Should handle empty history without truncation
+      expect(prompt).toContain('EXECUTION HISTORY:');
+      expect(prompt).not.toContain('History truncated due to length limits');
+      expect(prompt).toContain('No execution history available');
+    });
+  });
 });
