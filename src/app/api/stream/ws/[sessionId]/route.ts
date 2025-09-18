@@ -59,10 +59,22 @@ export async function GET(
             const latestEvent = await executorStreamer.extractLastEvent(sessionId);
             
             if (latestEvent) {
+              // Parse the event to extract just the data content
+              let eventData = latestEvent;
+              try {
+                const parsedEvent = JSON.parse(latestEvent);
+                if (parsedEvent && typeof parsedEvent.data === 'string') {
+                  eventData = parsedEvent.data;
+                }
+              } catch (error) {
+                // If parsing fails, use the original event data
+                console.warn('[SSE] Failed to parse event data, using raw event:', error);
+              }
+              
               const eventMessage: WebSocketMessage = {
                 type: 'event',
                 sessionId,
-                data: latestEvent,
+                data: eventData,
                 timestamp: new Date().toISOString()
               };
               

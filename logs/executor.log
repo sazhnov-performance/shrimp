@@ -8239,3 +8239,12 @@
 2025-09-18T07:08:23.793Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"[object Object]"}
 2025-09-18T07:08:23.795Z [Executor][INFO] [test-workflow-session] Session destroyed {"sessionId":"b80495b9-0ab9-45c5-acb3-7b1b6e055d45"}
 2025-09-18T07:08:23.797Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T07:17:15.518Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
+2025-09-18T07:17:24.271Z [Executor][INFO] [session-1758179835648-4o6l885ki] Session created {"sessionId":"19a0b13a-2025-49f1-89ea-5521829b3b11","browserType":"chromium"}
+2025-09-18T07:17:26.975Z [Executor][INFO] [session-1758179835648-4o6l885ki] Executing command: OPEN_PAGE {"commandId":"taskloop_1758179846974_bri4vn4j5","action":"OPEN_PAGE","parameters":{"url":"https://www.google.com"}}
+2025-09-18T07:17:31.727Z [Executor][INFO] [session-1758179835648-4o6l885ki] Command OPEN_PAGE completed in 4751ms {"action":"OPEN_PAGE","duration":4751,"success":true,"commandId":"taskloop_1758179846974_bri4vn4j5"}
+2025-09-18T07:17:36.874Z [Executor][INFO] [session-1758179835648-4o6l885ki] Executing command: GET_TEXT {"commandId":"taskloop_1758179856874_dxhegy762","action":"GET_TEXT","parameters":{"selector":"body"}}
+2025-09-18T07:17:38.979Z [Executor][INFO] [session-1758179835648-4o6l885ki] Command GET_TEXT completed in 2104ms {"action":"GET_TEXT","duration":2104,"success":true,"commandId":"taskloop_1758179856874_dxhegy762"}
+2025-09-18T07:17:42.389Z [Executor][INFO] [session-1758179835648-4o6l885ki] Executing command: CLICK_ELEMENT {"commandId":"taskloop_1758179862389_l9wb2sk8q","action":"CLICK_ELEMENT","parameters":{"selector":"[aria-label='Close']"}}
+2025-09-18T07:17:52.411Z [Executor][ERROR] [session-1758179835648-4o6l885ki] Command CLICK_ELEMENT failed in 10022ms {"action":"CLICK_ELEMENT","duration":10022,"success":false,"commandId":"taskloop_1758179862389_l9wb2sk8q","error":"[object Object]"}
+2025-09-18T07:18:03.468Z [Executor][INFO] [session-1758179835648-4o6l885ki] Session destroyed {"sessionId":"19a0b13a-2025-49f1-89ea-5521829b3b11"}
