@@ -137,14 +137,18 @@ export class TaskLoop implements ITaskLoop {
           console.log(`[TaskLoop] Getting prompt for session ${sessionId}, step ${stepId}, iteration ${iterations}`);
         }
         
-        const prompt = this.promptManager.getStepPrompt(sessionId, stepId);
+        // Get system and user messages
+        const messages = this.promptManager.getStepMessages(sessionId, stepId);
+        
+        // Send as JSON to AI integration
+        const requestPayload = JSON.stringify(messages);
 
         // 2. Send request to AI Integration
         if (this.config.enableLogging) {
           console.log(`[TaskLoop] Sending AI request for session ${sessionId}, step ${stepId}, iteration ${iterations}`);
         }
         
-        const aiResponse = await this.aiIntegration.sendRequest(prompt);
+        const aiResponse = await this.aiIntegration.sendRequest(requestPayload);
         
         // Debug logging for raw AI response
         if (this.config.enableLogging) {

@@ -62,6 +62,7 @@ export class PromptBuilder {
         .replace('{stepNumber}', (stepId + 1).toString())
         .replace('{totalSteps}', context.steps.length.toString())
         .replace('{stepName}', stepName)
+        .replace('{currentStepName}', stepName)
         .replace('{contextualHistory}', history);
       
       // Check total length and handle DOM size limits

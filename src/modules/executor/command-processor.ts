@@ -893,7 +893,7 @@ export class CommandProcessor implements ICommandProcessor {
       return {
         success: true,
         commandId: finalCommandId,
-        dom,
+        dom: subDomElements.join('\n'), // Return the sub-DOM elements instead of full page
         screenshotId,
         duration,
         metadata: { 
@@ -903,7 +903,8 @@ export class CommandProcessor implements ICommandProcessor {
           elementsFound: elements.length,
           totalSize,
           maxSize,
-          sizeUtilization: (totalSize / maxSize * 100).toFixed(2) + '%'
+          sizeUtilization: (totalSize / maxSize * 100).toFixed(2) + '%',
+          fullPageDOM: dom // Keep full page DOM in metadata for reference
         }
       };
 

@@ -5,6 +5,7 @@
 import { Executor } from '../index';
 import { CommandAction, ExecutorConfig, DEFAULT_EXECUTOR_CONFIG } from '../types';
 import { ExecutorCommand, CommandResponse } from '../types';
+import { chromium } from 'playwright';
 
 // Mock dependencies
 jest.mock('playwright', () => ({
@@ -23,6 +24,14 @@ jest.mock('playwright', () => ({
           textContent: jest.fn().mockResolvedValue('Mock element text'),
           evaluate: jest.fn().mockResolvedValue('<div>Mock HTML content for readability test</div>')
         }),
+        $$: jest.fn().mockResolvedValue([
+          {
+            evaluate: jest.fn().mockResolvedValue('<div role="dialog">Dialog 1 content</div>')
+          },
+          {
+            evaluate: jest.fn().mockResolvedValue('<div role="dialog">Dialog 2 content</div>')
+          }
+        ]),
         screenshot: jest.fn().mockResolvedValue(Buffer.from('fake-screenshot')),
         close: jest.fn()
       }),
@@ -296,6 +305,182 @@ describe('Executor - GET_TEXT functionality', () => {
       expect(response.success).toBe(false);
       expect(response.error).toBeDefined();
       expect(response.error?.code).toContain('INVALID_COMMAND');
+    });
+  });
+
+  describe('getSubDOM', () => {
+    beforeEach(async () => {
+      // Create a fresh session for each test
+      await executor.createSession('test-workflow-session');
+    });
+
+    afterEach(async () => {
+      // Clean up session after each test
+      await executor.destroySession('test-workflow-session');
+    });
+
+    it('should return sub-DOM elements for matching selector', async () => {
+      const response = await executor.getSubDOM('test-workflow-session', '[role="dialog"]');
+
+      expect(response.success).toBe(true);
+      expect(response.dom).toBe('<div role="dialog">Dialog 1 content</div>\n<div role="dialog">Dialog 2 content</div>');
+      expect(response.metadata?.subDOM).toEqual([
+        '<div role="dialog">Dialog 1 content</div>',
+        '<div role="dialog">Dialog 2 content</div>'
+      ]);
+      expect(response.metadata?.elementsFound).toBe(2);
+      expect(response.metadata?.totalSize).toBeGreaterThan(0);
+      expect(response.metadata?.maxSize).toBe(100000);
+      expect(response.metadata?.sizeUtilization).toBeDefined();
+      expect(response.metadata?.fullPageDOM).toBe('<html><body>Mock DOM</body></html>');
+    });
+
+    it('should return single sub-DOM element for single match', async () => {
+      // Mock single element response by updating the global mock
+      const { chromium } = require('playwright');
+      const mockBrowser = await chromium.launch();
+      const mockPage = await mockBrowser.newPage();
+      mockPage.$$ = jest.fn().mockResolvedValue([
+        {
+          evaluate: jest.fn().mockResolvedValue('<button id="submit">Submit</button>')
+        }
+      ]);
+
+      const response = await executor.getSubDOM('test-workflow-session', '#submit');
+
+      expect(response.success).toBe(true);
+      expect(response.dom).toBe('<button id="submit">Submit</button>');
+      expect(response.metadata?.subDOM).toEqual(['<button id="submit">Submit</button>']);
+      expect(response.metadata?.elementsFound).toBe(1);
+    });
+
+    it('should handle custom maxDomSize parameter', async () => {
+      const response = await executor.getSubDOM('test-workflow-session', '[role="dialog"]', 50000);
+
+      expect(response.success).toBe(true);
+      expect(response.metadata?.maxSize).toBe(50000);
+    });
+
+    it('should reject if maxDomSize exceeds limit', async () => {
+      // Mock large content that exceeds limit
+      const { chromium } = require('playwright');
+      const mockBrowser = await chromium.launch();
+      const mockPage = await mockBrowser.newPage();
+      mockPage.$$ = jest.fn().mockResolvedValue([
+        {
+          evaluate: jest.fn().mockResolvedValue('x'.repeat(60000)) // 60KB content
+        }
+      ]);
+
+      try {
+        await executor.getSubDOM('test-workflow-session', '.large-content', 50000);
+        fail('Should have thrown size exceeded error');
+      } catch (error: any) {
+        expect(error.code).toContain('SUBDOM_SIZE_EXCEEDED');
+      }
+    });
+
+    it('should validate selector parameter', async () => {
+      try {
+        await executor.getSubDOM('test-workflow-session', '');
+        fail('Should have thrown validation error');
+      } catch (error: any) {
+        expect(error.code).toContain('INVALID_COMMAND');
+        expect(error.message).toContain('Selector parameter is required');
+      }
+    });
+
+    it('should validate maxDomSize parameter', async () => {
+      try {
+        await executor.getSubDOM('test-workflow-session', '[role="dialog"]', -1);
+        fail('Should have thrown validation error');
+      } catch (error: any) {
+        expect(error.code).toContain('INVALID_COMMAND');
+        expect(error.message).toContain('maxDomSize parameter must be a positive integer');
+      }
+    });
+
+    it('should handle session not found error', async () => {
+      try {
+        await executor.getSubDOM('non-existent-session', '[role="dialog"]');
+        fail('Should have thrown session not found error');
+      } catch (error: any) {
+        expect(error.code).toContain('SESSION_NOT_FOUND');
+      }
+    });
+
+    it('should include screenshot metadata', async () => {
+      const response = await executor.getSubDOM('test-workflow-session', '[role="dialog"]');
+
+      // Since screenshots are disabled in test config, screenshotId should be empty
+      expect(response.screenshotId).toBeDefined();
+      expect(response.screenshotId).toBe('');
+    });
+  });
+
+  describe('executeCommand with GET_SUBDOM action', () => {
+    beforeEach(async () => {
+      await executor.createSession('test-workflow-session');
+    });
+
+    afterEach(async () => {
+      await executor.destroySession('test-workflow-session');
+    });
+
+    it('should handle GET_SUBDOM command through executeCommand', async () => {
+      const command: ExecutorCommand = {
+        sessionId: 'test-workflow-session',
+        action: CommandAction.GET_SUBDOM,
+        parameters: {
+          selector: '[role="dialog"]'
+        },
+        commandId: 'test-get-subdom-cmd',
+        timestamp: new Date()
+      };
+
+      const response = await executor.executeCommand(command);
+
+      expect(response.success).toBe(true);
+      expect(response.commandId).toBe('test-get-subdom-cmd');
+      expect(response.dom).toBe('<div role="dialog">Dialog 1 content</div>\n<div role="dialog">Dialog 2 content</div>');
+      expect(response.metadata?.subDOM).toBeDefined();
+      expect(response.metadata?.elementsFound).toBe(2);
+    });
+
+    it('should validate selector parameter in command', async () => {
+      const command: ExecutorCommand = {
+        sessionId: 'test-workflow-session',
+        action: CommandAction.GET_SUBDOM,
+        parameters: {
+          // No selector provided
+        },
+        commandId: 'test-invalid-cmd',
+        timestamp: new Date()
+      };
+
+      const response = await executor.executeCommand(command);
+
+      expect(response.success).toBe(false);
+      expect(response.error).toBeDefined();
+      expect(response.error?.code).toContain('INVALID_COMMAND');
+    });
+
+    it('should handle maxDomSize parameter in command', async () => {
+      const command: ExecutorCommand = {
+        sessionId: 'test-workflow-session',
+        action: CommandAction.GET_SUBDOM,
+        parameters: {
+          selector: '[role="dialog"]',
+          maxDomSize: 75000
+        },
+        commandId: 'test-get-subdom-cmd',
+        timestamp: new Date()
+      };
+
+      const response = await executor.executeCommand(command);
+
+      expect(response.success).toBe(true);
+      expect(response.metadata?.maxSize).toBe(75000);
     });
   });
 });

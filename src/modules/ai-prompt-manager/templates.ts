@@ -73,7 +73,7 @@ export const USER_TEMPLATE = `CURRENT CONTEXT:
 EXECUTION HISTORY:
 {contextualHistory}
 
-CURRENT STEP OBJECTIVE: {stepName}
+CURRENT STEP OBJECTIVE: {currentStepName}
 
 Execute this step following the INVESTIGATE → ACT → REFLECT process defined in your instructions.`; 
 

@@ -235,4 +235,28 @@ export class RequestProcessor {
       
       // If we can't find clear JSON boundaries, just remove comments from the whole content
       let cleaned = content;
-   
+      
+      // Remove single-line comments (// comments)
+      cleaned = cleaned.replace(/(?<!")\/\/(?:[^"\\]|\\.)*?(?=\n|$)/gm, '');
+      
+      // Remove multi-line comments (/* comments */)
+      cleaned = cleaned.replace(/\/\*[\s\S]*?\*\//g, '');
+      
+      return cleaned.trim();
+    } catch (error) {
+      // If cleaning fails, return original content
+      return content.trim();
+    }
+  }
+
+  /**
+   * Create error response
+   */
+  private createErrorResponse(errorCode: ErrorCode, message: string): AIResponse {
+    return {
+      status: 'error',
+      error: message,
+      errorCode: errorCode
+    };
+  }
+}
