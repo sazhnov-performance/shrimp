@@ -35,8 +35,12 @@ export function StreamingOutputComponent({
 
   // Auto-scroll to bottom when new events arrive
   useEffect(() => {
-    if (autoScroll && endOfMessagesRef.current) {
-      endOfMessagesRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (autoScroll && endOfMessagesRef.current && scrollContainerRef.current) {
+      // Use scrollIntoView with the container as reference
+      endOfMessagesRef.current.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'end'
+      });
     }
   }, [events, autoScroll]);
 
@@ -104,7 +108,7 @@ export function StreamingOutputComponent({
       {/* Log Output */}
       <div 
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto p-5 space-y-3 min-h-0"
+        className="flex-1 overflow-y-auto overflow-x-hidden p-5 space-y-3 min-h-0 max-h-full"
       >
         {logEntries.length === 0 ? (
           <div className="text-center text-slate-400 py-16">
@@ -113,7 +117,7 @@ export function StreamingOutputComponent({
                 <div className="w-12 h-12 mx-auto rounded-xl bg-blue-500/20 flex items-center justify-center">
                   <Activity className="animate-pulse" size={24} />
                 </div>
-                <div className="space-y-2">
+              <div className="space-y-2">
                   <p className="font-light text-lg">Monitoring Execution</p>
                   <p className="text-sm text-slate-500">Waiting for workflow events...</p>
                 </div>
@@ -125,7 +129,7 @@ export function StreamingOutputComponent({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h4.125m0-15.75c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V8.25m-6.75 0V4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V8.25" />
                   </svg>
                 </div>
-                <div className="space-y-2">
+              <div className="space-y-2">
                   <p className="font-light text-lg">Ready to Execute</p>
                   <p className="text-sm text-slate-500">Define your workflow and execute to see real-time logs</p>
                 </div>
@@ -174,16 +178,16 @@ function LogEntry({ entry }: LogEntryProps) {
   const screenshotData = isScreenshot ? entry.structuredData as ScreenshotLogMessage : null;
 
   return (
-    <div className={`p-4 rounded-xl border backdrop-blur-sm ${levelBgColor} transition-all hover:bg-slate-600/10 group`}>
-      <div className="flex items-start space-x-4">
+    <div className={`p-4 rounded-xl border backdrop-blur-sm ${levelBgColor} transition-all hover:bg-slate-600/10 group max-w-full`}>
+      <div className="flex items-start space-x-4 min-w-0">
         {/* Timestamp */}
         <span className="text-xs text-slate-500 font-mono min-w-[70px] mt-1 bg-slate-700/30 px-2 py-1 rounded-lg">
           {new Date(entry.timestamp).toLocaleTimeString()}
         </span>
         
         {/* Message and content */}
-        <div className="flex-1 min-w-0">
-          <p className={`text-sm ${levelColor} break-words font-light leading-relaxed`}>
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <p className={`text-sm ${levelColor} break-words font-light leading-relaxed overflow-wrap-anywhere`}>
             {entry.message}
           </p>
           
@@ -273,7 +277,7 @@ function ScreenshotThumbnail({ screenshotUrl, screenshotId, actionName }: Screen
   return (
     <>
       {/* Screenshot Card */}
-      <div className="bg-slate-800/30 rounded-xl border border-slate-600/30 overflow-hidden group cursor-pointer hover:border-blue-400/40 transition-all duration-300 hover:bg-slate-700/30">
+      <div className="bg-slate-800/30 rounded-xl border border-slate-600/30 overflow-hidden group cursor-pointer hover:border-blue-400/40 transition-all duration-300 hover:bg-slate-700/30 max-w-full">
         <div className="p-3">
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
@@ -302,21 +306,21 @@ function ScreenshotThumbnail({ screenshotUrl, screenshotId, actionName }: Screen
                 <div className="w-6 h-6 border-2 border-slate-500/30 border-t-slate-400 rounded-full animate-spin"></div>
               </div>
             )}
-            <img
-              src={thumbnailUrl}
-              alt={`Screenshot${actionName ? ` for ${actionName}` : ''}`}
-              className={`w-full h-auto transition-all duration-300 group-hover:scale-[1.02] ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-              onClick={handleImageClick}
+      <img
+        src={thumbnailUrl}
+        alt={`Screenshot${actionName ? ` for ${actionName}` : ''}`}
+              className={`w-full h-auto max-w-full object-contain transition-all duration-300 group-hover:scale-[1.02] ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+        onClick={handleImageClick}
               onLoad={() => setImageLoaded(true)}
-              onError={(e) => {
-                // If thumbnail fails, try the original image
-                const img = e.target as HTMLImageElement;
-                if (img.src === thumbnailUrl) {
-                  img.src = screenshotUrl;
-                }
-              }}
-            />
-            
+        onError={(e) => {
+          // If thumbnail fails, try the original image
+          const img = e.target as HTMLImageElement;
+          if (img.src === thumbnailUrl) {
+            img.src = screenshotUrl;
+          }
+        }}
+      />
+      
             {/* Overlay on hover */}
             <div className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
               <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-600/30">
@@ -339,7 +343,7 @@ function ScreenshotThumbnail({ screenshotUrl, screenshotId, actionName }: Screen
           )}
         </div>
       </div>
-
+      
       {/* Full-size Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}>

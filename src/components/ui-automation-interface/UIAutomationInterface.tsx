@@ -377,7 +377,7 @@ export function UIAutomationInterface() {
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 min-h-[calc(100vh-280px)]">
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 h-[calc(100vh-280px)]">
           
           {/* Left Panel - Step Input */}
           <div className="xl:col-span-2">
@@ -400,7 +400,7 @@ export function UIAutomationInterface() {
                 sessionId={state.sessionId}
                 isConnected={state.isConnected}
                 error={state.error}
-                autoScroll={false}
+                autoScroll={true}
               />
             </div>
           </div>
