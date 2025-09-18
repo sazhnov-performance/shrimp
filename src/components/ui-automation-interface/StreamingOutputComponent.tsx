@@ -6,9 +6,9 @@
 
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Activity, AlertCircle, ExternalLink } from 'lucide-react';
-import { StreamEvent, SimpleLogEntry } from './types';
+import { StreamEvent, SimpleLogEntry, ScreenshotLogMessage } from './types';
 import { formatLogEntry, getLevelColor, getLevelBgColor } from './log-formatter';
 
 interface StreamingOutputComponentProps {
@@ -171,7 +171,7 @@ function LogEntry({ entry }: LogEntryProps) {
   
   // Check if this is a screenshot event
   const isScreenshot = entry.structuredData?.type === 'screenshot';
-  const screenshotData = isScreenshot ? entry.structuredData : null;
+  const screenshotData = isScreenshot ? entry.structuredData as ScreenshotLogMessage : null;
 
   return (
     <div className={`p-4 rounded-xl border backdrop-blur-sm ${levelBgColor} transition-all hover:bg-slate-600/10 group`}>
@@ -246,11 +246,19 @@ interface ScreenshotThumbnailProps {
 }
 
 function ScreenshotThumbnail({ screenshotUrl, screenshotId, actionName }: ScreenshotThumbnailProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
   // Return early if no screenshot URL is provided
   if (!screenshotUrl) {
     return (
-      <div className="p-4 rounded border border-gray-500 text-gray-400 text-sm">
-        Screenshot not available
+      <div className="p-4 rounded-xl border border-slate-600/30 bg-slate-800/20 text-slate-400 text-sm font-light">
+        <div className="flex items-center space-x-2">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span>Screenshot not available</span>
+        </div>
       </div>
     );
   }
@@ -259,38 +267,118 @@ function ScreenshotThumbnail({ screenshotUrl, screenshotId, actionName }: Screen
   const thumbnailUrl = screenshotUrl.replace(`/${screenshotId}`, `/${screenshotId}-thumbnail`);
   
   const handleImageClick = () => {
-    // Open full-size image in new tab
-    window.open(screenshotUrl, '_blank');
+    setIsModalOpen(true);
   };
 
   return (
-    <div className="relative inline-block group">
-      <img
-        src={thumbnailUrl}
-        alt={`Screenshot${actionName ? ` for ${actionName}` : ''}`}
-        className="max-w-[50%] h-auto rounded border border-white/20 cursor-pointer transition-all hover:border-white/40 hover:scale-105"
-        onClick={handleImageClick}
-        onError={(e) => {
-          // If thumbnail fails, try the original image
-          const img = e.target as HTMLImageElement;
-          if (img.src === thumbnailUrl) {
-            img.src = screenshotUrl;
-            img.className = img.className.replace('max-w-[50%]', 'max-w-[25%]'); // Make smaller for full-size fallback
-          }
-        }}
-      />
-      
-      {/* Hover overlay */}
-      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-        <ExternalLink size={16} className="text-white" />
+    <>
+      {/* Screenshot Card */}
+      <div className="bg-slate-800/30 rounded-xl border border-slate-600/30 overflow-hidden group cursor-pointer hover:border-blue-400/40 transition-all duration-300 hover:bg-slate-700/30">
+        <div className="p-3">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <div className="w-6 h-6 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <span className="text-sm font-light text-slate-300">Screenshot Captured</span>
+            </div>
+            <button
+              onClick={handleImageClick}
+              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded-lg hover:bg-slate-600/30"
+            >
+              <svg className="w-4 h-4 text-slate-400 hover:text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Image Container */}
+          <div className="relative rounded-lg overflow-hidden bg-slate-900/50">
+            {!imageLoaded && (
+              <div className="aspect-video flex items-center justify-center">
+                <div className="w-6 h-6 border-2 border-slate-500/30 border-t-slate-400 rounded-full animate-spin"></div>
+              </div>
+            )}
+            <img
+              src={thumbnailUrl}
+              alt={`Screenshot${actionName ? ` for ${actionName}` : ''}`}
+              className={`w-full h-auto transition-all duration-300 group-hover:scale-[1.02] ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              onClick={handleImageClick}
+              onLoad={() => setImageLoaded(true)}
+              onError={(e) => {
+                // If thumbnail fails, try the original image
+                const img = e.target as HTMLImageElement;
+                if (img.src === thumbnailUrl) {
+                  img.src = screenshotUrl;
+                }
+              }}
+            />
+            
+            {/* Overlay on hover */}
+            <div className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+              <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-600/30">
+                <div className="flex items-center space-x-2 text-slate-200">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <span className="text-sm font-light">View Full Size</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action name footer */}
+          {actionName && (
+            <div className="mt-3 px-2 py-1 bg-slate-700/30 rounded-lg">
+              <span className="text-xs text-slate-400 font-light">{actionName}</span>
+            </div>
+          )}
+        </div>
       </div>
-      
-      {/* Action name label */}
-      {actionName && (
-        <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-white text-xs p-1 rounded-b">
-          {actionName}
+
+      {/* Full-size Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}>
+          <div className="relative max-w-5xl max-h-[90vh] w-full">
+            {/* Modal Header */}
+            <div className="bg-slate-900/90 backdrop-blur-sm border border-slate-600/30 rounded-t-xl p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-light text-slate-200">Screenshot Preview</h3>
+                  {actionName && <p className="text-sm text-slate-400">{actionName}</p>}
+                </div>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-2 rounded-lg hover:bg-slate-700/30 transition-colors"
+              >
+                <svg className="w-5 h-5 text-slate-400 hover:text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="bg-slate-900/90 backdrop-blur-sm border-x border-b border-slate-600/30 rounded-b-xl overflow-hidden">
+              <img
+                src={screenshotUrl}
+                alt={`Screenshot${actionName ? ` for ${actionName}` : ''}`}
+                className="w-full h-auto max-h-[70vh] object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
