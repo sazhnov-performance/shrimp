@@ -16,7 +16,7 @@ export interface ExecuteStepsResponse {
 
 // WebSocket Message Types
 export interface WebSocketMessage {
-  type: 'event' | 'error' | 'close';
+  type: 'event' | 'structured_event' | 'error' | 'close';
   sessionId: string;
   data: string;
   timestamp: string;

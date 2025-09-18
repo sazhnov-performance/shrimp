@@ -7,8 +7,32 @@
 import { StreamEvent, StreamEventType, SimpleLogEntry } from './types';
 
 export function formatLogEntry(event: StreamEvent): SimpleLogEntry {
-  // Event already contains simple message, just return it
-  // The message formatting is now handled by the backend/streaming layer
+  // For structured events, we may want to enhance the message
+  if (event.structuredData) {
+    switch (event.structuredData.type) {
+      case 'reasoning':
+        // Keep the text as is, but indicate confidence in the display
+        return {
+          ...event,
+          message: `💭 ${event.structuredData.text}`
+        };
+      case 'action':
+        // Enhanced action message with status
+        const statusIcon = event.structuredData.success ? '✅' : '❌';
+        return {
+          ...event,
+          message: `${statusIcon} ${event.structuredData.actionName}${event.structuredData.success ? '' : `: ${event.structuredData.error || 'Failed'}`}`
+        };
+      case 'screenshot':
+        // Screenshot message with image icon
+        return {
+          ...event,
+          message: `📸 Screenshot captured${event.structuredData.actionName ? ` for ${event.structuredData.actionName}` : ''}`
+        };
+    }
+  }
+  
+  // Default formatting for regular events
   return event;
 }
 

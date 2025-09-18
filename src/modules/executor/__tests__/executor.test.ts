@@ -33,6 +33,7 @@ jest.mock('playwright', () => ({
           }
         ]),
         screenshot: jest.fn().mockResolvedValue(Buffer.from('fake-screenshot')),
+        setViewportSize: jest.fn().mockResolvedValue(undefined),
         close: jest.fn()
       }),
       close: jest.fn()

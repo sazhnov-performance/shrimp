@@ -25,6 +25,11 @@ export enum StreamEventType {
   // AI events
   AI_REASONING = 'AI_REASONING',
   
+  // New structured log events
+  STRUCTURED_REASONING = 'STRUCTURED_REASONING',
+  STRUCTURED_ACTION = 'STRUCTURED_ACTION', 
+  STRUCTURED_SCREENSHOT = 'STRUCTURED_SCREENSHOT',
+  
   // Command events
   COMMAND_STARTED = 'COMMAND_STARTED',
   COMMAND_COMPLETED = 'COMMAND_COMPLETED',
@@ -40,6 +45,42 @@ export enum StreamEventType {
   WARNING_ISSUED = 'WARNING_ISSUED'
 }
 
+// Structured log message types from executor-streamer
+export interface ReasoningLogMessage {
+  type: 'reasoning';
+  text: string;
+  confidence: 'low' | 'medium' | 'high';
+  sessionId: string;
+  stepId: number;
+  iteration?: number;
+  timestamp: Date;
+}
+
+export interface ActionLogMessage {
+  type: 'action';
+  actionName: string;
+  success: boolean;
+  result?: string;
+  error?: string;
+  sessionId: string;
+  stepId: number;
+  iteration?: number;
+  timestamp: Date;
+}
+
+export interface ScreenshotLogMessage {
+  type: 'screenshot';
+  screenshotUrl: string;
+  screenshotId: string;
+  actionName?: string;
+  sessionId: string;
+  stepId: number;
+  iteration?: number;
+  timestamp: Date;
+}
+
+export type StructuredLogMessage = ReasoningLogMessage | ActionLogMessage | ScreenshotLogMessage;
+
 // Simplified Stream Event for UI
 export interface StreamEvent {
   id: string;
@@ -49,6 +90,8 @@ export interface StreamEvent {
   stepIndex?: number;
   message: string;  // Simple string message instead of complex data object
   level: 'info' | 'success' | 'warning' | 'error';
+  // Add structured data for new log types
+  structuredData?: StructuredLogMessage;
 }
 
 // Simple Session Status

@@ -26,8 +26,8 @@ import { IAISchemaManager } from '../ai-schema-manager/types';
 import AISchemaManager from '../ai-schema-manager/index';
 import { IExecutor, Executor } from '../executor/index';
 import { CommandAction } from '../executor/types';
-import { IExecutorStreamer } from '@/modules/executor-streamer/types';
-import { ExecutorStreamer } from '@/modules/executor-streamer';
+import { IExecutorStreamer, IStreamerLogger } from '@/modules/executor-streamer/types';
+import { ExecutorStreamer, StreamerLogger } from '@/modules/executor-streamer';
 import { MediaManager, IMediaManager } from '../media-manager';
 
 /**
@@ -41,6 +41,7 @@ export class TaskLoop implements ITaskLoop {
   private schemaManager: IAISchemaManager;
   private executor: IExecutor;
   private streamer: IExecutorStreamer;
+  private streamLogger: IStreamerLogger;
   private mediaManager: IMediaManager;
   private config: TaskLoopConfig;
 
@@ -64,6 +65,7 @@ export class TaskLoop implements ITaskLoop {
     this.schemaManager = AISchemaManager.getInstance();
     this.executor = Executor.getInstance(); // Use singleton instance
     this.streamer = ExecutorStreamer.getInstance(); // Use singleton instance
+    this.streamLogger = new StreamerLogger(this.streamer, this.config.enableLogging);
     this.mediaManager = MediaManager.getInstance(); // Use singleton instance
     
     if (this.config.enableLogging) {
@@ -177,25 +179,33 @@ export class TaskLoop implements ITaskLoop {
         const validatedResponse = validateAIResponse(aiResponse.data, sessionId, stepId);
         finalResponse = validatedResponse;
 
-        // 3a. Push AI reasoning to streamer
-        await this.pushReasoningToStreamer(sessionId, stepId, iterations, validatedResponse.reasoning);
+        // 3a. Log AI reasoning to streamer
+        await this.streamLogger.logReasoning(sessionId, stepId, validatedResponse.reasoning, 'high', iterations);
 
 
 
         // 4. Execute action if specified and flowControl is continue
         let executionResult: {success: boolean, result?: any, error?: string} | undefined;
         if (validatedResponse.flowControl === 'continue' && validatedResponse.action) {
-          await this.pushReasoningToStreamer(sessionId, stepId, iterations, validatedResponse.action.command);
-
           if (this.config.enableLogging) {
             console.log(`[TaskLoop] Executing action for session ${sessionId}, step ${stepId}, iteration ${iterations}`, {
               command: validatedResponse.action.command,
               parameters: validatedResponse.action.parameters
             });
-
           }
           
-          executionResult = await this.executeAction(sessionId, stepId, validatedResponse.action);
+          executionResult = await this.executeAction(sessionId, stepId, validatedResponse.action, iterations);
+          
+          // Log action result to streamer
+          await this.streamLogger.logAction(
+            sessionId, 
+            stepId, 
+            validatedResponse.action.command, 
+            executionResult?.success || false, 
+            executionResult?.result, 
+            executionResult?.error, 
+            iterations
+          );
           
           if (this.config.enableLogging) {
             console.log(`[TaskLoop] Action execution result for session ${sessionId}, step ${stepId}, iteration ${iterations}:`, executionResult);
@@ -292,7 +302,7 @@ export class TaskLoop implements ITaskLoop {
   /**
    * Execute an action through the executor
    */
-  private async executeAction(sessionId: string, stepId: number, action: any): Promise<{success: boolean, result?: any, error?: string}> {
+  private async executeAction(sessionId: string, stepId: number, action: any, iteration?: number): Promise<{success: boolean, result?: any, error?: string}> {
     try {
       // Session should already be created by StepProcessor
       if (!this.executor.sessionExists(sessionId)) {
@@ -326,11 +336,24 @@ export class TaskLoop implements ITaskLoop {
 
       const response = await this.executor.executeCommand(command);
       
-      // Log screenshot URL if screenshot was captured
-      if (response.success && response.screenshotId && this.config.enableLogging) {
+      // Log screenshot to streamer if screenshot was captured
+      if (response.success && response.screenshotId) {
         try {
           const screenshotUrl = this.mediaManager.getImageUrl(response.screenshotId);
-          console.log(`[TaskLoop] Screenshot captured for ${action.command}: ${screenshotUrl}`);
+          
+          // Log screenshot to streamer
+          await this.streamLogger.logScreenshot(
+            sessionId, 
+            stepId, 
+            response.screenshotId, 
+            screenshotUrl, 
+            action.command, 
+            iteration
+          );
+          
+          if (this.config.enableLogging) {
+            console.log(`[TaskLoop] Screenshot captured for ${action.command}: ${screenshotUrl}`);
+          }
         } catch (error) {
           // Log warning if URL generation fails, but don't fail the operation
           console.warn(`[TaskLoop] Failed to generate screenshot URL for ${response.screenshotId}: ${error instanceof Error ? error.message : String(error)}`);
@@ -539,53 +562,6 @@ export class TaskLoop implements ITaskLoop {
     return `taskloop_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  /**
-   * Ensure stream exists for session, create if it doesn't
-   */
-  private async ensureStreamExists(sessionId: string): Promise<void> {
-    try {
-      if (!this.streamer.streamExists(sessionId)) {
-        await this.streamer.createStream(sessionId);
-        if (this.config.enableLogging) {
-          console.log(`[TaskLoop] Created stream for session ${sessionId}`);
-        }
-      }
-    } catch (error) {
-      if (this.config.enableLogging) {
-        console.warn(`[TaskLoop] Failed to create stream for session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`);
-      }
-      // Don't throw error - streaming is not critical for execution
-    }
-  }
-
-  /**
-   * Push AI reasoning to streamer
-   */
-  private async pushReasoningToStreamer(sessionId: string, stepId: number, iteration: number, reasoning: string): Promise<void> {
-    try {
-      await this.ensureStreamExists(sessionId);
-      
-      const event = JSON.stringify({
-        type: 'ai_reasoning',
-        sessionId,
-        stepId,
-        iteration,
-        reasoning,
-        timestamp: new Date().toISOString()
-      });
-      
-      await this.streamer.putEvent(sessionId, reasoning);
-      
-      if (this.config.enableLogging) {
-        //console.log(`[TaskLoop] Pushed reasoning to stream for session ${sessionId}, step ${stepId}, iteration ${iteration}`);
-      }
-    } catch (error) {
-      if (this.config.enableLogging) {
-        console.warn(`[TaskLoop] Failed to push reasoning to stream for session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`);
-      }
-      // Don't throw error - streaming is not critical for execution
-    }
-  }
 
   /**
    * Get current configuration
@@ -599,6 +575,9 @@ export class TaskLoop implements ITaskLoop {
    */
   updateConfig(newConfig: Partial<TaskLoopConfig>): void {
     this.config = validateConfig({ ...this.config, ...newConfig });
+    
+    // Update stream logger configuration
+    this.streamLogger.setLoggingEnabled(this.config.enableLogging);
     
     if (this.config.enableLogging) {
       console.log('[TaskLoop] Configuration updated', this.config);

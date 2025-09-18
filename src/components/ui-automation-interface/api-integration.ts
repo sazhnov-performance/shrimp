@@ -7,7 +7,8 @@
 import { 
   StepProcessingRequest, 
   StreamEvent,
-  StreamEventType
+  StreamEventType,
+  StructuredLogMessage
 } from './types';
 import { 
   ExecuteStepsResponse, 
@@ -133,6 +134,77 @@ export class FrontendAPIIntegration implements SimpleFrontendAPIIntegration {
                     console.error('Error in event callback:', error);
                   }
                 });
+                break;
+                
+              case 'structured_event':
+                // Handle structured log events
+                try {
+                  const structuredData: StructuredLogMessage = JSON.parse(message.data);
+                  
+                  let eventType: StreamEventType;
+                  let level: 'info' | 'success' | 'warning' | 'error';
+                  let displayMessage: string;
+                  
+                  switch (structuredData.type) {
+                    case 'reasoning':
+                      eventType = StreamEventType.STRUCTURED_REASONING;
+                      level = structuredData.confidence === 'high' ? 'info' : structuredData.confidence === 'medium' ? 'warning' : 'error';
+                      displayMessage = structuredData.text;
+                      break;
+                    case 'action':
+                      eventType = StreamEventType.STRUCTURED_ACTION;
+                      level = structuredData.success ? 'success' : 'error';
+                      displayMessage = `${structuredData.actionName}: ${structuredData.success ? 'Success' : 'Failed'}`;
+                      if (structuredData.error) displayMessage += ` - ${structuredData.error}`;
+                      break;
+                    case 'screenshot':
+                      eventType = StreamEventType.STRUCTURED_SCREENSHOT;
+                      level = 'info';
+                      displayMessage = `Screenshot captured${structuredData.actionName ? ` for ${structuredData.actionName}` : ''}`;
+                      break;
+                    default:
+                      console.warn('Unknown structured event type:', structuredData);
+                      return;
+                  }
+                  
+                  const structuredStreamEvent: StreamEvent = {
+                    id: `structured_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    type: eventType,
+                    timestamp: new Date(structuredData.timestamp),
+                    sessionId: message.sessionId,
+                    stepIndex: structuredData.stepId,
+                    message: displayMessage,
+                    level,
+                    structuredData
+                  };
+                  
+                  this.eventCallbacks.forEach(callback => {
+                    try {
+                      callback(structuredStreamEvent);
+                    } catch (error) {
+                      console.error('Error in structured event callback:', error);
+                    }
+                  });
+                } catch (parseError) {
+                  console.error('Error parsing structured event:', parseError);
+                  // Fallback to regular event
+                  const fallbackEvent: StreamEvent = {
+                    id: `fallback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    type: StreamEventType.WORKFLOW_PROGRESS,
+                    timestamp: new Date(message.timestamp),
+                    sessionId: message.sessionId,
+                    message: message.data,
+                    level: 'info' as const
+                  };
+                  
+                  this.eventCallbacks.forEach(callback => {
+                    try {
+                      callback(fallbackEvent);
+                    } catch (error) {
+                      console.error('Error in fallback event callback:', error);
+                    }
+                  });
+                }
                 break;
                 
               case 'error':

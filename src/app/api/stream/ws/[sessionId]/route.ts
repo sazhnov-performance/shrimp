@@ -65,11 +65,17 @@ export async function GET(
             const latestEvent = await executorStreamer.extractLastEvent(sessionId);
             
             if (latestEvent) {
-              // Parse the event to extract just the data content
+              // Try to parse structured event first, fallback to raw event
               let eventData = latestEvent;
+              let isStructuredEvent = false;
+              
               try {
                 const parsedEvent = JSON.parse(latestEvent);
-                if (parsedEvent && typeof parsedEvent.data === 'string') {
+                // Check if it's a structured log message
+                if (parsedEvent && parsedEvent.type && ['reasoning', 'action', 'screenshot'].includes(parsedEvent.type)) {
+                  isStructuredEvent = true;
+                  eventData = latestEvent; // Keep as JSON string for UI to parse
+                } else if (parsedEvent && typeof parsedEvent.data === 'string') {
                   eventData = parsedEvent.data;
                 }
               } catch (error) {
@@ -78,7 +84,7 @@ export async function GET(
               }
               
               const eventMessage: WebSocketMessage = {
-                type: 'event',
+                type: isStructuredEvent ? 'structured_event' : 'event',
                 sessionId,
                 data: eventData,
                 timestamp: new Date().toISOString()

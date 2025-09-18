@@ -7,7 +7,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { Wifi, WifiOff, Activity, AlertCircle } from 'lucide-react';
+import { Wifi, WifiOff, Activity, AlertCircle, ExternalLink } from 'lucide-react';
 import { StreamEvent, SimpleLogEntry } from './types';
 import { formatLogEntry, getLevelColor, getLevelBgColor } from './log-formatter';
 
@@ -150,6 +150,10 @@ interface LogEntryProps {
 function LogEntry({ entry }: LogEntryProps) {
   const levelColor = getLevelColor(entry.level);
   const levelBgColor = getLevelBgColor(entry.level);
+  
+  // Check if this is a screenshot event
+  const isScreenshot = entry.structuredData?.type === 'screenshot';
+  const screenshotData = isScreenshot ? entry.structuredData : null;
 
   return (
     <div className={`p-3 rounded-lg border ${levelBgColor} transition-all hover:bg-white/10`}>
@@ -159,11 +163,49 @@ function LogEntry({ entry }: LogEntryProps) {
           {new Date(entry.timestamp).toLocaleTimeString()}
         </span>
         
-        {/* Message */}
+        {/* Message and content */}
         <div className="flex-1 min-w-0">
           <p className={`text-sm ${levelColor} break-words`}>
             {entry.message}
           </p>
+          
+          {/* Screenshot thumbnail if available */}
+          {isScreenshot && screenshotData && (
+            <div className="mt-2">
+              <ScreenshotThumbnail 
+                screenshotUrl={screenshotData.screenshotUrl}
+                screenshotId={screenshotData.screenshotId}
+                actionName={screenshotData.actionName}
+              />
+            </div>
+          )}
+          
+          {/* Confidence indicator for reasoning events */}
+          {entry.structuredData?.type === 'reasoning' && (
+            <div className="mt-1">
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                entry.structuredData.confidence === 'high' ? 'bg-green-900/20 text-green-400' :
+                entry.structuredData.confidence === 'medium' ? 'bg-yellow-900/20 text-yellow-400' :
+                'bg-red-900/20 text-red-400'
+              }`}>
+                {entry.structuredData.confidence} confidence
+              </span>
+            </div>
+          )}
+          
+          {/* Step and iteration info for structured events */}
+          {entry.structuredData && (
+            <div className="flex items-center space-x-2 mt-1">
+              <span className="text-xs text-gray-500 font-mono">
+                Step {entry.structuredData.stepId}
+              </span>
+              {entry.structuredData.iteration && (
+                <span className="text-xs text-gray-500 font-mono">
+                  Iteration {entry.structuredData.iteration}
+                </span>
+              )}
+            </div>
+          )}
           
           {/* Event type hint */}
           <span className="text-xs text-gray-500 font-mono">
@@ -171,6 +213,54 @@ function LogEntry({ entry }: LogEntryProps) {
           </span>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Screenshot thumbnail component
+interface ScreenshotThumbnailProps {
+  screenshotUrl: string;
+  screenshotId: string;
+  actionName?: string;
+}
+
+function ScreenshotThumbnail({ screenshotUrl, screenshotId, actionName }: ScreenshotThumbnailProps) {
+  // Generate thumbnail URL by appending -thumbnail to the image ID
+  const thumbnailUrl = screenshotUrl.replace(`/${screenshotId}`, `/${screenshotId}-thumbnail`);
+  
+  const handleImageClick = () => {
+    // Open full-size image in new tab
+    window.open(screenshotUrl, '_blank');
+  };
+
+  return (
+    <div className="relative inline-block group">
+      <img
+        src={thumbnailUrl}
+        alt={`Screenshot${actionName ? ` for ${actionName}` : ''}`}
+        className="max-w-[50%] h-auto rounded border border-white/20 cursor-pointer transition-all hover:border-white/40 hover:scale-105"
+        onClick={handleImageClick}
+        onError={(e) => {
+          // If thumbnail fails, try the original image
+          const img = e.target as HTMLImageElement;
+          if (img.src === thumbnailUrl) {
+            img.src = screenshotUrl;
+            img.className = img.className.replace('max-w-[50%]', 'max-w-[25%]'); // Make smaller for full-size fallback
+          }
+        }}
+      />
+      
+      {/* Hover overlay */}
+      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+        <ExternalLink size={16} className="text-white" />
+      </div>
+      
+      {/* Action name label */}
+      {actionName && (
+        <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-white text-xs p-1 rounded-b">
+          {actionName}
+        </div>
+      )}
     </div>
   );
 }

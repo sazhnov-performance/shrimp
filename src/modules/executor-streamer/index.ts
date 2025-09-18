@@ -260,5 +260,18 @@ export type {
   ExecutorStreamerConfig
 };
 
+// Export log message types
+export type {
+  LogMessage,
+  LogMessageType,
+  ReasoningLogMessage,
+  ActionLogMessage,
+  ScreenshotLogMessage,
+  IStreamerLogger
+} from './types';
+
+// Export the logger class
+export { StreamerLogger } from './streamer-logger';
+
 // Export default singleton access function
 export default ExecutorStreamer.getInstance;
