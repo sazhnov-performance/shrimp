@@ -531,7 +531,7 @@ export class TaskLoop implements ITaskLoop {
         timestamp: new Date().toISOString()
       });
       
-      await this.streamer.putEvent(sessionId, event);
+      await this.streamer.putEvent(sessionId, reasoning);
       
       if (this.config.enableLogging) {
         console.log(`[TaskLoop] Pushed reasoning to stream for session ${sessionId}, step ${stepId}, iteration ${iteration}`);

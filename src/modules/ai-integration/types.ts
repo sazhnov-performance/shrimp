@@ -27,4 +27,7 @@ export type ErrorCode =
   | 'REQUEST_ERROR'
   | 'API_ERROR'
   | 'NETWORK_ERROR'
-  | 'IMAGE_ERROR';
+  | 'IMAGE_ERROR'
+  | 'INVALID_RESPONSE'
+  | 'EMPTY_RESPONSE'
+  | 'INVALID_JSON';
