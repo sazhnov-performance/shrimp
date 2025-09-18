@@ -5,7 +5,8 @@
 
 // Mock the dependencies before importing
 const mockExecutorStreamer = {
-  createStream: jest.fn()
+  createStream: jest.fn(),
+  putEvent: jest.fn()
 };
 
 const mockTaskLoop = {
@@ -33,7 +34,7 @@ const mockPromptManagerClass = {
   getInstance: jest.fn(() => mockPromptManager)
 };
 
-jest.mock('../../executor-streamer/index', () => mockGetExecutorStreamer);
+jest.mock('@/modules/executor-streamer', () => mockGetExecutorStreamer);
 jest.mock('../../task-loop/index', () => mockTaskLoopClass);
 jest.mock('../../executor/index', () => ({ Executor: mockExecutorClass }));
 jest.mock('../../ai-prompt-manager/index', () => mockPromptManagerClass);

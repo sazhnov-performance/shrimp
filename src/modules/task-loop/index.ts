@@ -26,8 +26,8 @@ import { IAISchemaManager } from '../ai-schema-manager/types';
 import AISchemaManager from '../ai-schema-manager/index';
 import { IExecutor, Executor } from '../executor/index';
 import { CommandAction } from '../executor/types';
-import { IExecutorStreamer } from '../executor-streamer/types';
-import { ExecutorStreamer } from '../executor-streamer/index';
+import { IExecutorStreamer } from '@/modules/executor-streamer/types';
+import { ExecutorStreamer } from '@/modules/executor-streamer';
 
 /**
  * TaskLoop - Singleton implementation of the core ACT-REFLECT cycle

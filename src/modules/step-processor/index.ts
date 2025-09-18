@@ -8,8 +8,8 @@ import {
   IStepProcessorConstructor,
   StepProcessorConfig 
 } from './types';
-import { IExecutorStreamer } from '../executor-streamer/types';
-import getExecutorStreamer from '../executor-streamer/index';
+import { IExecutorStreamer } from '@/modules/executor-streamer/types';
+import getExecutorStreamer from '@/modules/executor-streamer';
 import { ITaskLoop } from '../task-loop/types';
 import TaskLoop from '../task-loop/index';
 import { IAIPromptManager } from '../ai-prompt-manager/types';
