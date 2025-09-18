@@ -28,7 +28,7 @@ import { IExecutor, Executor } from '../executor/index';
 import { CommandAction } from '../executor/types';
 import { IExecutorStreamer, IStreamerLogger } from '@/modules/executor-streamer/types';
 import { ExecutorStreamer, StreamerLogger } from '@/modules/executor-streamer';
-import { MediaManager, IMediaManager } from '../media-manager';
+import { IMediaManager } from '../media-manager/types';
 
 /**
  * TaskLoop - Singleton implementation of the core ACT-REFLECT cycle
@@ -66,7 +66,8 @@ export class TaskLoop implements ITaskLoop {
     this.executor = Executor.getInstance(); // Use singleton instance
     this.streamer = ExecutorStreamer.getInstance(); // Use singleton instance
     this.streamLogger = new StreamerLogger(this.streamer, this.config.enableLogging);
-    this.mediaManager = MediaManager.getInstance(); // Use singleton instance
+    // Lazy load MediaManager to avoid Node.js API imports at build time
+    this.mediaManager = this.getMediaManager();
     
     if (this.config.enableLogging) {
       console.log('[TaskLoop] Task Loop module initialized', {
@@ -75,6 +76,18 @@ export class TaskLoop implements ITaskLoop {
         enableLogging: this.config.enableLogging
       });
     }
+  }
+
+  /**
+   * Lazy load MediaManager to avoid Node.js APIs during compilation
+   */
+  private getMediaManager(): IMediaManager {
+    if (!this.mediaManager) {
+      // Use dynamic import to avoid loading Node.js APIs at build time
+      const { MediaManager } = require('../media-manager/media-manager');
+      this.mediaManager = MediaManager.getInstance();
+    }
+    return this.mediaManager;
   }
 
   /**
@@ -188,10 +201,10 @@ export class TaskLoop implements ITaskLoop {
         let executionResult: {success: boolean, result?: any, error?: string} | undefined;
         if (validatedResponse.flowControl === 'continue' && validatedResponse.action) {
           if (this.config.enableLogging) {
-            console.log(`[TaskLoop] Executing action for session ${sessionId}, step ${stepId}, iteration ${iterations}`, {
-              command: validatedResponse.action.command,
-              parameters: validatedResponse.action.parameters
-            });
+            //console.log(`[TaskLoop] Executing action for session ${sessionId}, step ${stepId}, iteration ${iterations}`, {
+            //  command: validatedResponse.action.command,
+            //  parameters: validatedResponse.action.parameters
+            //});
           }
           
           executionResult = await this.executeAction(sessionId, stepId, validatedResponse.action, iterations);
@@ -200,7 +213,7 @@ export class TaskLoop implements ITaskLoop {
           await this.streamLogger.logAction(
             sessionId, 
             stepId, 
-            validatedResponse.action.command, 
+            this.getDisplayActionName(validatedResponse.action.command), 
             executionResult?.success || false, 
             executionResult?.result, 
             executionResult?.error, 
@@ -208,7 +221,7 @@ export class TaskLoop implements ITaskLoop {
           );
           
           if (this.config.enableLogging) {
-            console.log(`[TaskLoop] Action execution result for session ${sessionId}, step ${stepId}, iteration ${iterations}:`, executionResult);
+            //console.log(`[TaskLoop] Action execution result for session ${sessionId}, step ${stepId}, iteration ${iterations}:`, executionResult);
           }
         }
 
@@ -321,8 +334,8 @@ export class TaskLoop implements ITaskLoop {
       
       // Debug logging for parameters
       if (this.config.enableLogging) {
-        console.log(`[TaskLoop] DEBUG - Action object:`, JSON.stringify(action, null, 2));
-        console.log(`[TaskLoop] DEBUG - Parameters being passed:`, JSON.stringify(action.parameters, null, 2));
+        //console.log(`[TaskLoop] DEBUG - Action object:`, JSON.stringify(action, null, 2));
+        //console.log(`[TaskLoop] DEBUG - Parameters being passed:`, JSON.stringify(action.parameters, null, 2));
       }
       
       // Execute the command through the executor
@@ -339,7 +352,7 @@ export class TaskLoop implements ITaskLoop {
       // Log screenshot to streamer if screenshot was captured
       if (response.success && response.screenshotId) {
         try {
-          const screenshotUrl = this.mediaManager.getImageUrl(response.screenshotId);
+          const screenshotUrl = this.getMediaManager().getImageUrl(response.screenshotId);
           
           // Log screenshot to streamer
           await this.streamLogger.logScreenshot(
@@ -347,7 +360,7 @@ export class TaskLoop implements ITaskLoop {
             stepId, 
             response.screenshotId, 
             screenshotUrl, 
-            action.command, 
+            this.getDisplayActionName(action.command), 
             iteration
           );
           
@@ -367,7 +380,7 @@ export class TaskLoop implements ITaskLoop {
           const imageAnalysisPrompt = this.promptManager.getImageAnalysisPrompt(sessionId, stepId);
           
           // Get image file path from media manager
-          const imageFilePath = this.mediaManager.getImagePath(response.screenshotId);
+          const imageFilePath = this.getMediaManager().getImagePath(response.screenshotId);
           
           // Send image analysis request to AI
           const promptRequest = JSON.stringify(imageAnalysisPrompt);
@@ -553,6 +566,24 @@ export class TaskLoop implements ITaskLoop {
           { receivedCommand: command }
         );
     }
+  }
+
+  /**
+   * Convert technical command names to user-friendly display names
+   */
+  private getDisplayActionName(command: string): string {
+    const displayNames: Record<string, string> = {
+      'OPEN_PAGE': 'Opening Page',
+      'CLICK_ELEMENT': 'Clicking Element',
+      'INPUT_TEXT': 'Entering Text',
+      'SAVE_VARIABLE': 'Saving Variable',
+      'GET_DOM': 'Getting Page Content',
+      'GET_CONTENT': 'Getting Content',
+      'GET_SUBDOM': 'Getting Page Section',
+      'GET_TEXT': 'Getting Text'
+    };
+
+    return displayNames[command] || command;
   }
 
   /**

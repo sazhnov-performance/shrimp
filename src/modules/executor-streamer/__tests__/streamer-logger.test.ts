@@ -15,7 +15,7 @@ describe('StreamerLogger', () => {
   beforeEach(() => {
     // Reset singleton instance for each test
     (ExecutorStreamer as any).resetInstance();
-    streamer = ExecutorStreamer.getInstance();
+    streamer = ExecutorStreamer.getInstance() as ExecutorStreamer;
     logger = new StreamerLogger(streamer, true);
   });
 

@@ -8,19 +8,30 @@
 import { NextRequest } from 'next/server';
 import { MediaManager } from '@/modules/media-manager/media-manager';
 import { promises as fs } from 'fs';
+import { ensureInitialized } from '@/lib/ensure-initialized';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ uuid: string }> }
 ) {
-  const { uuid } = await params;
+  let { uuid } = await params;
 
   // Validate UUID parameter
   if (!uuid || typeof uuid !== 'string') {
     return new Response('UUID parameter is required', { status: 400 });
   }
 
+  // Handle thumbnail requests by stripping -thumbnail suffix
+  // This allows the frontend to request thumbnails while serving the original image
+  const isThumbnailRequest = uuid.endsWith('-thumbnail');
+  if (isThumbnailRequest) {
+    uuid = uuid.replace('-thumbnail', '');
+  }
+
   try {
+    // Ensure application is initialized before serving media
+    await ensureInitialized();
+    
     // Get MediaManager instance
     const mediaManager = MediaManager.getInstance();
     
@@ -40,6 +51,7 @@ export async function GET(
         'Content-Type': mimeType,
         'Cache-Control': 'public, max-age=31536000', // Cache for 1 year
         'Content-Length': imageBuffer.length.toString(),
+        ...(isThumbnailRequest && { 'X-Served-As': 'thumbnail-fallback' }),
       },
     });
 

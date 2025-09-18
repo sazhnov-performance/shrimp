@@ -9,9 +9,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { StepProcessor } from '@/modules/step-processor';
 import { ExecuteStepsRequest, ExecuteStepsResponse, ErrorResponse } from '../../types';
+import { ensureInitialized } from '@/lib/ensure-initialized';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    // Ensure application is initialized before processing
+    await ensureInitialized();
+    
     // Parse request body
     const body: ExecuteStepsRequest = await request.json();
     

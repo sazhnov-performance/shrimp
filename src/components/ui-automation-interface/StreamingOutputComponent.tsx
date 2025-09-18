@@ -207,10 +207,12 @@ function LogEntry({ entry }: LogEntryProps) {
             </div>
           )}
           
-          {/* Event type hint */}
-          <span className="text-xs text-gray-500 font-mono">
-            {entry.type}
-          </span>
+          {/* Event type hint - only show for structured events */}
+          {entry.structuredData && (
+            <span className="text-xs text-gray-500 font-mono">
+              {entry.structuredData.type}
+            </span>
+          )}
         </div>
       </div>
     </div>

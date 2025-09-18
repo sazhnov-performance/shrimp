@@ -17,6 +17,7 @@ SUCCESS SIGNALS (any one is sufficient):
 6) Task-Specific: Any explicit acceptance criteria (if provided) is satisfied.
 
 HARD RULES:
+- During first step with no execution history, assume that starting point is empty browser window. no identity check needed.
 - Identity check with GET_TEXT on "body" is allowed AT MOST ONCE per step. Do not repeat it.
 - NEVER repeat the exact same command + selector + parameters if it already SUCCEEDED or FAILED (use EXECUTION HISTORY to adapt).
 - GET_SUBDOM must target SMALL, PRECISE selectors (never "body" or "html").

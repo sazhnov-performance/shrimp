@@ -8,6 +8,7 @@
 import { NextRequest } from 'next/server';
 import getExecutorStreamer from '@/modules/executor-streamer';
 import { WebSocketMessage } from '../../../types';
+import { ensureInitialized } from '@/lib/ensure-initialized';
 
 export async function GET(
   request: NextRequest,
@@ -21,6 +22,9 @@ export async function GET(
   }
 
   try {
+    // Ensure application is initialized before streaming
+    await ensureInitialized();
+    
     // Get executor streamer instance
     const executorStreamer = getExecutorStreamer();
     
@@ -65,32 +69,55 @@ export async function GET(
             const latestEvent = await executorStreamer.extractLastEvent(sessionId);
             
             if (latestEvent) {
-              // Try to parse structured event first, fallback to raw event
-              let eventData = latestEvent;
-              let isStructuredEvent = false;
-              
+              // Parse the event wrapper first (events are double-JSON-encoded)
               try {
-                const parsedEvent = JSON.parse(latestEvent);
-                // Check if it's a structured log message
-                if (parsedEvent && parsedEvent.type && ['reasoning', 'action', 'screenshot'].includes(parsedEvent.type)) {
-                  isStructuredEvent = true;
-                  eventData = latestEvent; // Keep as JSON string for UI to parse
-                } else if (parsedEvent && typeof parsedEvent.data === 'string') {
-                  eventData = parsedEvent.data;
+                const eventWrapper = JSON.parse(latestEvent);
+                console.log('[SSE] Event wrapper:', eventWrapper);
+                
+                // Check if this is a structured event by looking at the inner data
+                let isStructuredEvent = false;
+                let eventData = eventWrapper.data || latestEvent;
+                
+                try {
+                  // Try to parse the inner data
+                  const innerData = JSON.parse(eventWrapper.data);
+                  console.log('[SSE] Inner data:', innerData);
+                  
+                  // Check if it's a structured log message
+                  if (innerData && innerData.type && ['reasoning', 'action', 'screenshot'].includes(innerData.type)) {
+                    isStructuredEvent = true;
+                    eventData = eventWrapper.data; // Keep as JSON string for UI to parse
+                  } else {
+                    // Regular event - use the inner data as the message
+                    eventData = innerData;
+                  }
+                } catch (innerParseError) {
+                  // If inner parsing fails, use the wrapper data as is
+                  console.log('[SSE] Using wrapper data as is:', eventWrapper.data);
+                  eventData = eventWrapper.data || 'Event data unavailable';
                 }
-              } catch (error) {
-                // If parsing fails, use the original event data
-                console.warn('[SSE] Failed to parse event data, using raw event:', error);
+                
+                const eventMessage: WebSocketMessage = {
+                  type: isStructuredEvent ? 'structured_event' : 'event',
+                  sessionId,
+                  data: eventData,
+                  timestamp: new Date().toISOString()
+                };
+                
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(eventMessage)}\n\n`));
+                
+              } catch (wrapperParseError) {
+                console.error('[SSE] Failed to parse event wrapper:', wrapperParseError);
+                // Fallback: send the raw event
+                const fallbackMessage: WebSocketMessage = {
+                  type: 'event',
+                  sessionId,
+                  data: latestEvent,
+                  timestamp: new Date().toISOString()
+                };
+                
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(fallbackMessage)}\n\n`));
               }
-              
-              const eventMessage: WebSocketMessage = {
-                type: isStructuredEvent ? 'structured_event' : 'event',
-                sessionId,
-                data: eventData,
-                timestamp: new Date().toISOString()
-              };
-              
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify(eventMessage)}\n\n`));
             }
 
             // Continue polling if stream is still open
