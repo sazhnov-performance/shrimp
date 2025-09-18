@@ -100,8 +100,24 @@ export class AIPromptManager implements IAIPromptManager {
         }
       }
       
-      // Return fallback messages
-      return this.generateFallbackMessages(sessionId, stepId);
+      // Use prompt builder with minimal context for errors
+      const minimalContext = {
+        contextId: sessionId,
+        steps: [`Step ${stepId + 1}`],
+        stepLogs: {},
+        createdAt: new Date(),
+        lastUpdated: new Date()
+      };
+      const basicSchema = {
+        type: "object",
+        required: ["reasoning", "confidence", "flowControl"],
+        properties: {
+          reasoning: { type: "string" },
+          confidence: { type: "string", enum: ["LOW", "MEDIUM", "HIGH"] },
+          flowControl: { type: "string", enum: ["continue", "stop_success", "stop_failure"] }
+        }
+      };
+      return this.promptBuilder.buildMessages(minimalContext, 0, basicSchema);
     }
   }
 
@@ -136,20 +152,15 @@ getStepPrompt(sessionId: string, stepId: number): string {
         }
       }
       
-      // For other errors, attempt graceful degradation
-      return this.generateFallbackPrompt(sessionId, stepId);
-    }
-  }
-
-  /**
-   * Generate basic messages if main message generation fails
-   * @param sessionId Session identifier
-   * @param stepId Step index
-   * @returns Basic fallback messages
-   */
-  private generateFallbackMessages(sessionId: string, stepId: number): PromptContent {
-    try {
-      const fallbackSchema = {
+      // Use prompt builder with minimal context for errors
+      const minimalContext = {
+        contextId: sessionId,
+        steps: [`Step ${stepId + 1}`],
+        stepLogs: {},
+        createdAt: new Date(),
+        lastUpdated: new Date()
+      };
+      const basicSchema = {
         type: "object",
         required: ["reasoning", "confidence", "flowControl"],
         properties: {
@@ -158,72 +169,11 @@ getStepPrompt(sessionId: string, stepId: number): string {
           flowControl: { type: "string", enum: ["continue", "stop_success", "stop_failure"] }
         }
       };
-      
-      const schemaText = JSON.stringify(fallbackSchema, null, 2);
-      
-      return {
-        system: `You are an intelligent web automation agent.
-
-AVAILABLE COMMANDS:
-- OPEN_PAGE: Navigate to a URL
-- CLICK_ELEMENT: Click on page elements using CSS selectors
-- INPUT_TEXT: Enter text into form fields
-- GET_SUBDOM: Investigate page sections for element discovery
-
-RESPONSE FORMAT:
-${schemaText}`,
-        user: `Execute automation step ${stepId + 1}.`
-      };
-      
-    } catch (error) {
-      // Absolute fallback
-      return {
-        system: `You are an intelligent web automation agent. Respond with JSON containing reasoning, confidence, and flowControl fields.`,
-        user: `Execute automation step ${stepId + 1}.`
-      };
+      return this.promptBuilder.buildPrompt(minimalContext, 0, basicSchema);
     }
   }
 
-  /**
-   * Generate basic prompt if main prompt generation fails
-   * @param sessionId Session identifier
-   * @param stepId Step index
-   * @returns Basic fallback prompt
-   */
-  private generateFallbackPrompt(sessionId: string, stepId: number): string {
-    try {
-      const fallbackSchema = {
-        type: "object",
-        required: ["reasoning", "confidence", "flowControl"],
-        properties: {
-          reasoning: { type: "string" },
-          confidence: { type: "string", enum: ["LOW", "MEDIUM", "HIGH"] },
-          flowControl: { type: "string", enum: ["continue", "stop_success", "stop_failure"] }
-        }
-      };
-      
-      const schemaText = JSON.stringify(fallbackSchema, null, 2);
-      
-      return `ROLE: You are an intelligent web automation agent.
 
-CURRENT STEP: Step ${stepId + 1}
-
-AVAILABLE COMMANDS:
-- OPEN_PAGE: Navigate to a URL
-- CLICK_ELEMENT: Click on page elements using CSS selectors
-- INPUT_TEXT: Enter text into form fields
-- GET_SUBDOM: Investigate page sections for element discovery
-
-RESPONSE FORMAT:
-${schemaText}
-
-Execute automation step ${stepId + 1} with the available commands.`;
-      
-    } catch (error) {
-      // Absolute fallback
-      return `Execute automation step ${stepId + 1}. Respond with JSON containing reasoning, confidence, and flowControl fields.`;
-    }
-  }
 }
 
 // Export the class and types for external use

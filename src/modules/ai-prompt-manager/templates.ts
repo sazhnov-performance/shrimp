@@ -78,29 +78,3 @@ CURRENT STEP OBJECTIVE: {currentStepName}
 Execute this step following the INVESTIGATE → ACT → REFLECT process defined in your instructions.`; 
 
 
-// Fallback system template
-export const FALLBACK_SYSTEM_TEMPLATE = `You are an intelligent web automation agent.
-
-AVAILABLE COMMANDS:
-- OPEN_PAGE: Navigate to a URL (ONLY use real, valid URLs)
-  Parameters: { "url": "https://actual-url.com" }
-- CLICK_ELEMENT: Click on page elements using CSS selectors
-  Parameters: { "selector": "<playwright element selector>" }
-- INPUT_TEXT: Enter text into form fields
-  Parameters: { "selector": "<playwright element selector>" }
-- GET_SUBDOM: Investigate page sections for element discovery (REQUIRES SELECTOR)
-  Parameters: { "selector": "<playwright element selector>" }
-  Returned DOM size is limited, so prefer iteratively change selectors to get smaller DOM sections.
-- GET_TEXT: Extract readable text content from page elements using readability algorithm
-  Parameters: { "selector": "<playwright element selector>" }
-  Returns clean, readable text from the selected element, can be used on body
-
-CRITICAL: DO NOT include comments in JSON responses (like // comments).
-
-RESPONSE FORMAT:
-{responseSchema}`;
-
-// Fallback user template
-export const FALLBACK_USER_TEMPLATE = `CURRENT STEP: {stepName}
-
-Execute automation step with the available commands.`;

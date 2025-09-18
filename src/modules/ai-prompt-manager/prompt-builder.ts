@@ -6,9 +6,7 @@ import { ContextData } from '../ai-context-manager/types';
 import { ContextualHistory, PromptContent } from './types';
 import { 
   SYSTEM_TEMPLATE, 
-  USER_TEMPLATE, 
-  FALLBACK_SYSTEM_TEMPLATE, 
-  FALLBACK_USER_TEMPLATE 
+  USER_TEMPLATE
 } from './templates';
 
 export class PromptBuilder {
@@ -68,7 +66,20 @@ export class PromptBuilder {
       // Check total length - let context manager handle DOM truncation
       const totalLength = systemMessage.length + userMessage.length;
       if (totalLength > this.maxPromptLength) {
-        return this.buildFallbackMessages(stepName, '{"type": "object", "required": ["reasoning", "confidence", "flowControl"]}');
+        // Use main templates with minimal history to keep within limits
+        const minimalHistory = 'History truncated due to length limits.';
+        const userMessageMinimal = USER_TEMPLATE
+          .replace('{sessionId}', context.contextId)
+          .replace('{stepNumber}', (stepId + 1).toString())
+          .replace('{totalSteps}', context.steps.length.toString())
+          .replace('{stepName}', stepName)
+          .replace('{currentStepName}', stepName)
+          .replace('{contextualHistory}', minimalHistory);
+        
+        return {
+          system: systemMessage,
+          user: userMessageMinimal
+        };
       }
 
       return {
@@ -76,10 +87,25 @@ export class PromptBuilder {
         user: userMessage
       };
     } catch (error) {
-      // Fallback to basic messages if building fails
-      const stepName = context.steps[stepId] || 'Unknown Step';
+      // Use main templates with minimal context if building fails
+      const stepName = context.steps?.[stepId] || 'Unknown Step';
       const schemaText = JSON.stringify(schema, null, 2);
-      return this.buildFallbackMessages(stepName, schemaText);
+      const sessionId = context.contextId || 'unknown-session';
+      const totalSteps = context.steps?.length || 1;
+      
+      const systemMessage = SYSTEM_TEMPLATE.replace('{responseSchema}', schemaText);
+      const userMessage = USER_TEMPLATE
+        .replace('{sessionId}', sessionId)
+        .replace('{stepNumber}', (stepId + 1).toString())
+        .replace('{totalSteps}', totalSteps.toString())
+        .replace('{stepName}', stepName)
+        .replace('{currentStepName}', stepName)
+        .replace('{contextualHistory}', `Error occurred while building prompt: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      return {
+        system: systemMessage,
+        user: userMessage
+      };
     }
   }
 
@@ -98,16 +124,30 @@ export class PromptBuilder {
 
       // Check prompt length - let context manager handle DOM truncation
       if (prompt.length > this.maxPromptLength) {
+        // Use main templates with minimal history to keep within limits
         const stepName = context.steps[stepId] || 'Unknown Step';
-        return this.buildFallbackPrompt(stepName, '{"type": "object", "required": ["reasoning", "confidence", "flowControl"]}');
+        const minimalMessages = this.buildMessages(context, stepId, schema);
+        return `${minimalMessages.system}\n\n---\n\n${minimalMessages.user}`;
       }
 
       return prompt;
     } catch (error) {
-      // Fallback to basic prompt if building fails
-      const stepName = context.steps[stepId] || 'Unknown Step';
+      // Use main templates with minimal context if building fails
+      const stepName = context.steps?.[stepId] || 'Unknown Step';
       const schemaText = JSON.stringify(schema, null, 2);
-      return this.buildFallbackPrompt(stepName, schemaText);
+      const sessionId = context.contextId || 'unknown-session';
+      const totalSteps = context.steps?.length || 1;
+      
+      const systemMessage = SYSTEM_TEMPLATE.replace('{responseSchema}', schemaText);
+      const userMessage = USER_TEMPLATE
+        .replace('{sessionId}', sessionId)
+        .replace('{stepNumber}', (stepId + 1).toString())
+        .replace('{totalSteps}', totalSteps.toString())
+        .replace('{stepName}', stepName)
+        .replace('{currentStepName}', stepName)
+        .replace('{contextualHistory}', `Error occurred while building prompt: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      return `${systemMessage}\n\n---\n\n${userMessage}`;
     }
   }
 
@@ -364,33 +404,5 @@ export class PromptBuilder {
     }
   }
 
-  /**
-   * Build fallback prompt when full prompt fails or is too long
-   * @param stepName Current step name
-   * @param schemaText JSON schema string
-   * @returns Fallback prompt
-   */
-  private buildFallbackPrompt(stepName: string, schemaText: string): string {
-    const fallbackMessages = this.buildFallbackMessages(stepName, schemaText);
-    return `${fallbackMessages.system}\n\n---\n\n${fallbackMessages.user}`;
-  }
 
-  /**
-   * Build fallback system and user messages when main building fails
-   * @param stepName Current step name
-   * @param schemaText JSON schema as string
-   * @returns Fallback PromptContent
-   */
-  private buildFallbackMessages(stepName: string, schemaText: string): PromptContent {
-    const systemMessage = FALLBACK_SYSTEM_TEMPLATE
-      .replace('{responseSchema}', schemaText);
-    
-    const userMessage = FALLBACK_USER_TEMPLATE
-      .replace('{stepName}', stepName);
-    
-    return {
-      system: systemMessage,
-      user: userMessage
-    };
-  }
 }
