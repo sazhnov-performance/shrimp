@@ -209,7 +209,7 @@ function validateAction(action: any, sessionId: string, stepId: number): void {
   }
 
   // Validate known commands
-  const validCommands = ['OPEN_PAGE', 'CLICK_ELEMENT', 'INPUT_TEXT', 'GET_SUBDOM'];
+  const validCommands = ['OPEN_PAGE', 'CLICK_ELEMENT', 'INPUT_TEXT', 'SAVE_VARIABLE', 'GET_DOM', 'GET_CONTENT', 'GET_SUBDOM', 'GET_TEXT'];
   if (!validCommands.includes(action.command)) {
     throw createValidationError(
       `Unknown command: ${action.command}. Valid commands: ${validCommands.join(', ')}`,
@@ -227,6 +227,153 @@ function validateAction(action: any, sessionId: string, stepId: number): void {
       stepId,
       { receivedType: typeof action.parameters, receivedValue: action.parameters }
     );
+  }
+
+  // Validate command-specific parameters
+  validateCommandParameters(action.command, action.parameters, sessionId, stepId);
+}
+
+/**
+ * Validates command-specific parameters
+ */
+function validateCommandParameters(
+  command: string, 
+  parameters: Record<string, any>, 
+  sessionId: string, 
+  stepId: number
+): void {
+  switch (command) {
+    case 'OPEN_PAGE':
+      if (!parameters.url || typeof parameters.url !== 'string') {
+        throw createValidationError(
+          'OPEN_PAGE command requires a valid "url" parameter (string)',
+          sessionId,
+          stepId,
+          { command, receivedParameters: parameters }
+        );
+      }
+      break;
+
+    case 'CLICK_ELEMENT':
+      if (!parameters.selector || typeof parameters.selector !== 'string') {
+        throw createValidationError(
+          'CLICK_ELEMENT command requires a valid "selector" parameter (string)',
+          sessionId,
+          stepId,
+          { command, receivedParameters: parameters }
+        );
+      }
+      break;
+
+    case 'INPUT_TEXT':
+      if (!parameters.selector || typeof parameters.selector !== 'string') {
+        throw createValidationError(
+          'INPUT_TEXT command requires a valid "selector" parameter (string)',
+          sessionId,
+          stepId,
+          { command, receivedParameters: parameters }
+        );
+      }
+      if (!parameters.text || typeof parameters.text !== 'string') {
+        throw createValidationError(
+          'INPUT_TEXT command requires a valid "text" parameter (string)',
+          sessionId,
+          stepId,
+          { command, receivedParameters: parameters }
+        );
+      }
+      break;
+
+    case 'SAVE_VARIABLE':
+      if (!parameters.selector || typeof parameters.selector !== 'string') {
+        throw createValidationError(
+          'SAVE_VARIABLE command requires a valid "selector" parameter (string)',
+          sessionId,
+          stepId,
+          { command, receivedParameters: parameters }
+        );
+      }
+      if (!parameters.variableName || typeof parameters.variableName !== 'string') {
+        throw createValidationError(
+          'SAVE_VARIABLE command requires a valid "variableName" parameter (string)',
+          sessionId,
+          stepId,
+          { command, receivedParameters: parameters }
+        );
+      }
+      break;
+
+    case 'GET_DOM':
+      // GET_DOM has no required parameters
+      break;
+
+    case 'GET_CONTENT':
+      if (!parameters.selector || typeof parameters.selector !== 'string') {
+        throw createValidationError(
+          'GET_CONTENT command requires a valid "selector" parameter (string)',
+          sessionId,
+          stepId,
+          { command, receivedParameters: parameters }
+        );
+      }
+      // attribute and multiple are optional parameters
+      if (parameters.attribute !== undefined && typeof parameters.attribute !== 'string') {
+        throw createValidationError(
+          'GET_CONTENT command "attribute" parameter must be a string if provided',
+          sessionId,
+          stepId,
+          { command, receivedParameters: parameters }
+        );
+      }
+      if (parameters.multiple !== undefined && typeof parameters.multiple !== 'boolean') {
+        throw createValidationError(
+          'GET_CONTENT command "multiple" parameter must be a boolean if provided',
+          sessionId,
+          stepId,
+          { command, receivedParameters: parameters }
+        );
+      }
+      break;
+
+    case 'GET_SUBDOM':
+      if (!parameters.selector || typeof parameters.selector !== 'string') {
+        throw createValidationError(
+          'GET_SUBDOM command requires a valid "selector" parameter (string)',
+          sessionId,
+          stepId,
+          { command, receivedParameters: parameters }
+        );
+      }
+      // maxDomSize is optional parameter
+      if (parameters.maxDomSize !== undefined && typeof parameters.maxDomSize !== 'number') {
+        throw createValidationError(
+          'GET_SUBDOM command "maxDomSize" parameter must be a number if provided',
+          sessionId,
+          stepId,
+          { command, receivedParameters: parameters }
+        );
+      }
+      break;
+
+    case 'GET_TEXT':
+      if (!parameters.selector || typeof parameters.selector !== 'string') {
+        throw createValidationError(
+          'GET_TEXT command requires a valid "selector" parameter (string)',
+          sessionId,
+          stepId,
+          { command, receivedParameters: parameters }
+        );
+      }
+      break;
+
+    default:
+      // This should not happen as command validation is done earlier
+      throw createValidationError(
+        `Unknown command for parameter validation: ${command}`,
+        sessionId,
+        stepId,
+        { command, receivedParameters: parameters }
+      );
   }
 }
 

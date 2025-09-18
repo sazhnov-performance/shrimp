@@ -15,6 +15,8 @@ import { ExecutorErrorHandler } from './error-handler';
 import { IExecutorLogger } from './types';
 import { IVariableResolver } from './types';
 import { IScreenshotManager } from './types';
+import { Readability } from '@mozilla/readability';
+import { JSDOM } from 'jsdom';
 
 export class CommandProcessor implements ICommandProcessor {
   private errorHandler: ExecutorErrorHandler;
@@ -204,6 +206,20 @@ export class CommandProcessor implements ICommandProcessor {
             session, 
             command.parameters.selector, 
             command.parameters.maxDomSize,
+            command.commandId
+          );
+          break;
+
+        case CommandAction.GET_TEXT:
+          if (!command.parameters.selector) {
+            throw this.errorHandler.createInvalidCommandError(
+              command,
+              'Selector parameter is required for GET_TEXT action'
+            );
+          }
+          response = await this.getText(
+            session, 
+            command.parameters.selector,
             command.commandId
           );
           break;
@@ -900,6 +916,205 @@ export class CommandProcessor implements ICommandProcessor {
       throw this.errorHandler.createElementError(
         selector,
         'get sub-DOM',
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Gets readable text from element(s) matching the selector using readability
+   */
+  async getText(
+    session: ExecutorSession, 
+    selector: string,
+    commandId?: string
+  ): Promise<CommandResponse> {
+    const startTime = Date.now();
+    const finalCommandId = commandId || `get_text_${Date.now()}`;
+
+    try {
+      // Resolve variables in selector
+      const resolvedSelector = this.variableResolver.resolve(session.linkedWorkflowSessionId, selector);
+      
+      this.logger.logVariableInterpolation(
+        session.linkedWorkflowSessionId,
+        selector,
+        resolvedSelector,
+        this.variableResolver.listVariables(session.linkedWorkflowSessionId)
+      );
+
+      // Wait for element to exist
+      await session.page.waitForSelector(resolvedSelector, { 
+        timeout: 10000,
+        state: 'attached'
+      });
+
+      // Get the element
+      const element = await session.page.$(resolvedSelector);
+      
+      if (!element) {
+        throw this.errorHandler.createSelectorError(resolvedSelector);
+      }
+
+      // Get the element's outerHTML
+      const elementHTML = await element.evaluate(el => el.outerHTML);
+      
+      // Create a JSDOM instance from the element HTML
+      const dom = new JSDOM(`<html><head></head><body>${elementHTML}</body></html>`, {
+        url: session.page.url()
+      });
+      
+      // Determine if we should use Readability or direct text extraction
+      // Use direct extraction for body/html elements (to get ALL text including modals)
+      // Use readability for specific content elements like articles
+      const shouldUseReadability = !['body', 'html'].includes(resolvedSelector.toLowerCase().trim()) && 
+                                   !resolvedSelector.includes('body') && 
+                                   !resolvedSelector.includes('html');
+      
+      let readableText = '';
+      let usedReadability = false;
+      
+      if (shouldUseReadability) {
+        // Use Readability for specific content extraction (articles, specific sections)
+        const reader = new Readability(dom.window.document, {
+          debug: false,
+          maxElemsToParse: 0, // No limit
+          nbTopCandidates: 5,
+          charThreshold: 500,
+          classesToPreserve: [],
+          keepClasses: false
+        });
+        
+        const article = reader.parse();
+        
+        if (article && article.content) {
+          // Extract just the text content, removing HTML tags
+          const textDiv = new JSDOM(article.content);
+          readableText = textDiv.window.document.body.textContent || textDiv.window.document.body.innerText || '';
+          // Normalize whitespace but preserve line breaks
+          readableText = readableText
+            .replace(/[ \t]+/g, ' ') // Collapse spaces and tabs
+            .replace(/\n\s*\n/g, '\n\n') // Normalize multiple line breaks to double
+            .replace(/^\s+|\s+$/g, '') // Trim start/end
+            .replace(/\n /g, '\n') // Remove spaces at start of lines
+            .replace(/ \n/g, '\n'); // Remove spaces at end of lines
+          usedReadability = true;
+        }
+      }
+      
+      if (!usedReadability || !readableText) {
+        // Direct text extraction for body, html, or when readability fails
+        
+        // For body/html elements, use comprehensive text extraction to capture ALL visible text
+        if (resolvedSelector.toLowerCase().trim() === 'body' || resolvedSelector.toLowerCase().trim() === 'html' || 
+            resolvedSelector.includes('body') || resolvedSelector.includes('html')) {
+          
+          readableText = await element.evaluate((el) => {
+            // Get all elements that are currently visible
+            const allElements = Array.from(document.querySelectorAll('*')).filter((element) => {
+              const style = window.getComputedStyle(element);
+              const rect = element.getBoundingClientRect();
+              
+              // Element must be visible and have some dimensions or be positioned
+              return style.display !== 'none' && 
+                     style.visibility !== 'hidden' && 
+                     style.opacity !== '0' &&
+                     !(element as HTMLElement).hidden &&
+                     (rect.width > 0 || rect.height > 0 || 
+                      style.position === 'fixed' || style.position === 'absolute');
+            });
+            
+            // Extract text from all visible elements, avoiding duplicates
+            const textSet = new Set<string>();
+            allElements.forEach(element => {
+              // Get direct text content (not including children to avoid duplicates)
+              for (const node of element.childNodes) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                  const text = node.textContent?.trim();
+                  if (text && text.length > 0) {
+                    textSet.add(text);
+                  }
+                }
+              }
+            });
+            
+            return Array.from(textSet).join(' ');
+          }) || '';
+          
+        } else {
+          // For specific elements, use simple text extraction (better for tests and most cases)
+          try {
+            // Try innerText first (respects CSS visibility)
+            readableText = await element.innerText() || '';
+          } catch {
+            // Fallback to textContent
+            readableText = await element.textContent() || '';
+          }
+        }
+        
+        // Normalize whitespace but preserve line structure
+        readableText = readableText
+          .replace(/[ \t]+/g, ' ') // Collapse spaces and tabs
+          .replace(/\n\s*\n\s*\n+/g, '\n\n') // Normalize multiple line breaks
+          .replace(/^\s+|\s+$/g, '') // Trim start/end
+          .replace(/\n /g, '\n') // Remove spaces at start of lines
+          .replace(/ \n/g, '\n'); // Remove spaces at end of lines
+      }
+
+      this.logger.debug(
+        `Text extracted from selector: ${resolvedSelector}`,
+        session.linkedWorkflowSessionId,
+        { 
+          selector: resolvedSelector, 
+          originalSelector: selector,
+          textLength: readableText.length,
+          usedReadability,
+          extractionMethod: usedReadability ? 'readability' : 'direct'
+        }
+      );
+
+      // Get DOM and capture screenshot
+      const dom_content = await session.page.content();
+      const screenshotId = await this.screenshotManager.captureScreenshot(
+        session.linkedWorkflowSessionId,
+        CommandAction.GET_TEXT,
+        session.page,
+        { 
+          selector: resolvedSelector, 
+          originalSelector: selector,
+          textLength: readableText.length,
+          usedReadability,
+          extractionMethod: usedReadability ? 'readability' : 'direct'
+        }
+      );
+
+      const duration = Date.now() - startTime;
+
+      return {
+        success: true,
+        commandId: finalCommandId,
+        dom: readableText, // Return readable text instead of full DOM
+        screenshotId,
+        duration,
+        metadata: { 
+          selector: resolvedSelector, 
+          originalSelector: selector,
+          readableText,
+          textLength: readableText.length,
+          usedReadability,
+          extractionMethod: usedReadability ? 'readability' : 'direct',
+          fullDomLength: dom_content.length // Keep track of original DOM size for reference
+        }
+      };
+
+    } catch (error) {
+      if (error instanceof Error && 'code' in error) {
+        throw error;
+      }
+      
+      throw this.errorHandler.createElementError(
+        selector,
+        'get readable text',
         error instanceof Error ? error : undefined
       );
     }

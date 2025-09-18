@@ -29,7 +29,8 @@ export enum CommandAction {
   SAVE_VARIABLE = 'SAVE_VARIABLE',
   GET_DOM = 'GET_DOM',
   GET_CONTENT = 'GET_CONTENT',
-  GET_SUBDOM = 'GET_SUBDOM'
+  GET_SUBDOM = 'GET_SUBDOM',
+  GET_TEXT = 'GET_TEXT'
 }
 
 export enum ErrorCategory {
@@ -401,4 +402,5 @@ export interface ICommandProcessor {
   getCurrentDOM(session: ExecutorSession, commandId: string): Promise<CommandResponse>;
   getContent(session: ExecutorSession, selector: string, attribute?: string, multiple?: boolean, commandId?: string): Promise<CommandResponse>;
   getSubDOM(session: ExecutorSession, selector: string, maxDomSize?: number, commandId?: string): Promise<CommandResponse>;
+  getText(session: ExecutorSession, selector: string, commandId?: string): Promise<CommandResponse>;
 }

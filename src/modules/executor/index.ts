@@ -55,6 +55,7 @@ export interface IExecutor {
   getCurrentDOM(workflowSessionId: string): Promise<CommandResponse>;
   getContent(workflowSessionId: string, selector: string, attribute?: string, multiple?: boolean): Promise<CommandResponse>;
   getSubDOM(workflowSessionId: string, selector: string, maxDomSize?: number): Promise<CommandResponse>;
+  getText(workflowSessionId: string, selector: string): Promise<CommandResponse>;
   
   // Variable Management
   setVariable(workflowSessionId: string, name: string, value: string): Promise<void>;
@@ -311,6 +312,25 @@ export class Executor implements IExecutor {
     await this.recordActivity(workflowSessionId);
 
     return await this.commandProcessor.getSubDOM(session, selector, maxDomSize, commandId);
+  }
+
+  async getText(workflowSessionId: string, selector: string): Promise<CommandResponse> {
+    const session = this.sessionManager.getExecutorSession(workflowSessionId);
+    if (!session) {
+      throw this.errorHandler.createSessionNotFoundError(workflowSessionId);
+    }
+
+    if (!selector || selector.trim() === '') {
+      throw this.errorHandler.createInvalidCommandError(
+        { action: 'GET_TEXT' } as any,
+        'Selector parameter is required and cannot be empty'
+      );
+    }
+
+    const commandId = this.generateCommandId();
+    await this.recordActivity(workflowSessionId);
+
+    return await this.commandProcessor.getText(session, selector, commandId);
   }
 
   // Variable Management
