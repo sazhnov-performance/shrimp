@@ -111,127 +111,7 @@ export class FrontendAPIIntegration implements SimpleFrontendAPIIntegration {
           resolve(eventSource);
         };
 
-        eventSource.onmessage = (event) => {
-          try {
-            const message = JSON.parse(event.data);
-            
-            switch (message.type) {
-              case 'event':
-                // Convert SSE message format to expected StreamEvent format
-                const streamEvent: StreamEvent = {
-                  id: `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                  type: StreamEventType.WORKFLOW_PROGRESS,
-                  timestamp: new Date(message.timestamp),
-                  sessionId: message.sessionId,
-                  message: message.data,
-                  level: 'info' as const
-                };
-                
-                this.eventCallbacks.forEach(callback => {
-                  try {
-                    callback(streamEvent);
-                  } catch (error) {
-                    console.error('Error in event callback:', error);
-                  }
-                });
-                break;
-                
-              case 'structured_event':
-                // Handle structured log events
-                try {
-                  const structuredData: StructuredLogMessage = JSON.parse(message.data);
-                  
-                  let eventType: StreamEventType;
-                  let level: 'info' | 'success' | 'warning' | 'error';
-                  let displayMessage: string;
-                  
-                  switch (structuredData.type) {
-                    case 'reasoning':
-                      eventType = StreamEventType.STRUCTURED_REASONING;
-                      level = structuredData.confidence === 'high' ? 'info' : structuredData.confidence === 'medium' ? 'warning' : 'error';
-                      displayMessage = structuredData.text;
-                      break;
-                    case 'action':
-                      eventType = StreamEventType.STRUCTURED_ACTION;
-                      level = structuredData.success ? 'success' : 'error';
-                      displayMessage = `${structuredData.actionName}: ${structuredData.success ? 'Success' : 'Failed'}`;
-                      if (structuredData.error) displayMessage += ` - ${structuredData.error}`;
-                      break;
-                    case 'screenshot':
-                      eventType = StreamEventType.STRUCTURED_SCREENSHOT;
-                      level = 'info';
-                      displayMessage = `Screenshot captured${structuredData.actionName ? ` for ${structuredData.actionName}` : ''}`;
-                      break;
-                    default:
-                      console.warn('Unknown structured event type:', structuredData);
-                      return;
-                  }
-                  
-                  const structuredStreamEvent: StreamEvent = {
-                    id: `structured_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                    type: eventType,
-                    timestamp: new Date(structuredData.timestamp),
-                    sessionId: message.sessionId,
-                    stepIndex: structuredData.stepId,
-                    message: displayMessage,
-                    level,
-                    structuredData
-                  };
-                  
-                  this.eventCallbacks.forEach(callback => {
-                    try {
-                      callback(structuredStreamEvent);
-                    } catch (error) {
-                      console.error('Error in structured event callback:', error);
-                    }
-                  });
-                } catch (parseError) {
-                  console.error('Error parsing structured event:', parseError);
-                  // Fallback to regular event
-                  const fallbackEvent: StreamEvent = {
-                    id: `fallback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                    type: StreamEventType.WORKFLOW_PROGRESS,
-                    timestamp: new Date(message.timestamp),
-                    sessionId: message.sessionId,
-                    message: message.data,
-                    level: 'info' as const
-                  };
-                  
-                  this.eventCallbacks.forEach(callback => {
-                    try {
-                      callback(fallbackEvent);
-                    } catch (error) {
-                      console.error('Error in fallback event callback:', error);
-                    }
-                  });
-                }
-                break;
-                
-              case 'error':
-                const errorMsg = message.data || 'Stream error';
-                this.errorCallbacks.forEach(callback => {
-                  try {
-                    callback(errorMsg);
-                  } catch (error) {
-                    console.error('Error in error callback:', error);
-                  }
-                });
-                break;
-                
-              default:
-                console.log('Unknown message type:', message.type);
-            }
-          } catch (error) {
-            console.error('Error parsing SSE message:', error);
-            this.errorCallbacks.forEach(callback => {
-              try {
-                callback('Failed to parse stream message');
-              } catch (err) {
-                console.error('Error in error callback:', err);
-              }
-            });
-          }
-        };
+        eventSource.onmessage = this.handleSSEMessage.bind(this);
 
         eventSource.onerror = (error) => {
           console.error('SSE error:', error);
@@ -327,23 +207,70 @@ export class FrontendAPIIntegration implements SimpleFrontendAPIIntegration {
       }
     });
     
-    setTimeout(async () => {
+    setTimeout(() => {
       console.log(`[APIIntegration] Executing reconnection attempt ${this.reconnectAttempts}`);
+      
       try {
         // Close the current event source if it exists
         if (this.currentEventSource) {
           this.currentEventSource.close();
         }
         
-        const newEventSource = await this.connectToStreamWithRetry(streamId);
-        console.log(`[APIIntegration] Reconnection attempt ${this.reconnectAttempts} successful`);
-        resolve(newEventSource);
+        // Create new EventSource directly (not recursively calling connectToStreamWithRetry)
+        const sseUrl = `${this.baseUrl}/api/stream/ws/${streamId}`;
+        const eventSource = new EventSource(sseUrl);
+        this.currentEventSource = eventSource;
+        
+        // Set up event handlers for the new connection
+        eventSource.onopen = () => {
+          console.log(`[APIIntegration] Reconnection attempt ${this.reconnectAttempts} successful`);
+          
+          // Reset reconnection state on successful connection
+          this.isReconnecting = false;
+          this.reconnectAttempts = 0;
+          this.reconnectedCallbacks.forEach(callback => {
+            try {
+              callback();
+            } catch (error) {
+              console.error('Error in reconnected callback:', error);
+            }
+          });
+          
+          resolve(eventSource);
+        };
+
+        // Set up the same message handler as the original connection
+        eventSource.onmessage = this.handleSSEMessage.bind(this);
+        
+        eventSource.onerror = (error) => {
+          console.error(`[APIIntegration] Reconnection attempt ${this.reconnectAttempts} failed with SSE error:`, error);
+          console.log('SSE readyState:', eventSource.readyState);
+          
+          // Check if we should try again
+          if (this.reconnectAttempts < this.maxReconnectAttempts) {
+            console.log(`[APIIntegration] Will attempt another reconnection (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
+            this.isReconnecting = false; // Reset flag so next attempt can proceed
+            this.attemptReconnection(streamId, resolve, reject);
+          } else {
+            console.log(`[APIIntegration] Max reconnection attempts (${this.maxReconnectAttempts}) reached, giving up`);
+            this.isReconnecting = false;
+            this.errorCallbacks.forEach(callback => {
+              try {
+                callback(ERROR_MESSAGES.RECONNECTION_FAILED);
+              } catch (error) {
+                console.error('Error in error callback:', error);
+              }
+            });
+            reject(new Error(ERROR_MESSAGES.RECONNECTION_FAILED));
+          }
+        };
+        
       } catch (error) {
-        console.error(`[APIIntegration] Reconnection attempt ${this.reconnectAttempts} failed:`, error);
+        console.error(`[APIIntegration] Error creating EventSource for reconnection attempt ${this.reconnectAttempts}:`, error);
         this.isReconnecting = false;
         
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-          console.log(`[APIIntegration] Max reconnection attempts reached, giving up`);
+          console.log(`[APIIntegration] Max reconnection attempts reached after creation error, giving up`);
           this.errorCallbacks.forEach(callback => {
             try {
               callback(ERROR_MESSAGES.RECONNECTION_FAILED);
@@ -352,10 +279,137 @@ export class FrontendAPIIntegration implements SimpleFrontendAPIIntegration {
             }
           });
           reject(error);
+        } else {
+          // Try again if we have attempts left
+          this.attemptReconnection(streamId, resolve, reject);
         }
-        // If not at max attempts, the next error will trigger another attempt
       }
     }, delay);
+  }
+
+  /**
+   * Handle SSE message - shared between initial connection and reconnections
+   */
+  private handleSSEMessage(event: MessageEvent): void {
+    try {
+      const message = JSON.parse(event.data);
+      
+      switch (message.type) {
+        case 'event':
+          // Convert SSE message format to expected StreamEvent format
+          const streamEvent: StreamEvent = {
+            id: `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            type: StreamEventType.WORKFLOW_PROGRESS,
+            timestamp: new Date(message.timestamp),
+            sessionId: message.sessionId,
+            message: message.data,
+            level: 'info' as const
+          };
+          
+          this.eventCallbacks.forEach(callback => {
+            try {
+              callback(streamEvent);
+            } catch (error) {
+              console.error('Error in event callback:', error);
+            }
+          });
+          break;
+          
+        case 'structured_event':
+          // Handle structured log events
+          try {
+            const structuredData: StructuredLogMessage = JSON.parse(message.data);
+            
+            let eventType: StreamEventType;
+            let level: 'info' | 'success' | 'warning' | 'error';
+            let displayMessage: string;
+            
+            switch (structuredData.type) {
+              case 'reasoning':
+                eventType = StreamEventType.STRUCTURED_REASONING;
+                level = structuredData.confidence === 'high' ? 'info' : structuredData.confidence === 'medium' ? 'warning' : 'error';
+                displayMessage = structuredData.text;
+                break;
+              case 'action':
+                eventType = StreamEventType.STRUCTURED_ACTION;
+                level = structuredData.success ? 'success' : 'error';
+                displayMessage = `${structuredData.actionName}: ${structuredData.success ? 'Success' : 'Failed'}`;
+                if (structuredData.error) displayMessage += ` - ${structuredData.error}`;
+                break;
+              case 'screenshot':
+                eventType = StreamEventType.STRUCTURED_SCREENSHOT;
+                level = 'info';
+                displayMessage = `Screenshot captured${structuredData.actionName ? ` for ${structuredData.actionName}` : ''}`;
+                break;
+              default:
+                console.warn('Unknown structured event type:', structuredData);
+                return;
+            }
+            
+            const structuredStreamEvent: StreamEvent = {
+              id: `structured_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              type: eventType,
+              timestamp: new Date(structuredData.timestamp),
+              sessionId: message.sessionId,
+              stepIndex: structuredData.stepId,
+              message: displayMessage,
+              level,
+              structuredData
+            };
+            
+            this.eventCallbacks.forEach(callback => {
+              try {
+                callback(structuredStreamEvent);
+              } catch (error) {
+                console.error('Error in structured event callback:', error);
+              }
+            });
+          } catch (parseError) {
+            console.error('Error parsing structured event:', parseError);
+            // Fallback to regular event
+            const fallbackEvent: StreamEvent = {
+              id: `fallback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              type: StreamEventType.WORKFLOW_PROGRESS,
+              timestamp: new Date(message.timestamp),
+              sessionId: message.sessionId,
+              message: message.data,
+              level: 'info' as const
+            };
+            
+            this.eventCallbacks.forEach(callback => {
+              try {
+                callback(fallbackEvent);
+              } catch (error) {
+                console.error('Error in fallback event callback:', error);
+              }
+            });
+          }
+          break;
+          
+        case 'error':
+          const errorMsg = message.data || 'Stream error';
+          this.errorCallbacks.forEach(callback => {
+            try {
+              callback(errorMsg);
+            } catch (error) {
+              console.error('Error in error callback:', error);
+            }
+          });
+          break;
+          
+        default:
+          console.log('Unknown message type:', message.type);
+      }
+    } catch (error) {
+      console.error('Error parsing SSE message:', error);
+      this.errorCallbacks.forEach(callback => {
+        try {
+          callback('Failed to parse stream message');
+        } catch (err) {
+          console.error('Error in error callback:', err);
+        }
+      });
+    }
   }
 
   /**
