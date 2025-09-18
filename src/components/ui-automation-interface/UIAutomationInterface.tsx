@@ -43,10 +43,17 @@ export function UIAutomationInterface() {
     
     // Set up event handlers
     apiRef.current.onEvent((event: StreamEvent) => {
-      setState(prev => ({
-        ...prev,
-        events: [...prev.events, event]
-      }));
+      setState(prev => {
+        const newEvents = [...prev.events, event].sort((a, b) => {
+          const timeA = new Date(a.timestamp).getTime();
+          const timeB = new Date(b.timestamp).getTime();
+          return timeA - timeB;
+        });
+        return {
+          ...prev,
+          events: newEvents
+        };
+      });
     });
 
     apiRef.current.onError((error: string) => {
@@ -106,10 +113,17 @@ export function UIAutomationInterface() {
   }, []);
 
   const addEvent = useCallback((event: StreamEvent) => {
-    setState(prev => ({
-      ...prev,
-      events: [...prev.events, event]
-    }));
+    setState(prev => {
+      const newEvents = [...prev.events, event].sort((a, b) => {
+        const timeA = new Date(a.timestamp).getTime();
+        const timeB = new Date(b.timestamp).getTime();
+        return timeA - timeB;
+      });
+      return {
+        ...prev,
+        events: newEvents
+      };
+    });
   }, []);
 
   const reset = useCallback(() => {
@@ -358,9 +372,9 @@ export function UIAutomationInterface() {
                 </svg>
               </div>
               <div className="text-left">
-                <h1 className="text-3xl font-light text-white tracking-wide">
+                <h1 className="text-4xl font-light text-white tracking-wide">
                   <span className="bg-gradient-to-r from-blue-300 to-indigo-300 bg-clip-text text-transparent">
-                    Automation Studio
+                    SHRIMP
                   </span>
                 </h1>
                 <p className="text-slate-400 text-sm font-light">
@@ -368,9 +382,6 @@ export function UIAutomationInterface() {
                 </p>
               </div>
             </div>
-            <p className="text-slate-300 text-base font-light max-w-2xl mx-auto leading-relaxed">
-              Transform natural language descriptions into automated browser workflows with real-time execution monitoring
-            </p>
           </div>
         </div>
       </div>

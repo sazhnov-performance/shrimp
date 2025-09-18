@@ -44,8 +44,15 @@ export function StreamingOutputComponent({
     }
   }, [events, autoScroll]);
 
+  // Sort events by timestamp before formatting for display
+  const sortedEvents = [...events].sort((a, b) => {
+    const timeA = new Date(a.timestamp).getTime();
+    const timeB = new Date(b.timestamp).getTime();
+    return timeA - timeB;
+  });
+  
   // Format events for display
-  const logEntries: SimpleLogEntry[] = events.map(formatLogEntry);
+  const logEntries: SimpleLogEntry[] = sortedEvents.map(formatLogEntry);
 
   return (
     <div className="flex flex-col h-full min-h-0">
