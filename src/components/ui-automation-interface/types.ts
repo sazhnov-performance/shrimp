@@ -120,6 +120,8 @@ export interface SimpleUIState {
   events: StreamEvent[];
   isConnected: boolean;
   error: string | null;
+  reconnectAttempt: number;
+  isReconnecting: boolean;
 }
 
 export interface UIActions {
@@ -136,9 +138,11 @@ export type SimpleLogEntry = StreamEvent;
 // Frontend API Integration Types
 export interface SimpleFrontendAPIIntegration {
   executeSteps(request: StepProcessingRequest): Promise<ExecuteStepsResponse>;
-  connectToStream(streamId: string): Promise<WebSocket>;
+  connectToStream(streamId: string): Promise<EventSource>;
   onEvent(callback: (event: StreamEvent) => void): void;
   onError(callback: (error: string) => void): void;
+  onReconnecting(callback: (attempt: number, delay: number) => void): void;
+  onReconnected(callback: () => void): void;
 }
 
 // Response Types
@@ -164,6 +168,7 @@ export const ERROR_MESSAGES = {
   EMPTY_STEPS: 'Please enter some automation steps',
   EXECUTION_FAILED: 'Automation execution failed',
   CONNECTION_LOST: 'Connection lost - trying to reconnect...',
+  RECONNECTION_FAILED: 'Failed to reconnect after 3 attempts',
   INVALID_RESPONSE: 'Invalid response from server'
 } as const;
 

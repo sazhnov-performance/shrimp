@@ -21,6 +21,14 @@ export class FrontendAPIIntegration implements SimpleFrontendAPIIntegration {
   private baseUrl: string;
   private eventCallbacks: ((event: StreamEvent) => void)[] = [];
   private errorCallbacks: ((error: string) => void)[] = [];
+  private reconnectingCallbacks: ((attempt: number, delay: number) => void)[] = [];
+  private reconnectedCallbacks: (() => void)[] = [];
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 3;
+  private reconnectDelays = [3000, 9000, 15000]; // 3, 9, 15 seconds
+  private currentStreamId: string | null = null;
+  private isReconnecting = false;
+  private currentEventSource: EventSource | null = null;
 
   constructor(baseUrl: string = '') {
     this.baseUrl = baseUrl;
@@ -60,17 +68,45 @@ export class FrontendAPIIntegration implements SimpleFrontendAPIIntegration {
   }
 
   /**
-   * Connect to SSE stream for real-time events
+   * Connect to SSE stream for real-time events with reconnection logic
    */
   async connectToStream(streamId: string): Promise<EventSource> {
+    this.currentStreamId = streamId;
+    this.reconnectAttempts = 0;
+    return this.connectToStreamWithRetry(streamId);
+  }
+
+  /**
+   * Internal method to connect to stream with retry logic
+   */
+  private async connectToStreamWithRetry(streamId: string): Promise<EventSource> {
     return new Promise((resolve, reject) => {
       try {
         const sseUrl = `${this.baseUrl}/api/stream/ws/${streamId}`;
         
+        if (this.currentEventSource) {
+          this.currentEventSource.close();
+        }
+        
         const eventSource = new EventSource(sseUrl);
+        this.currentEventSource = eventSource;
         
         eventSource.onopen = () => {
           console.log('SSE connected to stream:', streamId);
+          
+          // Reset reconnection state on successful connection
+          if (this.isReconnecting) {
+            this.isReconnecting = false;
+            this.reconnectAttempts = 0;
+            this.reconnectedCallbacks.forEach(callback => {
+              try {
+                callback();
+              } catch (error) {
+                console.error('Error in reconnected callback:', error);
+              }
+            });
+          }
+          
           resolve(eventSource);
         };
 
@@ -127,17 +163,36 @@ export class FrontendAPIIntegration implements SimpleFrontendAPIIntegration {
 
         eventSource.onerror = (error) => {
           console.error('SSE error:', error);
-          this.errorCallbacks.forEach(callback => {
-            try {
-              callback(ERROR_MESSAGES.CONNECTION_LOST);
-            } catch (error) {
-              console.error('Error in error callback:', error);
-            }
-          });
           
-          // Don't reject immediately - let the connection be established first
-          if (eventSource.readyState === EventSource.CONNECTING) {
-            reject(new Error(ERROR_MESSAGES.CONNECTION_LOST));
+          // Only attempt reconnection if we have attempts left and aren't already reconnecting
+          if (this.reconnectAttempts < this.maxReconnectAttempts && !this.isReconnecting) {
+            this.attemptReconnection(streamId, resolve, reject);
+          } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            // Exhausted all reconnection attempts
+            this.errorCallbacks.forEach(callback => {
+              try {
+                callback(ERROR_MESSAGES.RECONNECTION_FAILED);
+              } catch (error) {
+                console.error('Error in error callback:', error);
+              }
+            });
+            
+            if (eventSource.readyState === EventSource.CONNECTING) {
+              reject(new Error(ERROR_MESSAGES.RECONNECTION_FAILED));
+            }
+          } else {
+            // Initial connection error or already reconnecting
+            this.errorCallbacks.forEach(callback => {
+              try {
+                callback(ERROR_MESSAGES.CONNECTION_LOST);
+              } catch (error) {
+                console.error('Error in error callback:', error);
+              }
+            });
+            
+            if (eventSource.readyState === EventSource.CONNECTING && !this.isReconnecting) {
+              reject(new Error(ERROR_MESSAGES.CONNECTION_LOST));
+            }
           }
         };
 
@@ -145,6 +200,48 @@ export class FrontendAPIIntegration implements SimpleFrontendAPIIntegration {
         reject(error);
       }
     });
+  }
+
+  /**
+   * Attempt to reconnect with exponential backoff
+   */
+  private attemptReconnection(
+    streamId: string, 
+    resolve: (value: EventSource) => void, 
+    reject: (reason?: any) => void
+  ): void {
+    if (this.isReconnecting) {
+      return; // Already attempting reconnection
+    }
+    
+    this.isReconnecting = true;
+    this.reconnectAttempts++;
+    
+    const delay = this.reconnectDelays[this.reconnectAttempts - 1] || this.reconnectDelays[this.reconnectDelays.length - 1];
+    
+    console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${delay}ms`);
+    
+    // Notify UI about reconnection attempt
+    this.reconnectingCallbacks.forEach(callback => {
+      try {
+        callback(this.reconnectAttempts, delay);
+      } catch (error) {
+        console.error('Error in reconnecting callback:', error);
+      }
+    });
+    
+    setTimeout(async () => {
+      try {
+        const newEventSource = await this.connectToStreamWithRetry(streamId);
+        resolve(newEventSource);
+      } catch (error) {
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+          this.isReconnecting = false;
+          reject(error);
+        }
+        // If not at max attempts, the error handler in connectToStreamWithRetry will handle the next attempt
+      }
+    }, delay);
   }
 
   /**
@@ -159,6 +256,14 @@ export class FrontendAPIIntegration implements SimpleFrontendAPIIntegration {
    */
   onError(callback: (error: string) => void): void {
     this.errorCallbacks.push(callback);
+  }
+
+  onReconnecting(callback: (attempt: number, delay: number) => void): void {
+    this.reconnectingCallbacks.push(callback);
+  }
+
+  onReconnected(callback: () => void): void {
+    this.reconnectedCallbacks.push(callback);
   }
 
   /**

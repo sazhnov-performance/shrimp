@@ -21,7 +21,9 @@ export function UIAutomationInterface() {
     isExecuting: false,
     events: [],
     isConnected: false,
-    error: null
+    error: null,
+    reconnectAttempt: 0,
+    isReconnecting: false
   });
 
   // API integration
@@ -45,6 +47,26 @@ export function UIAutomationInterface() {
         ...prev,
         error,
         isConnected: false
+      }));
+    });
+
+    apiRef.current.onReconnecting((attempt: number, delay: number) => {
+      setState(prev => ({
+        ...prev,
+        isReconnecting: true,
+        reconnectAttempt: attempt,
+        error: `Reconnecting... (${attempt}/3) in ${delay/1000}s`,
+        isConnected: false
+      }));
+    });
+
+    apiRef.current.onReconnected(() => {
+      setState(prev => ({
+        ...prev,
+        isReconnecting: false,
+        reconnectAttempt: 0,
+        error: null,
+        isConnected: true
       }));
     });
 
@@ -245,10 +267,11 @@ export function UIAutomationInterface() {
             <StreamingOutputComponent
               events={state.events}
               sessionId={state.sessionId}
-              streamConnection={sseRef.current}
               isConnected={state.isConnected}
               error={state.error}
               autoScroll={true}
+              isReconnecting={state.isReconnecting}
+              reconnectAttempt={state.reconnectAttempt}
             />
           </div>
         </div>

@@ -14,19 +14,21 @@ import { formatLogEntry, getLevelColor, getLevelBgColor } from './log-formatter'
 interface StreamingOutputComponentProps {
   events: StreamEvent[];
   sessionId: string | null;
-  streamConnection: EventSource | null;
   isConnected: boolean;
   error: string | null;
   autoScroll?: boolean;
+  isReconnecting?: boolean;
+  reconnectAttempt?: number;
 }
 
 export function StreamingOutputComponent({
   events,
   sessionId,
-  streamConnection,
   isConnected,
   error,
-  autoScroll = true
+  autoScroll = true,
+  isReconnecting = false,
+  reconnectAttempt = 0
 }: StreamingOutputComponentProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
@@ -61,12 +63,19 @@ export function StreamingOutputComponent({
           <div className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs ${
             isConnected 
               ? 'bg-green-900/20 text-green-400' 
-              : 'bg-red-900/20 text-red-400'
+              : isReconnecting
+                ? 'bg-yellow-900/20 text-yellow-400'
+                : 'bg-red-900/20 text-red-400'
           }`}>
             {isConnected ? (
               <>
                 <Wifi size={12} />
                 <span>Connected</span>
+              </>
+            ) : isReconnecting ? (
+              <>
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-yellow-400"></div>
+                <span>Reconnecting {reconnectAttempt}/3</span>
               </>
             ) : (
               <>
