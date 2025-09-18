@@ -329,7 +329,8 @@ export class ExecutorSessionManager implements IExecutorSessionManager {
     try {
       const browserType = this.config.browser.type;
       const options = {
-        headless: this.config.browser.headless
+        headless: this.config.browser.headless,
+        args: ["--start-maximized"]
       };
 
       switch (browserType) {
