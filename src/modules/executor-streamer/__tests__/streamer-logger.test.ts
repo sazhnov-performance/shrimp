@@ -149,6 +149,58 @@ describe('StreamerLogger', () => {
     });
   });
 
+  describe('data sanitization', () => {
+    it('should sanitize control characters from action results and errors', async () => {
+      // Test data with problematic control characters
+      const resultWithControlChars = `<html>\x00\x0B\x0C\x1F\x7F<body>Test content\x08with control chars</body></html>`;
+      const errorWithControlChars = `Error message\x00with\x1Fnull\x7Fbytes and control chars`;
+      
+      await logger.logAction(testSessionId, 1, 'GET_DOM', true, resultWithControlChars, undefined, 1);
+      await logger.logAction(testSessionId, 2, 'CLICK_ELEMENT', false, undefined, errorWithControlChars, 1);
+      
+      const events = await streamer.getEvents(testSessionId);
+      expect(events.length).toBe(2);
+      
+      // Parse the events and verify control characters were removed
+      const event1 = JSON.parse(JSON.parse(events[0]).data);
+      const event2 = JSON.parse(JSON.parse(events[1]).data);
+      
+      // Should have control characters removed but preserve meaningful content
+      expect(event1.result).toBe('<html><body>Test contentwith control chars</body></html>');
+      expect(event2.error).toBe('Error messagewithnullbytes and control chars');
+      
+      // Should not contain any control characters
+      expect(event1.result).not.toMatch(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/);
+      expect(event2.error).not.toMatch(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/);
+    });
+
+    it('should sanitize control characters from reasoning text', async () => {
+      const reasoningWithControlChars = `AI reasoning\x00text\x1Fwith\x7Fcontrol characters`;
+      
+      await logger.logReasoning(testSessionId, 1, reasoningWithControlChars, 'high', 1);
+      
+      const events = await streamer.getEvents(testSessionId);
+      expect(events.length).toBe(1);
+      
+      const event = JSON.parse(JSON.parse(events[0]).data);
+      expect(event.text).toBe('AI reasoningtextwithcontrol characters');
+      expect(event.text).not.toMatch(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/);
+    });
+
+    it('should preserve meaningful whitespace characters', async () => {
+      const textWithWhitespace = `Text with\nnewlines\tand\rtabs`;
+      
+      await logger.logReasoning(testSessionId, 1, textWithWhitespace, 'medium', 1);
+      
+      const events = await streamer.getEvents(testSessionId);
+      expect(events.length).toBe(1);
+      
+      const event = JSON.parse(JSON.parse(events[0]).data);
+      // Should preserve \n, \t, \r but remove other control chars
+      expect(event.text).toBe('Text with\nnewlines\tand\rtabs');
+    });
+  });
+
   describe('error handling', () => {
     it('should handle errors gracefully and not throw', async () => {
       // Create a mock streamer that throws errors

@@ -40,9 +40,12 @@ export class StreamerLogger implements IStreamerLogger {
     try {
       await this.ensureStreamExists(sessionId);
 
+      // Sanitize text to remove problematic control characters
+      const sanitizedText = this.sanitizeString(text);
+
       const message: ReasoningLogMessage = {
         type: LogMessageType.REASONING,
-        text,
+        text: sanitizedText,
         confidence,
         sessionId,
         stepId,
@@ -82,12 +85,16 @@ export class StreamerLogger implements IStreamerLogger {
     try {
       await this.ensureStreamExists(sessionId);
 
+      // Sanitize result and error strings to remove problematic control characters
+      const sanitizedResult = result ? this.sanitizeString(result) : result;
+      const sanitizedError = error ? this.sanitizeString(error) : error;
+
       const message: ActionLogMessage = {
         type: LogMessageType.ACTION,
         actionName,
         success,
-        result,
-        error,
+        result: sanitizedResult,
+        error: sanitizedError,
         sessionId,
         stepId,
         iteration,
@@ -125,11 +132,14 @@ export class StreamerLogger implements IStreamerLogger {
     try {
       await this.ensureStreamExists(sessionId);
 
+      // Sanitize actionName if provided
+      const sanitizedActionName = actionName ? this.sanitizeString(actionName) : actionName;
+
       const message: ScreenshotLogMessage = {
         type: LogMessageType.SCREENSHOT,
         screenshotUrl,
         screenshotId,
-        actionName,
+        actionName: sanitizedActionName,
         sessionId,
         stepId,
         iteration,
@@ -140,7 +150,7 @@ export class StreamerLogger implements IStreamerLogger {
         sessionId,
         LogMessageType.SCREENSHOT,
         JSON.stringify(message),
-        { screenshotId, screenshotUrl, actionName, stepId, iteration }
+        { screenshotId, screenshotUrl, actionName: sanitizedActionName, stepId, iteration }
       );
 
       if (this.enableLogging) {
@@ -182,5 +192,24 @@ export class StreamerLogger implements IStreamerLogger {
    */
   isLoggingEnabled(): boolean {
     return this.enableLogging;
+  }
+
+  /**
+   * Sanitize string by removing problematic control characters
+   * @param text Text to sanitize
+   * @returns Sanitized text safe for event streaming
+   */
+  private sanitizeString(text: string): string {
+    if (!text || typeof text !== 'string') {
+      return text;
+    }
+
+    // Remove problematic control characters while preserving meaningful whitespace
+    // Remove: NULL bytes, most control chars except \n (newline), \t (tab), \r (carriage return)
+    const sanitized = text
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove control chars except \t, \n, \r
+      .replace(/\0/g, ''); // Explicitly remove null bytes
+
+    return sanitized;
   }
 }

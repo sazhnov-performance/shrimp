@@ -219,12 +219,21 @@ function LogEntry({ entry }: LogEntryProps) {
 
 // Screenshot thumbnail component
 interface ScreenshotThumbnailProps {
-  screenshotUrl: string;
+  screenshotUrl?: string;
   screenshotId: string;
   actionName?: string;
 }
 
 function ScreenshotThumbnail({ screenshotUrl, screenshotId, actionName }: ScreenshotThumbnailProps) {
+  // Return early if no screenshot URL is provided
+  if (!screenshotUrl) {
+    return (
+      <div className="p-4 rounded border border-gray-500 text-gray-400 text-sm">
+        Screenshot not available
+      </div>
+    );
+  }
+
   // Generate thumbnail URL by appending -thumbnail to the image ID
   const thumbnailUrl = screenshotUrl.replace(`/${screenshotId}`, `/${screenshotId}-thumbnail`);
   
