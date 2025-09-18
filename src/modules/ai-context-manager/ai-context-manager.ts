@@ -5,7 +5,7 @@
  * and providing context to other AI processing modules.
  */
 
-import { IAIContextManager, AIContextManagerConfig, ContextData } from './types';
+import { IAIContextManager, AIContextManagerConfig, ContextData, ScreenshotDescription } from './types';
 
 export class AIContextManager implements IAIContextManager {
   private static instance: AIContextManager | null = null;
@@ -38,6 +38,7 @@ export class AIContextManager implements IAIContextManager {
       contextId,
       steps: [],
       stepLogs: {},
+      screenshotDescriptions: {},
       createdAt: now,
       lastUpdated: now
     };
@@ -53,10 +54,12 @@ export class AIContextManager implements IAIContextManager {
 
     context.steps = [...steps];
     context.stepLogs = {};
+    context.screenshotDescriptions = {};
     
-    // Initialize empty log arrays for each step
+    // Initialize empty log arrays and screenshot description arrays for each step
     steps.forEach((_, index) => {
       context.stepLogs[index] = [];
+      context.screenshotDescriptions[index] = [];
     });
 
     context.lastUpdated = new Date();
@@ -80,6 +83,24 @@ export class AIContextManager implements IAIContextManager {
     context.lastUpdated = new Date();
   }
 
+  addScreenshotDescription(contextId: string, stepId: number, screenshotDescription: ScreenshotDescription): void {
+    const context = this.contexts.get(contextId);
+    if (!context) {
+      throw new Error(`Context with ID "${contextId}" does not exist`);
+    }
+
+    if (stepId < 0 || stepId >= context.steps.length) {
+      throw new Error(`Step ID ${stepId} does not exist in context "${contextId}"`);
+    }
+
+    if (!context.screenshotDescriptions[stepId]) {
+      context.screenshotDescriptions[stepId] = [];
+    }
+
+    context.screenshotDescriptions[stepId].push(screenshotDescription);
+    context.lastUpdated = new Date();
+  }
+
   getStepContext(contextId: string, stepId: number): any[] {
     const context = this.contexts.get(contextId);
     if (!context) {
@@ -93,6 +114,19 @@ export class AIContextManager implements IAIContextManager {
     return context.stepLogs[stepId] || [];
   }
 
+  getStepScreenshotDescriptions(contextId: string, stepId: number): ScreenshotDescription[] {
+    const context = this.contexts.get(contextId);
+    if (!context) {
+      throw new Error(`Context with ID "${contextId}" does not exist`);
+    }
+
+    if (stepId < 0 || stepId >= context.steps.length) {
+      throw new Error(`Step ID ${stepId} does not exist in context "${contextId}"`);
+    }
+
+    return context.screenshotDescriptions[stepId] || [];
+  }
+
   getFullContext(contextId: string): ContextData {
     const context = this.contexts.get(contextId);
     if (!context) {
@@ -104,6 +138,7 @@ export class AIContextManager implements IAIContextManager {
       contextId: context.contextId,
       steps: [...context.steps],
       stepLogs: { ...context.stepLogs },
+      screenshotDescriptions: { ...context.screenshotDescriptions },
       createdAt: context.createdAt,
       lastUpdated: context.lastUpdated
     };

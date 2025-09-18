@@ -214,19 +214,6 @@ export class TaskLoop implements ITaskLoop {
           }
         }
 
-        // 4a. Log action to streamer whenever an action exists (regardless of flow control)
-        if (validatedResponse.action) {
-          await this.streamLogger.logAction(
-            sessionId, 
-            stepId, 
-            this.getDisplayActionName(validatedResponse.action.command), 
-            executionResult?.success || false, 
-            executionResult?.result, 
-            executionResult?.error, 
-            iterations
-          );
-        }
-
         // 5. Log execution in context manager (include execution result)
         if (this.config.enableLogging) {
           //console.log(`[TaskLoop] Logging task execution for session ${sessionId}, step ${stepId}, iteration ${iterations}`);
@@ -351,6 +338,17 @@ export class TaskLoop implements ITaskLoop {
 
       const response = await this.executor.executeCommand(command);
       
+      // Log action result to streamer (before screenshot)
+      await this.streamLogger.logAction(
+        sessionId, 
+        stepId, 
+        this.getDisplayActionName(action.command), 
+        response.success, 
+        response.dom || 'Command executed successfully', 
+        response.error?.message, 
+        iteration
+      );
+
       // Log screenshot to streamer if screenshot was captured
       if (response.success && response.screenshotId) {
         try {
@@ -369,35 +367,59 @@ export class TaskLoop implements ITaskLoop {
           if (this.config.enableLogging) {
             console.log(`[TaskLoop] Screenshot captured for ${action.command}: ${screenshotUrl}`);
           }
+
+          // Generate AI screenshot description and log as reasoning
+          try {
+            // Generate image analysis prompt for screenshot description
+            const imageAnalysisPrompt = this.promptManager.getImageAnalysisPrompt(sessionId, stepId);
+            
+            // Get image file path from media manager
+            const imageFilePath = this.getMediaManager().getImagePath(response.screenshotId);
+            
+            // Send image analysis request to AI for screenshot description
+            const promptRequest = JSON.stringify(imageAnalysisPrompt);
+            const aiAnalysisResponse = await this.aiIntegration.sendRequest(promptRequest, imageFilePath);
+            
+            if (aiAnalysisResponse.status === 'success' && aiAnalysisResponse.data) {
+              // Log AI screenshot description as reasoning
+              const analysisData = typeof aiAnalysisResponse.data === 'string' ? 
+                JSON.parse(aiAnalysisResponse.data) : aiAnalysisResponse.data;
+              
+              const screenshotDescription = analysisData.reasoning || analysisData.description || 
+                'Screenshot analysis completed';
+              
+              await this.streamLogger.logReasoning(
+                sessionId, 
+                stepId, 
+                `Screenshot Analysis: ${screenshotDescription}`, 
+                'medium', 
+                iteration
+              );
+              
+              // Store screenshot description in context for future AI prompts
+              this.contextManager.addScreenshotDescription(sessionId, stepId, {
+                screenshotId: response.screenshotId,
+                description: screenshotDescription,
+                actionType: action.command,
+                iteration: iteration,
+                timestamp: new Date()
+              });
+              
+              if (this.config.enableLogging) {
+                console.log(`[TaskLoop] Screenshot analysis logged as reasoning and stored in context for ${action.command}`);
+              }
+            }
+          } catch (error) {
+            // Log warning if AI screenshot analysis fails, but don't fail the operation
+            console.warn(`[TaskLoop] Failed to generate AI screenshot description for session ${sessionId}, step ${stepId}: ${error instanceof Error ? error.message : String(error)}`);
+          }
+
         } catch (error) {
           // Log warning if URL generation fails, but don't fail the operation
           console.warn(`[TaskLoop] Failed to generate screenshot URL for ${response.screenshotId}: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
 
-      // Generate image analysis and send to AI after screenshot
-      if (response.success && response.screenshotId && this.config.enableLogging) {
-        try {
-          // Generate image analysis prompt
-          const imageAnalysisPrompt = this.promptManager.getImageAnalysisPrompt(sessionId, stepId);
-          
-          // Get image file path from media manager
-          const imageFilePath = this.getMediaManager().getImagePath(response.screenshotId);
-          
-          // Send image analysis request to AI
-          const promptRequest = JSON.stringify(imageAnalysisPrompt);
-          const aiAnalysisResponse = await this.aiIntegration.sendRequest(promptRequest, imageFilePath);
-          
-          if (aiAnalysisResponse.status === 'success') {
-            console.log(`[TaskLoop] Image analysis response for ${action.command}:`, JSON.stringify(aiAnalysisResponse.data, null, 2));
-          } else {
-            console.warn(`[TaskLoop] Image analysis failed for ${action.command}: ${aiAnalysisResponse.error}`);
-          }
-        } catch (error) {
-          // Log warning if image analysis fails, but don't fail the operation
-          console.warn(`[TaskLoop] Failed to perform image analysis for session ${sessionId}, step ${stepId}: ${error instanceof Error ? error.message : String(error)}`);
-        }
-      }
       
       if (!response.success && response.error) {
         // Return error instead of throwing - include original Playwright error if available

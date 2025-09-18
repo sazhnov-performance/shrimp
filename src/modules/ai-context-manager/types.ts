@@ -12,8 +12,14 @@ export interface IAIContextManager {
   // Log a task for specific context and step
   logTask(contextId: string, stepId: number, task: any): void;
   
+  // Add screenshot description for a specific step
+  addScreenshotDescription(contextId: string, stepId: number, screenshotDescription: ScreenshotDescription): void;
+  
   // Get all task logs for a specific step
   getStepContext(contextId: string, stepId: number): any[];
+  
+  // Get screenshot descriptions for a specific step
+  getStepScreenshotDescriptions(contextId: string, stepId: number): ScreenshotDescription[];
   
   // Get full context including all steps and their logs
   getFullContext(contextId: string): ContextData;
@@ -29,6 +35,15 @@ export interface ContextData {
   contextId: string;
   steps: string[];
   stepLogs: Record<number, any[]>;
+  screenshotDescriptions: Record<number, ScreenshotDescription[]>;
   createdAt: Date;
   lastUpdated: Date;
+}
+
+export interface ScreenshotDescription {
+  screenshotId: string;
+  description: string;
+  actionType: string;
+  iteration?: number;
+  timestamp: Date;
 }

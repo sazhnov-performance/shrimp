@@ -290,6 +290,13 @@ export class PromptBuilder {
           if (summary) {
             history += `  Summary: ${summary}\n`;
           }
+          
+          // Include latest screenshot description for completed steps
+          const stepScreenshots = context.screenshotDescriptions?.[i] || [];
+          if (stepScreenshots.length > 0) {
+            const latestScreenshot = stepScreenshots[stepScreenshots.length - 1];
+            history += `  Latest Screenshot: ${latestScreenshot.description}\n`;
+          }
         }
         history += '\n';
       }
@@ -305,6 +312,19 @@ export class PromptBuilder {
           const attemptNumber = startingAttemptNumber + index;
           const attempt = this.formatLogEntry(log, attemptNumber);
           history += `${attempt}\n`;
+        });
+      }
+
+      // Format screenshot descriptions for current step
+      const currentStepScreenshots = context.screenshotDescriptions?.[currentStepId] || [];
+      if (currentStepScreenshots.length > 0) {
+        history += '\nCURRENT STEP SCREENSHOT DESCRIPTIONS:\n';
+        // Show the last 3 screenshot descriptions to avoid overwhelming the context
+        const lastThreeScreenshots = currentStepScreenshots.slice(-3);
+        
+        lastThreeScreenshots.forEach((screenshot, index) => {
+          const screenshotNumber = currentStepScreenshots.length - (lastThreeScreenshots.length - 1) + index;
+          history += `  Screenshot ${screenshotNumber} (${screenshot.actionType}${screenshot.iteration ? `, iteration ${screenshot.iteration}` : ''}): ${screenshot.description}\n`;
         });
       }
 
