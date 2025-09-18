@@ -118,7 +118,8 @@ export class StepProcessor implements IStepProcessor {
         console.log(`[StepProcessor] Initial event pushed to stream for session ${sessionId}`);
       }
       
-      // Schedule async execution to run after sessionId is returned
+      // Use setImmediate to ensure the "Stream Initiated" event is queued 
+      // before async execution starts (proper async scheduling, not arbitrary delay)
       setImmediate(() => {
         this.executeStepsAsync(sessionId, steps);
       });
@@ -160,7 +161,7 @@ export class StepProcessor implements IStepProcessor {
 
       
       if (this.config.enableLogging) {
-        console.log(`[StepProcessor] Created stream for session ${sessionId}`);
+        console.log(`[StepProcessor] About to create executor session for ${sessionId}`);
       }
       
       // Create executor session - this is critical for browser automation

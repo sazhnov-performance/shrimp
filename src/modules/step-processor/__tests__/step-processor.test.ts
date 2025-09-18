@@ -141,6 +141,9 @@ describe('StepProcessor', () => {
       // Verify session ID format
       expect(sessionId).toMatch(/^session-\d+-[a-z0-9]+$/);
 
+      // Wait for setImmediate to trigger async execution
+      await new Promise(resolve => setImmediate(resolve));
+
       // Verify prompt manager was initialized
       expect(mockPromptManager.init).toHaveBeenCalledWith(sessionId, steps);
 
@@ -181,8 +184,8 @@ describe('StepProcessor', () => {
       // Verify stream was created
       expect(mockExecutorStreamer.createStream).toHaveBeenCalledWith(sessionId);
 
-      // Wait for async step execution to complete
-      await new Promise(resolve => setTimeout(resolve, 10));
+      // Wait for setImmediate to trigger async execution
+      await new Promise(resolve => setImmediate(resolve));
 
       // Verify only first step was executed
       expect(mockTaskLoop.executeStep).toHaveBeenCalledTimes(1);
@@ -208,8 +211,8 @@ describe('StepProcessor', () => {
       // Verify stream was created
       expect(mockExecutorStreamer.createStream).toHaveBeenCalledWith(sessionId);
 
-      // Wait for async step execution to complete
-      await new Promise(resolve => setTimeout(resolve, 10));
+      // Wait for setImmediate to trigger async execution
+      await new Promise(resolve => setImmediate(resolve));
 
       // Verify only first two steps were executed
       expect(mockTaskLoop.executeStep).toHaveBeenCalledTimes(2);
@@ -231,8 +234,8 @@ describe('StepProcessor', () => {
       // Verify stream was created
       expect(mockExecutorStreamer.createStream).toHaveBeenCalledWith(sessionId);
 
-      // Wait for async execution to complete
-      await new Promise(resolve => setTimeout(resolve, 10));
+      // Wait for setImmediate to trigger async execution
+      await new Promise(resolve => setImmediate(resolve));
 
       // Verify no steps were executed
       expect(mockTaskLoop.executeStep).toHaveBeenCalledTimes(0);
@@ -253,8 +256,8 @@ describe('StepProcessor', () => {
       // Verify stream was created
       expect(mockExecutorStreamer.createStream).toHaveBeenCalledWith(sessionId);
 
-      // Wait for async execution to complete
-      await new Promise(resolve => setTimeout(resolve, 10));
+      // Wait for setImmediate to trigger async execution
+      await new Promise(resolve => setImmediate(resolve));
 
       // Verify single step was executed
       expect(mockTaskLoop.executeStep).toHaveBeenCalledTimes(1);
@@ -303,8 +306,8 @@ describe('StepProcessor', () => {
       // Verify stream was created
       expect(mockExecutorStreamer.createStream).toHaveBeenCalledWith(sessionId);
 
-      // Wait for async execution to complete
-      await new Promise(resolve => setTimeout(resolve, 10));
+      // Wait for setImmediate to trigger async execution
+      await new Promise(resolve => setImmediate(resolve));
 
       // Should attempt to execute first step
       expect(mockTaskLoop.executeStep).toHaveBeenCalledTimes(1);
@@ -328,8 +331,8 @@ describe('StepProcessor', () => {
       // Should return session ID
       expect(sessionId).toMatch(/^session-\d+-[a-z0-9]+$/);
 
-      // Wait for async execution to complete
-      await new Promise(resolve => setTimeout(resolve, 10));
+      // Wait for setImmediate to trigger async execution
+      await new Promise(resolve => setImmediate(resolve));
 
       // Should attempt first step, then stop due to error
       expect(mockTaskLoop.executeStep).toHaveBeenCalledTimes(1);

@@ -8909,3 +8909,42 @@
 2025-09-18T08:42:42.276Z [Executor][INFO] [session-1758184916047-lffn374gx] Executing command: GET_TEXT {"commandId":"taskloop_1758184962276_57t3r4fa6","action":"GET_TEXT","parameters":{"selector":"body"}}
 2025-09-18T08:42:43.074Z [Executor][INFO] [session-1758184916047-lffn374gx] Command GET_TEXT completed in 798ms {"action":"GET_TEXT","duration":798,"success":true,"commandId":"taskloop_1758184962276_57t3r4fa6"}
 2025-09-18T08:42:44.278Z [Executor][INFO] [session-1758184916047-lffn374gx] Session destroyed {"sessionId":"842bdb1a-37c1-4d10-b9ca-f681c59afe11"}
+2025-09-18T08:52:05.385Z [Executor][INFO] [session-1758185518978-63xaezo33] Session created {"sessionId":"d3bb3284-a681-4857-a890-28a86d25f66b","browserType":"chromium"}
+2025-09-18T08:52:08.349Z [Executor][INFO] [session-1758185518978-63xaezo33] Executing command: GET_TEXT {"commandId":"taskloop_1758185528349_430v7qtgq","action":"GET_TEXT","parameters":{"selector":"body"}}
+2025-09-18T08:52:10.946Z [Executor][INFO] [session-1758185518978-63xaezo33] Command GET_TEXT completed in 2597ms {"action":"GET_TEXT","duration":2597,"success":true,"commandId":"taskloop_1758185528349_430v7qtgq"}
+2025-09-18T08:52:13.966Z [Executor][INFO] [session-1758185518978-63xaezo33] Executing command: OPEN_PAGE {"commandId":"taskloop_1758185533966_fajqaimbi","action":"OPEN_PAGE","parameters":{"url":"https://www.google.com"}}
+2025-09-18T08:52:19.396Z [Executor][INFO] [session-1758185518978-63xaezo33] Command OPEN_PAGE completed in 5430ms {"action":"OPEN_PAGE","duration":5430,"success":true,"commandId":"taskloop_1758185533966_fajqaimbi"}
+2025-09-18T08:52:24.812Z [Executor][INFO] [session-1758185518978-63xaezo33] Session destroyed {"sessionId":"d3bb3284-a681-4857-a890-28a86d25f66b"}
+2025-09-18T08:57:47.640Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
+2025-09-18T08:57:52.488Z [Executor][INFO] [session-1758185867646-j2xldggxb] Session created {"sessionId":"87e1755b-207b-4e84-a8ab-8e20a7f9565e","browserType":"chromium"}
+2025-09-18T08:58:01.572Z [Executor][INFO] [session-1758185867646-j2xldggxb] Executing command: GET_TEXT {"commandId":"taskloop_1758185881570_4lcuvykfa","action":"GET_TEXT","parameters":{"selector":"body"}}
+2025-09-18T08:58:02.234Z [Executor][INFO] [session-1758185867646-j2xldggxb] Command GET_TEXT completed in 662ms {"action":"GET_TEXT","duration":662,"success":true,"commandId":"taskloop_1758185881570_4lcuvykfa"}
+2025-09-18T08:58:06.667Z [Executor][INFO] [session-1758185867646-j2xldggxb] Executing command: GET_SUBDOM {"commandId":"taskloop_1758185886667_jn4sg05ec","action":"GET_SUBDOM","parameters":{"selector":".test-element"}}
+2025-09-18T08:58:16.681Z [Executor][ERROR] [session-1758185867646-j2xldggxb] Command GET_SUBDOM failed in 10014ms {"action":"GET_SUBDOM","duration":10014,"success":false,"commandId":"taskloop_1758185886667_jn4sg05ec","error":"[object Object]"}
+2025-09-18T08:58:20.227Z [Executor][INFO] [session-1758185867646-j2xldggxb] Executing command: GET_SUBDOM {"commandId":"taskloop_1758185900227_dtx0enf6x","action":"GET_SUBDOM","parameters":{"selector":".alternative-test-element"}}
+2025-09-18T08:58:30.265Z [Executor][ERROR] [session-1758185867646-j2xldggxb] Command GET_SUBDOM failed in 10037ms {"action":"GET_SUBDOM","duration":10037,"success":false,"commandId":"taskloop_1758185900227_dtx0enf6x","error":"[object Object]"}
+2025-09-18T08:58:33.934Z [Executor][INFO] [session-1758185867646-j2xldggxb] Executing command: GET_SUBDOM {"commandId":"taskloop_1758185913934_avuu4ormv","action":"GET_SUBDOM","parameters":{"selector":".general-test-indicator"}}
+2025-09-18T08:58:43.964Z [Executor][ERROR] [session-1758185867646-j2xldggxb] Command GET_SUBDOM failed in 10030ms {"action":"GET_SUBDOM","duration":10030,"success":false,"commandId":"taskloop_1758185913934_avuu4ormv","error":"[object Object]"}
+2025-09-18T08:58:45.732Z [Executor][INFO] [session-1758185867646-j2xldggxb] Session destroyed {"sessionId":"87e1755b-207b-4e84-a8ab-8e20a7f9565e"}
+2025-09-18T09:01:45.856Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
+2025-09-18T09:01:49.405Z [Executor][INFO] [session-1758186105874-76oxxcp9m] Session created {"sessionId":"5a50fa5b-34d0-4e25-86d2-fc9f05a18574","browserType":"chromium"}
+2025-09-18T09:01:52.499Z [Executor][INFO] [session-1758186105874-76oxxcp9m] Executing command: GET_TEXT {"commandId":"taskloop_1758186112490_nlecgb7pz","action":"GET_TEXT","parameters":{"selector":"body"}}
+2025-09-18T09:01:53.539Z [Executor][INFO] [session-1758186105874-76oxxcp9m] Command GET_TEXT completed in 1041ms {"action":"GET_TEXT","duration":1041,"success":true,"commandId":"taskloop_1758186112490_nlecgb7pz"}
+2025-09-18T09:01:56.906Z [Executor][INFO] [session-1758186105874-76oxxcp9m] Executing command: GET_SUBDOM {"commandId":"taskloop_1758186116905_cjotmover","action":"GET_SUBDOM","parameters":{"selector":".test-element"}}
+2025-09-18T09:02:06.923Z [Executor][ERROR] [session-1758186105874-76oxxcp9m] Command GET_SUBDOM failed in 10017ms {"action":"GET_SUBDOM","duration":10017,"success":false,"commandId":"taskloop_1758186116905_cjotmover","error":"[object Object]"}
+2025-09-18T09:02:10.198Z [Executor][INFO] [session-1758186105874-76oxxcp9m] Executing command: GET_SUBDOM {"commandId":"taskloop_1758186130198_lql10qw0v","action":"GET_SUBDOM","parameters":{"selector":".alternative-test-element"}}
+2025-09-18T09:02:20.205Z [Executor][ERROR] [session-1758186105874-76oxxcp9m] Command GET_SUBDOM failed in 10007ms {"action":"GET_SUBDOM","duration":10007,"success":false,"commandId":"taskloop_1758186130198_lql10qw0v","error":"[object Object]"}
+2025-09-18T09:02:25.056Z [Executor][INFO] [session-1758186105874-76oxxcp9m] Session destroyed {"sessionId":"5a50fa5b-34d0-4e25-86d2-fc9f05a18574"}
+2025-09-18T09:17:39.031Z [Executor][INFO] [session-1758187053229-2ds9ljsv2] Session created {"sessionId":"77094d97-cf70-473e-97bd-ce9c9286531b","browserType":"chromium"}
+2025-09-18T09:17:42.753Z [Executor][INFO] [session-1758187053229-2ds9ljsv2] Executing command: GET_TEXT {"commandId":"taskloop_1758187062750_02zjvzkt5","action":"GET_TEXT","parameters":{"selector":"body"}}
+2025-09-18T09:17:44.124Z [Executor][INFO] [session-1758187053229-2ds9ljsv2] Command GET_TEXT completed in 1372ms {"action":"GET_TEXT","duration":1372,"success":true,"commandId":"taskloop_1758187062750_02zjvzkt5"}
+2025-09-18T09:17:46.756Z [Executor][INFO] [session-1758187053229-2ds9ljsv2] Executing command: OPEN_PAGE {"commandId":"taskloop_1758187066755_9ql95i7s3","action":"OPEN_PAGE","parameters":{"url":"https://www.google.com"}}
+2025-09-18T09:17:52.330Z [Executor][INFO] [session-1758187053229-2ds9ljsv2] Command OPEN_PAGE completed in 5574ms {"action":"OPEN_PAGE","duration":5574,"success":true,"commandId":"taskloop_1758187066755_9ql95i7s3"}
+2025-09-18T09:17:57.464Z [Executor][INFO] [session-1758187053229-2ds9ljsv2] Session destroyed {"sessionId":"77094d97-cf70-473e-97bd-ce9c9286531b"}
+2025-09-18T09:25:17.689Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
+2025-09-18T09:25:23.847Z [Executor][INFO] [session-1758187517720-0i90ao6yg] Session created {"sessionId":"578df070-8ef2-431e-bc7c-e5005cf758db","browserType":"chromium"}
+2025-09-18T09:25:29.023Z [Executor][INFO] [session-1758187517720-0i90ao6yg] Executing command: GET_TEXT {"commandId":"taskloop_1758187529020_83j2qrk0p","action":"GET_TEXT","parameters":{"selector":"body"}}
+2025-09-18T09:25:29.802Z [Executor][INFO] [session-1758187517720-0i90ao6yg] Command GET_TEXT completed in 779ms {"action":"GET_TEXT","duration":779,"success":true,"commandId":"taskloop_1758187529020_83j2qrk0p"}
+2025-09-18T09:25:32.146Z [Executor][INFO] [session-1758187517720-0i90ao6yg] Executing command: OPEN_PAGE {"commandId":"taskloop_1758187532146_cuw4d5kuu","action":"OPEN_PAGE","parameters":{"url":"https://www.google.com"}}
+2025-09-18T09:25:36.933Z [Executor][INFO] [session-1758187517720-0i90ao6yg] Command OPEN_PAGE completed in 4787ms {"action":"OPEN_PAGE","duration":4787,"success":true,"commandId":"taskloop_1758187532146_cuw4d5kuu"}
+2025-09-18T09:25:47.145Z [Executor][INFO] [session-1758187517720-0i90ao6yg] Session destroyed {"sessionId":"578df070-8ef2-431e-bc7c-e5005cf758db"}
