@@ -287,6 +287,10 @@ export interface ExecutorConfig extends BaseModuleConfig {
     headless: boolean;
     sessionTTL: number;
     maxSessions: number;
+    viewport: {
+      width: number;
+      height: number;
+    };
   };
   screenshots: ScreenshotConfig;
   networkIdle: NetworkIdleConfig;
@@ -302,7 +306,11 @@ export const DEFAULT_EXECUTOR_CONFIG: ExecutorConfig = {
     type: 'chromium',
     headless: false,
     sessionTTL: 1800000, // 30 minutes
-    maxSessions: 10
+    maxSessions: 10,
+    viewport: {
+      width: 1920,
+      height: 1080
+    }
   },
   
   screenshots: {

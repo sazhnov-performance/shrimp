@@ -195,7 +195,7 @@ export class TaskLoop implements ITaskLoop {
 
           }
           
-          executionResult = await this.executeAction(sessionId, validatedResponse.action);
+          executionResult = await this.executeAction(sessionId, stepId, validatedResponse.action);
           
           if (this.config.enableLogging) {
             console.log(`[TaskLoop] Action execution result for session ${sessionId}, step ${stepId}, iteration ${iterations}:`, executionResult);
@@ -292,7 +292,7 @@ export class TaskLoop implements ITaskLoop {
   /**
    * Execute an action through the executor
    */
-  private async executeAction(sessionId: string, action: any): Promise<{success: boolean, result?: any, error?: string}> {
+  private async executeAction(sessionId: string, stepId: number, action: any): Promise<{success: boolean, result?: any, error?: string}> {
     try {
       // Session should already be created by StepProcessor
       if (!this.executor.sessionExists(sessionId)) {
@@ -334,6 +334,30 @@ export class TaskLoop implements ITaskLoop {
         } catch (error) {
           // Log warning if URL generation fails, but don't fail the operation
           console.warn(`[TaskLoop] Failed to generate screenshot URL for ${response.screenshotId}: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+
+      // Generate image analysis and send to AI after screenshot
+      if (response.success && response.screenshotId && this.config.enableLogging) {
+        try {
+          // Generate image analysis prompt
+          const imageAnalysisPrompt = this.promptManager.getImageAnalysisPrompt(sessionId, stepId);
+          
+          // Get image file path from media manager
+          const imageFilePath = this.mediaManager.getImagePath(response.screenshotId);
+          
+          // Send image analysis request to AI
+          const promptRequest = JSON.stringify(imageAnalysisPrompt);
+          const aiAnalysisResponse = await this.aiIntegration.sendRequest(promptRequest, imageFilePath);
+          
+          if (aiAnalysisResponse.status === 'success') {
+            console.log(`[TaskLoop] Image analysis response for ${action.command}:`, JSON.stringify(aiAnalysisResponse.data, null, 2));
+          } else {
+            console.warn(`[TaskLoop] Image analysis failed for ${action.command}: ${aiAnalysisResponse.error}`);
+          }
+        } catch (error) {
+          // Log warning if image analysis fails, but don't fail the operation
+          console.warn(`[TaskLoop] Failed to perform image analysis for session ${sessionId}, step ${stepId}: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
       

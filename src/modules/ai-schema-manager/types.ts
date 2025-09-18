@@ -5,6 +5,9 @@
 export interface IAISchemaManager {
   // Singleton instance access
   getAIResponseSchema(): AIResponseSchema;
+  
+  // Get image analysis schema
+  getImageAnalysisSchema(): ImageAnalysisSchema;
 }
 
 export interface AISchemaManagerConfig {
@@ -94,6 +97,44 @@ export interface ExecutorActionSchema {
         text: {
           type: "string";
           description: "Text input for INPUT_TEXT command";
+        };
+      };
+    };
+  };
+}
+
+export interface ImageAnalysisSchema {
+  type: "object";
+  required: ["overallDescription", "interactibleElements"];
+  properties: {
+    overallDescription: {
+      type: "string";
+      description: "Overall description of what is visible in the image, including layout, content, and visual state";
+    };
+    interactibleElements: {
+      type: "array";
+      description: "List of elements that can be interacted with (buttons, links, forms, etc.)";
+      items: {
+        type: "object";
+        required: ["type", "description", "location"];
+        properties: {
+          type: {
+            type: "string";
+            enum: ["button", "link", "input", "select", "checkbox", "radio", "textarea", "image", "menu", "other"];
+            description: "Type of interactible element";
+          };
+          description: {
+            type: "string";
+            description: "Description of the element including visible text or labels";
+          };
+          location: {
+            type: "string";
+            description: "Description of where the element is positioned (e.g., 'top-right corner', 'center of page', 'navigation bar')";
+          };
+          suggestedSelector: {
+            type: "string";
+            description: "Optional: Suggested CSS selector or identifier for the element if visible";
+          };
         };
       };
     };

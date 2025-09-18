@@ -6,12 +6,13 @@
  * and specialized instructions to create optimized prompts.
  */
 
-import { IAIPromptManager, AIPromptManagerConfig, PromptContent } from './types';
+import { IAIPromptManager, AIPromptManagerConfig, PromptContent, LatestExecutedStep } from './types';
 import { IAIContextManager, ContextData } from '../ai-context-manager/types';
 import { AIContextManager } from '../ai-context-manager/ai-context-manager';
 import { IAISchemaManager } from '../ai-schema-manager/types';
 import AISchemaManager from '../ai-schema-manager/index';
 import { PromptBuilder } from './prompt-builder';
+import { SYSTEM_TEMPLATE, USER_TEMPLATE, IMAGE_ANALYSIS_SYSTEM_TEMPLATE, IMAGE_ANALYSIS_USER_TEMPLATE } from './templates';
 
 export class AIPromptManager implements IAIPromptManager {
   private static instance: AIPromptManager | null = null;
@@ -171,6 +172,118 @@ getStepPrompt(sessionId: string, stepId: number): string {
       };
       return this.promptBuilder.buildPrompt(minimalContext, 0, basicSchema);
     }
+  }
+
+  /**
+   * Get image analysis prompt messages for specific session and step
+   * @param sessionId Session identifier
+   * @param stepId Step index (0-based)
+   * @returns Object with system and user message content for image analysis
+   */
+  getImageAnalysisPrompt(sessionId: string, stepId: number): PromptContent {
+    try {
+      // Get session context
+      const context = this.contextManager.getFullContext(sessionId);
+      
+      // Validate step ID within bounds
+      if (stepId < 0 || stepId >= context.steps.length) {
+        throw new Error(`Step ID ${stepId} is out of bounds for session "${sessionId}"`);
+      }
+
+      // Get latest executed step data
+      const latestStep = this.getLatestExecutedStep(context, stepId);
+      
+      // Get image analysis schema
+      const schema = this.schemaManager.getImageAnalysisSchema();
+      const schemaText = JSON.stringify(schema, null, 2);
+
+      // Build system message
+      const systemMessage = IMAGE_ANALYSIS_SYSTEM_TEMPLATE
+        .replace('{taskName}', latestStep.stepName)
+        .replace('{actionName}', latestStep.actionName)
+        .replace('{actionParameters}', JSON.stringify(latestStep.actionParameters))
+        .replace('{responseSchema}', schemaText);
+
+      // Build user message
+      const userMessage = IMAGE_ANALYSIS_USER_TEMPLATE
+        .replace('{taskName}', latestStep.stepName)
+        .replace('{actionName}', latestStep.actionName)
+        .replace('{actionParameters}', JSON.stringify(latestStep.actionParameters));
+
+      return {
+        system: systemMessage,
+        user: userMessage
+      };
+
+    } catch (error) {
+      if (error instanceof Error) {
+        // Re-throw validation errors
+        if (error.message.includes('does not exist') || 
+            error.message.includes('out of bounds')) {
+          throw error;
+        }
+      }
+      
+      // Fallback for errors
+      const fallbackSchema = this.schemaManager.getImageAnalysisSchema();
+      const schemaText = JSON.stringify(fallbackSchema, null, 2);
+      
+      return {
+        system: IMAGE_ANALYSIS_SYSTEM_TEMPLATE
+          .replace('{taskName}', 'Unknown Task')
+          .replace('{actionName}', 'Unknown Action')
+          .replace('{actionParameters}', '{}')
+          .replace('{responseSchema}', schemaText),
+        user: IMAGE_ANALYSIS_USER_TEMPLATE
+          .replace('{taskName}', 'Unknown Task')
+          .replace('{actionName}', 'Unknown Action')
+          .replace('{actionParameters}', '{}')
+      };
+    }
+  }
+
+  /**
+   * Extract latest executed step data from context
+   * @param context Session context data
+   * @param stepId Current step ID
+   * @returns Latest executed step information
+   */
+  private getLatestExecutedStep(context: ContextData, stepId: number): LatestExecutedStep {
+    // Get the current step name
+    const stepName = context.steps[stepId] || `Step ${stepId + 1}`;
+    
+    // Look for the latest executed step in step logs
+    let latestActionName = 'No previous action';
+    let latestActionParameters: Record<string, any> = {};
+    
+    // Check current step logs first
+    const currentStepLogs = context.stepLogs[stepId] || [];
+    if (currentStepLogs.length > 0) {
+      const latestLog = currentStepLogs[currentStepLogs.length - 1];
+      if (latestLog.aiResponse && latestLog.aiResponse.action) {
+        latestActionName = latestLog.aiResponse.action.command;
+        latestActionParameters = latestLog.aiResponse.action.parameters || {};
+      }
+    } else {
+      // If no logs in current step, check previous steps
+      for (let i = stepId - 1; i >= 0; i--) {
+        const stepLogs = context.stepLogs[i] || [];
+        if (stepLogs.length > 0) {
+          const latestLog = stepLogs[stepLogs.length - 1];
+          if (latestLog.aiResponse && latestLog.aiResponse.action) {
+            latestActionName = latestLog.aiResponse.action.command;
+            latestActionParameters = latestLog.aiResponse.action.parameters || {};
+            break;
+          }
+        }
+      }
+    }
+
+    return {
+      stepName,
+      actionName: latestActionName,
+      actionParameters: latestActionParameters
+    };
   }
 
 

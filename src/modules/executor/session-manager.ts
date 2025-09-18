@@ -69,6 +69,12 @@ export class ExecutorSessionManager implements IExecutorSessionManager {
       // Launch browser
       const browser = await this.launchBrowser();
       const page = await browser.newPage();
+      
+      // Set viewport size to ensure consistent screenshots and layout
+      await page.setViewportSize({
+        width: this.config.browser.viewport.width,
+        height: this.config.browser.viewport.height
+      });
 
       // Create session object
       const session: ExecutorSession = {
@@ -330,7 +336,11 @@ export class ExecutorSessionManager implements IExecutorSessionManager {
       const browserType = this.config.browser.type;
       const options = {
         headless: this.config.browser.headless,
-        args: ["--start-maximized"]
+        args: [
+          "--disable-web-security",
+          "--disable-features=VizDisplayCompositor",
+          `--window-size=${this.config.browser.viewport.width},${this.config.browser.viewport.height}`
+        ]
       };
 
       switch (browserType) {

@@ -262,4 +262,95 @@ describe('AISchemaManager', () => {
       expect(stopFailureExample.action).toBeUndefined();
     });
   });
+
+  describe('Image Analysis Schema', () => {
+    let schemaManager: any;
+
+    beforeEach(() => {
+      schemaManager = AISchemaManager.getInstance();
+    });
+
+    it('should return a valid image analysis schema object', () => {
+      const schema = schemaManager.getImageAnalysisSchema();
+      
+      expect(schema).toBeDefined();
+      expect(schema.type).toBe('object');
+      expect(schema.required).toContain('overallDescription');
+      expect(schema.required).toContain('interactibleElements');
+    });
+
+    it('should include overallDescription property', () => {
+      const schema = schemaManager.getImageAnalysisSchema();
+      
+      expect(schema.properties.overallDescription).toBeDefined();
+      expect(schema.properties.overallDescription.type).toBe('string');
+      expect(schema.properties.overallDescription.description).toContain('Overall description');
+    });
+
+    it('should include interactibleElements array property', () => {
+      const schema = schemaManager.getImageAnalysisSchema();
+      
+      expect(schema.properties.interactibleElements).toBeDefined();
+      expect(schema.properties.interactibleElements.type).toBe('array');
+      expect(schema.properties.interactibleElements.items).toBeDefined();
+    });
+
+    it('should define interactible element structure correctly', () => {
+      const schema = schemaManager.getImageAnalysisSchema();
+      const elementSchema = schema.properties.interactibleElements.items;
+      
+      expect(elementSchema.type).toBe('object');
+      expect(elementSchema.required).toContain('type');
+      expect(elementSchema.required).toContain('description');
+      expect(elementSchema.required).toContain('location');
+      
+      expect(elementSchema.properties.type).toBeDefined();
+      expect(elementSchema.properties.description).toBeDefined();
+      expect(elementSchema.properties.location).toBeDefined();
+      expect(elementSchema.properties.suggestedSelector).toBeDefined();
+    });
+
+    it('should include valid element types in enum', () => {
+      const schema = schemaManager.getImageAnalysisSchema();
+      const elementSchema = schema.properties.interactibleElements.items;
+      const typeProperty = elementSchema.properties.type;
+      
+      expect(typeProperty.enum).toContain('button');
+      expect(typeProperty.enum).toContain('link');
+      expect(typeProperty.enum).toContain('input');
+      expect(typeProperty.enum).toContain('select');
+      expect(typeProperty.enum).toContain('checkbox');
+      expect(typeProperty.enum).toContain('radio');
+      expect(typeProperty.enum).toContain('textarea');
+      expect(typeProperty.enum).toContain('image');
+      expect(typeProperty.enum).toContain('menu');
+      expect(typeProperty.enum).toContain('other');
+    });
+
+    it('should validate example image analysis response', () => {
+      const exampleResponse = {
+        overallDescription: "Login page with form fields and submit button",
+        interactibleElements: [
+          {
+            type: "input",
+            description: "Username input field",
+            location: "center-left of form",
+            suggestedSelector: "input[name='username']"
+          },
+          {
+            type: "button",
+            description: "Submit login button",
+            location: "bottom of form"
+          }
+        ]
+      };
+
+      expect(exampleResponse).toHaveProperty('overallDescription');
+      expect(exampleResponse).toHaveProperty('interactibleElements');
+      expect(Array.isArray(exampleResponse.interactibleElements)).toBe(true);
+      expect(exampleResponse.interactibleElements[0]).toHaveProperty('type');
+      expect(exampleResponse.interactibleElements[0]).toHaveProperty('description');
+      expect(exampleResponse.interactibleElements[0]).toHaveProperty('location');
+    });
+  });
 });

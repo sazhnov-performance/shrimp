@@ -16,6 +16,9 @@ export interface IAIPromptManager {
   
   // Get system and user messages for specific step
   getStepMessages(sessionId: string, stepId: number): PromptContent;
+  
+  // Get image analysis prompt messages for specific session and step
+  getImageAnalysisPrompt(sessionId: string, stepId: number): PromptContent;
 }
 
 export interface AIPromptManagerConfig {
@@ -41,4 +44,10 @@ export interface ContextualHistory {
     reasoning: string;
     timestamp: string;
   }>;
+}
+
+export interface LatestExecutedStep {
+  stepName: string;
+  actionName: string;
+  actionParameters: Record<string, any>;
 }

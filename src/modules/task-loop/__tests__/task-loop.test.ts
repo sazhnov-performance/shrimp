@@ -128,6 +128,10 @@ describe('TaskLoop', () => {
         getStepMessages: jest.fn().mockReturnValue({
           system: 'Test system message',
           user: 'Test user message'
+        }),
+        getImageAnalysisPrompt: jest.fn().mockReturnValue({
+          system: 'Image analysis system prompt',
+          user: 'Image analysis user prompt'
         })
       };
       mockAIIntegration = {
@@ -143,8 +147,16 @@ describe('TaskLoop', () => {
       AIPromptManager.getInstance = jest.fn().mockReturnValue(mockPromptManager);
       AIIntegrationManager.getInstance = jest.fn().mockReturnValue(mockAIIntegration);
       
-      // Mock constructor for Executor
-      Executor.mockImplementation(() => mockExecutor);
+      // Mock getInstance for Executor
+      Executor.getInstance = jest.fn().mockReturnValue(mockExecutor);
+      
+      // Mock Media Manager for image analysis
+      const mockMediaManager = {
+        getImagePath: jest.fn().mockReturnValue('/mock/path/to/image.png'),
+        getImageUrl: jest.fn().mockReturnValue('http://localhost:3000/media/test-screenshot')
+      };
+      const { MediaManager } = require('../../media-manager');
+      MediaManager.getInstance = jest.fn().mockReturnValue(mockMediaManager);
 
       instance = TaskLoop.getInstance();
     });
@@ -214,11 +226,25 @@ describe('TaskLoop', () => {
         }
       ];
 
+      // Set up AI integration mock responses for both regular and image analysis requests
       mockAIIntegration.sendRequest
-        .mockResolvedValueOnce(mockAIResponses[0])
-        .mockResolvedValueOnce(mockAIResponses[1]);
+        .mockResolvedValueOnce(mockAIResponses[0])  // First regular AI request
+        .mockResolvedValueOnce({                   // Image analysis request
+          status: 'success',
+          data: {
+            overallDescription: 'Mock image analysis: A web page with a button',
+            interactibleElements: [
+              {
+                type: 'button',
+                description: 'A clickable button element',
+                location: 'center of page'
+              }
+            ]
+          }
+        })
+        .mockResolvedValueOnce(mockAIResponses[1]); // Second regular AI request
 
-      mockExecutor.executeCommand.mockResolvedValue({ success: true });
+      mockExecutor.executeCommand.mockResolvedValue({ success: true, screenshotId: 'test-screenshot-123' });
 
       const result = await instance.executeStep('test-session', 0);
 
@@ -243,7 +269,7 @@ describe('TaskLoop', () => {
       };
 
       mockExecutor.sessionExists.mockReturnValue(false);
-      mockExecutor.executeCommand.mockResolvedValue({ success: true });
+      mockExecutor.executeCommand.mockResolvedValue({ success: true, screenshotId: 'test-screenshot-456' });
       mockAIIntegration.sendRequest
         .mockResolvedValueOnce(mockAIResponse)
         .mockResolvedValueOnce({
@@ -280,6 +306,10 @@ describe('TaskLoop', () => {
         getStepMessages: jest.fn().mockReturnValue({
           system: 'Test system message',
           user: 'Test user message'
+        }),
+        getImageAnalysisPrompt: jest.fn().mockReturnValue({
+          system: 'Image analysis system prompt',
+          user: 'Image analysis user prompt'
         })
       };
       mockAIIntegration = {
@@ -293,7 +323,15 @@ describe('TaskLoop', () => {
       AIContextManager.getInstance = jest.fn().mockReturnValue(mockContextManager);
       AIPromptManager.getInstance = jest.fn().mockReturnValue(mockPromptManager);
       AIIntegrationManager.getInstance = jest.fn().mockReturnValue(mockAIIntegration);
-      Executor.mockImplementation(() => mockExecutor);
+      Executor.getInstance = jest.fn().mockReturnValue(mockExecutor);
+      
+      // Mock Media Manager for image analysis
+      const mockMediaManager = {
+        getImagePath: jest.fn().mockReturnValue('/mock/path/to/image.png'),
+        getImageUrl: jest.fn().mockReturnValue('http://localhost:3000/media/test-screenshot')
+      };
+      const { MediaManager } = require('../../media-manager');
+      MediaManager.getInstance = jest.fn().mockReturnValue(mockMediaManager);
 
       instance = TaskLoop.getInstance();
     });

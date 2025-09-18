@@ -23,6 +23,11 @@ export class MediaManager implements IMediaManager {
       supportedFormats: ['png', 'jpg', 'jpeg', 'gif', 'webp'],
       baseUrl: process.env.MEDIA_BASE_URL || 'http://localhost:3000'
     };
+    
+    // Load existing images on initialization
+    this.loadExistingImages().catch(error => {
+      console.error('Failed to load existing images on MediaManager initialization:', error);
+    });
   }
 
   static getInstance(): IMediaManager {
@@ -128,5 +133,68 @@ export class MediaManager implements IMediaManager {
     };
 
     return mimeTypes[format] || 'image/png';
+  }
+
+  /**
+   * Load existing images from storage directory into metadata map
+   * This is called during initialization to restore metadata for existing files
+   */
+  private async loadExistingImages(): Promise<void> {
+    try {
+      // Ensure storage directory exists
+      await fs.mkdir(this.config.storageDirectory, { recursive: true });
+      
+      // Read all files in storage directory
+      const files = await fs.readdir(this.config.storageDirectory);
+      
+      // Process each file to extract UUID and metadata
+      for (const filename of files) {
+        const filePath = join(this.config.storageDirectory, filename);
+        
+        try {
+          // Check if it's a file (not directory)
+          const stats = await fs.stat(filePath);
+          if (!stats.isFile()) continue;
+          
+          // Extract UUID and extension from filename
+          const parts = filename.split('.');
+          if (parts.length < 2) continue; // Skip files without extension
+          
+          const uuid = parts[0];
+          const extension = parts[parts.length - 1].toLowerCase();
+          
+          // Validate UUID format (simple check)
+          if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid)) {
+            continue; // Skip files that don't have UUID naming
+          }
+          
+          // Validate format
+          if (!this.config.supportedFormats.includes(extension)) {
+            continue; // Skip unsupported formats
+          }
+          
+          // Create metadata entry
+          const metadata: ImageMetadata = {
+            uuid,
+            originalPath: '', // Unknown for existing files
+            storedPath: filePath,
+            format: extension,
+            storedAt: stats.birthtime || stats.mtime, // Use file creation/modification time
+            fileSize: stats.size
+          };
+          
+          this.imageMetadata.set(uuid, metadata);
+          console.log(`[MediaManager] Loaded existing image: ${uuid}.${extension}`);
+        } catch (error) {
+          console.warn(`[MediaManager] Failed to process file ${filename}:`, error);
+          continue; // Skip this file and continue with others
+        }
+      }
+      
+      console.log(`[MediaManager] Loaded ${this.imageMetadata.size} existing images from storage`);
+    } catch (error) {
+      console.error('[MediaManager] Failed to load existing images:', error);
+      // Don't throw - this shouldn't prevent MediaManager from working
+    }
   }
 }

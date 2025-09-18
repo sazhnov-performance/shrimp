@@ -9204,3 +9204,102 @@
 2025-09-18T11:53:51.130Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
 2025-09-18T11:53:51.188Z [Executor][INFO] Shutting down executor module
 2025-09-18T11:53:51.198Z [Executor][INFO] Executor module shutdown complete
+2025-09-18T13:16:28.491Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
+2025-09-18T13:16:34.131Z [Executor][INFO] [session-1758201388514-sw7yuc4dx] Session created {"sessionId":"c01919fa-8c81-4229-bb8c-a8ef851c9eba","browserType":"chromium"}
+2025-09-18T13:16:38.763Z [Executor][INFO] [session-1758201388514-sw7yuc4dx] Executing command: GET_TEXT {"commandId":"taskloop_1758201398759_enkpuuj15","action":"GET_TEXT","parameters":{"selector":"body"}}
+2025-09-18T13:16:39.985Z [Executor][INFO] [session-1758201388514-sw7yuc4dx] Command GET_TEXT completed in 1223ms {"action":"GET_TEXT","duration":1223,"success":true,"commandId":"taskloop_1758201398759_enkpuuj15"}
+2025-09-18T13:16:44.251Z [Executor][INFO] [session-1758201388514-sw7yuc4dx] Executing command: OPEN_PAGE {"commandId":"taskloop_1758201404250_j871h82pt","action":"OPEN_PAGE","parameters":{"url":"https://www.google.com"}}
+2025-09-18T13:16:48.977Z [Executor][INFO] [session-1758201388514-sw7yuc4dx] Command OPEN_PAGE completed in 4726ms {"action":"OPEN_PAGE","duration":4726,"success":true,"commandId":"taskloop_1758201404250_j871h82pt"}
+2025-09-18T13:16:54.551Z [Executor][INFO] [session-1758201388514-sw7yuc4dx] Session destroyed {"sessionId":"c01919fa-8c81-4229-bb8c-a8ef851c9eba"}
+2025-09-18T13:24:35.965Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
+2025-09-18T13:24:41.982Z [Executor][INFO] [session-1758201876037-289ck84jk] Session created {"sessionId":"8a4df26e-e5ce-49ac-bd04-e341776a27f4","browserType":"chromium"}
+2025-09-18T13:24:46.201Z [Executor][INFO] [session-1758201876037-289ck84jk] Executing command: GET_TEXT {"commandId":"taskloop_1758201886196_l5l7lqh0n","action":"GET_TEXT","parameters":{"selector":"body"}}
+2025-09-18T13:24:47.093Z [Executor][INFO] [session-1758201876037-289ck84jk] Command GET_TEXT completed in 886ms {"action":"GET_TEXT","duration":886,"success":true,"commandId":"taskloop_1758201886196_l5l7lqh0n"}
+2025-09-18T13:24:57.990Z [Executor][INFO] [session-1758201876037-289ck84jk] Executing command: OPEN_PAGE {"commandId":"taskloop_1758201897989_i5t2qk456","action":"OPEN_PAGE","parameters":{"url":"https://www.google.com"}}
+2025-09-18T13:25:00.917Z [Executor][INFO] [session-1758201876037-289ck84jk] Command OPEN_PAGE completed in 2927ms {"action":"OPEN_PAGE","duration":2927,"success":true,"commandId":"taskloop_1758201897989_i5t2qk456"}
+2025-09-18T13:25:17.083Z [Executor][INFO] [session-1758201876037-289ck84jk] Session destroyed {"sessionId":"8a4df26e-e5ce-49ac-bd04-e341776a27f4"}
+2025-09-18T13:37:50.825Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:51.243Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:51.358Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:51.502Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:51.627Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:51.743Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:51.839Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:51.988Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:52.054Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:52.159Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:52.256Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:52.370Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:52.456Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:52.530Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:52.646Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:52.754Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:52.860Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:53.002Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:53.147Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:53.281Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:53.395Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:53.488Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:53.581Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:53.671Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":false}}
+2025-09-18T13:37:50.963Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:51.143Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:51.292Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:51.312Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:51.391Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:51.441Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:51.552Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:51.579Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:51.694Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:51.709Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:51.770Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:51.786Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:51.923Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:51.941Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:52.008Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:52.023Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:52.080Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:52.111Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:52.195Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:52.216Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:52.298Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:52.315Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:52.399Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:52.422Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:52.483Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:52.498Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:52.562Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:52.581Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:52.602Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:52.684Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:52.697Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:52.714Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:52.787Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:52.803Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:52.821Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:52.895Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:52.912Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:52.941Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:53.035Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:53.049Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:53.079Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:53.203Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:53.218Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:53.236Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:53.314Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:53.330Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:53.346Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:53.425Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:53.441Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:53.458Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:53.514Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:53.529Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:53.546Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:53.609Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:53.626Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:53.641Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:53.693Z [Executor][ERROR] [test-workflow-session] Failed to create session for workflow test-workflow-session {"error":"page.setViewportSize is not a function"}
+2025-09-18T13:37:53.726Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:53.749Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
+2025-09-18T13:37:53.772Z [Executor][INFO] Shutting down executor module
+2025-09-18T13:37:53.795Z [Executor][INFO] Executor module shutdown complete

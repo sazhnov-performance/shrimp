@@ -3,8 +3,8 @@
  * Provides standardized JSON schemas for AI responses in the automation system.
  */
 
-import { IAISchemaManager, AISchemaManagerConfig, AIResponseSchema } from './types';
-import { AI_RESPONSE_SCHEMA, EXECUTOR_ACTION_SCHEMA } from './schemas';
+import { IAISchemaManager, AISchemaManagerConfig, AIResponseSchema, ImageAnalysisSchema } from './types';
+import { AI_RESPONSE_SCHEMA, EXECUTOR_ACTION_SCHEMA, IMAGE_ANALYSIS_SCHEMA } from './schemas';
 
 /**
  * AISchemaManager - Singleton class that provides JSON schemas for AI responses
@@ -66,6 +66,14 @@ class AISchemaManager implements IAISchemaManager {
         }
       }
     };
+  }
+
+  /**
+   * Get the image analysis schema for AI image feedback
+   * @returns JSON schema object for image analysis responses
+   */
+  getImageAnalysisSchema(): ImageAnalysisSchema {
+    return IMAGE_ANALYSIS_SCHEMA as ImageAnalysisSchema;
   }
 
   /**

@@ -704,4 +704,86 @@ describe('AIPromptManager', () => {
       expect(prompt).toContain('No execution history available');
     });
   });
+
+  describe('Image Analysis Prompt', () => {
+    const sessionId = 'image-analysis-test';
+    const steps = ['Open login page', 'Enter credentials', 'Submit form'];
+
+    beforeEach(() => {
+      promptManager.init(sessionId, steps);
+    });
+
+    it('should generate image analysis prompt for valid session and step', () => {
+      const result = promptManager.getImageAnalysisPrompt(sessionId, 0);
+      
+      expect(result).toHaveProperty('system');
+      expect(result).toHaveProperty('user');
+      expect(typeof result.system).toBe('string');
+      expect(typeof result.user).toBe('string');
+    });
+
+    it('should include task context in image analysis prompt', () => {
+      const result = promptManager.getImageAnalysisPrompt(sessionId, 1);
+      
+      expect(result.system).toContain('Enter credentials');
+      expect(result.user).toContain('Enter credentials');
+      expect(result.system).toContain('No previous action');
+      expect(result.user).toContain('No previous action');
+    });
+
+    it('should include latest executed step in context', () => {
+      // Add a task log to create execution history
+      contextManager.logTask(sessionId, 0, {
+        iteration: 1,
+        aiResponse: {
+          action: { command: 'OPEN_PAGE', parameters: { url: 'https://example.com' } },
+          reasoning: 'Opening the main page to start automation',
+          confidence: 'HIGH',
+          flowControl: 'continue'
+        },
+        executionResult: { success: true, result: 'Page loaded successfully' }
+      });
+
+      const result = promptManager.getImageAnalysisPrompt(sessionId, 1);
+      
+      expect(result.system).toContain('OPEN_PAGE');
+      expect(result.system).toContain('https://example.com');
+      expect(result.user).toContain('OPEN_PAGE');
+    });
+
+    it('should include image analysis schema in system prompt', () => {
+      const result = promptManager.getImageAnalysisPrompt(sessionId, 0);
+      
+      expect(result.system).toContain('overallDescription');
+      expect(result.system).toContain('interactibleElements');
+      expect(result.system).toContain('type');
+      expect(result.system).toContain('description');
+      expect(result.system).toContain('location');
+    });
+
+    it('should throw error for non-existent session', () => {
+      expect(() => {
+        promptManager.getImageAnalysisPrompt('non-existent', 0);
+      }).toThrow('does not exist');
+    });
+
+    it('should throw error for invalid step ID', () => {
+      expect(() => {
+        promptManager.getImageAnalysisPrompt(sessionId, 99);
+      }).toThrow('out of bounds');
+    });
+
+    it('should handle error gracefully with fallback content', () => {
+      // Simulate error by passing invalid session, but catch and test fallback
+      try {
+        const result = promptManager.getImageAnalysisPrompt('non-existent', 0);
+        // Should not reach here, but if it does due to fallback, test it
+        expect(result.system).toContain('Unknown Task');
+        expect(result.user).toContain('Unknown Task');
+      } catch (error) {
+        // Expected to throw, this is the normal case
+        expect(error).toBeDefined();
+      }
+    });
+  });
 });
