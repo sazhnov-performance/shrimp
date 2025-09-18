@@ -131,9 +131,9 @@ export interface ImageAnalysisSchema {
             type: "string";
             description: "Description of where the element is positioned (e.g., 'top-right corner', 'center of page', 'navigation bar')";
           };
-          suggestedSelector: {
+          containsText: {
             type: "string";
-            description: "Optional: Suggested CSS selector or identifier for the element if visible";
+            description: "Optional: Visible text content within the element (button text, link text, labels, etc.)";
           };
         };
       };
