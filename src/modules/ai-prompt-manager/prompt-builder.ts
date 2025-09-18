@@ -3,18 +3,109 @@
  */
 
 import { ContextData } from '../ai-context-manager/types';
-import { ContextualHistory } from './types';
-import { PROMPT_TEMPLATE, FALLBACK_TEMPLATE } from './templates';
+import { ContextualHistory, PromptContent } from './types';
+import { 
+  SYSTEM_TEMPLATE, 
+  USER_TEMPLATE, 
+  FALLBACK_SYSTEM_TEMPLATE, 
+  FALLBACK_USER_TEMPLATE 
+} from './templates';
 
 export class PromptBuilder {
   private maxPromptLength: number;
+  private contextTruncateLimit: number;
 
   constructor(maxPromptLength: number = 8000) {
     this.maxPromptLength = maxPromptLength;
+    // Get truncation limit from environment variable, default to 1000
+    const envValue = process.env.CONTEXT_TRUNCATE_RESULT;
+    const parsedValue = envValue ? parseInt(envValue, 10) : 1000;
+    this.contextTruncateLimit = isNaN(parsedValue) ? 1000 : parsedValue;
   }
 
   /**
-   * Build complete prompt with context, schema, and step information
+   * Truncate text with informative message if needed
+   * @param text Text to potentially truncate
+   * @param limit Maximum character limit
+   * @returns Truncated text with message if truncation occurred
+   */
+  private truncateWithMessage(text: string, limit: number): string {
+    if (!text || text.length <= limit) {
+      return text;
+    }
+    
+    const truncated = text.substring(0, limit);
+    const message = `Value is truncated, shown ${limit} out of ${text.length} characters`;
+    return `${truncated}\n\n[${message}]`;
+  }
+
+  /**
+   * Build system and user messages separately (new approach)
+   * @param context Execution context data
+   * @param stepId Current step index
+   * @param schema JSON schema for AI responses
+   * @returns Object with system and user message content
+   */
+  buildMessages(context: ContextData, stepId: number, schema: object): PromptContent {
+    try {
+      const stepName = context.steps[stepId] || 'Unknown Step';
+      const history = this.formatExecutionHistory(context, stepId);
+      const schemaText = JSON.stringify(schema, null, 2);
+      
+      // Build system message (instructions, rules, capabilities)
+      const systemMessage = SYSTEM_TEMPLATE
+        .replace('{responseSchema}', schemaText);
+      
+      // Build user message (current context and request)
+      const userMessage = USER_TEMPLATE
+        .replace('{sessionId}', context.contextId)
+        .replace('{stepNumber}', (stepId + 1).toString())
+        .replace('{totalSteps}', context.steps.length.toString())
+        .replace('{stepName}', stepName)
+        .replace('{contextualHistory}', history);
+      
+      // Check total length and handle DOM size limits
+      const totalLength = systemMessage.length + userMessage.length;
+      if (totalLength > this.maxPromptLength) {
+        // Check if the issue is caused by large DOM content from GET_SUBDOM
+        if (history.includes('DOM CONTENT:')) {
+          return {
+            system: `You are an intelligent web automation agent. Respond with JSON containing reasoning, confidence, and flowControl fields.`,
+            user: `CRITICAL ERROR: GET_SUBDOM returned DOM content that exceeds context limits.
+
+The DOM content is too large (${totalLength} characters, limit: ${this.maxPromptLength}) to fit in the AI context.
+
+This GET_SUBDOM operation must FAIL. Please:
+1. Use a more specific selector to get a smaller DOM section
+2. Target specific elements instead of large containers
+3. Consider using GET_CONTENT for specific data extraction
+
+RESPONSE FORMAT:
+{
+  "reasoning": "DOM content too large for context - need more specific selector",
+  "confidence": "LOW",
+  "flowControl": "stop_failure"
+}`
+          };
+        }
+        
+        return this.buildFallbackMessages(stepName, '{"type": "object", "required": ["reasoning", "confidence", "flowControl"]}');
+      }
+
+      return {
+        system: systemMessage,
+        user: userMessage
+      };
+    } catch (error) {
+      // Fallback to basic messages if building fails
+      const stepName = context.steps[stepId] || 'Unknown Step';
+      const schemaText = JSON.stringify(schema, null, 2);
+      return this.buildFallbackMessages(stepName, schemaText);
+    }
+  }
+
+  /**
+   * Build complete prompt with context, schema, and step information (legacy method)
    * @param context Execution context data
    * @param stepId Current step index
    * @param schema JSON schema for AI responses
@@ -22,23 +113,14 @@ export class PromptBuilder {
    */
   buildPrompt(context: ContextData, stepId: number, schema: object): string {
     try {
-      const stepName = context.steps[stepId] || 'Unknown Step';
-      const history = this.formatExecutionHistory(context, stepId);
-      const schemaText = JSON.stringify(schema, null, 2);
-      
-      const prompt = PROMPT_TEMPLATE
-        .replace('{sessionId}', context.contextId)
-        .replace('{stepNumber}', (stepId + 1).toString())
-        .replace('{totalSteps}', context.steps.length.toString())
-        .replace('{stepName}', stepName)
-        .replace('{currentStepName}', stepName)
-        .replace('{contextualHistory}', history)
-        .replace('{responseSchema}', schemaText);
+      // Use the new buildMessages method and combine for backward compatibility
+      const messages = this.buildMessages(context, stepId, schema);
+      const prompt = `${messages.system}\n\n---\n\n${messages.user}`;
 
       // Check prompt length and handle DOM size limits
       if (prompt.length > this.maxPromptLength) {
         // Check if the issue is caused by large DOM content from GET_SUBDOM
-        if (history.includes('DOM CONTENT:')) {
+        if (messages.user.includes('DOM CONTENT:')) {
           return `CRITICAL ERROR: GET_SUBDOM returned DOM content that exceeds context limits.
 
 The DOM content is too large (${prompt.length} characters, limit: ${this.maxPromptLength}) to fit in the AI context.
@@ -56,6 +138,7 @@ RESPONSE FORMAT:
 }`;
         }
         
+        const stepName = context.steps[stepId] || 'Unknown Step';
         return this.buildFallbackPrompt(stepName, '{"type": "object", "required": ["reasoning", "confidence", "flowControl"]}');
       }
 
@@ -231,10 +314,22 @@ RESPONSE FORMAT:
               legacyAttemptDetails += `\n    Result: ✓ Page opened successfully`;
             } else {
               // For other commands: show truncated result
-              const result = typeof executionResult.result === 'string' 
-                ? executionResult.result.substring(0, 100)
-                : 'Success';
-              legacyAttemptDetails += `\n    Result: ✓ ${result}${typeof executionResult.result === 'string' && executionResult.result.length > 100 ? '...' : ''}`;
+              let result: string;
+              if (typeof executionResult.result === 'string') {
+                if (legacyAction === 'GET_TEXT') {
+                  // For GET_TEXT: apply environment-configured truncation with message
+                  result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
+                } else {
+                  // For other commands: use original 100-character truncation
+                  result = executionResult.result.substring(0, 100);
+                  if (executionResult.result.length > 100) {
+                    result += '...';
+                  }
+                }
+              } else {
+                result = 'Success';
+              }
+              legacyAttemptDetails += `\n    Result: ✓ ${result}`;
             }
           } else {
             const error = executionResult.error || 'Unknown error';
@@ -280,10 +375,22 @@ RESPONSE FORMAT:
             attemptDetails += `\n    Result: ✓ Page opened successfully`;
           } else {
             // For other commands: show truncated result
-            const result = typeof executionResult.result === 'string' 
-              ? executionResult.result.substring(0, 100)
-              : 'Success';
-            attemptDetails += `\n    Result: ✓ ${result}${typeof executionResult.result === 'string' && executionResult.result.length > 100 ? '...' : ''}`;
+            let result: string;
+            if (typeof executionResult.result === 'string') {
+              if (action === 'GET_TEXT') {
+                // For GET_TEXT: apply environment-configured truncation with message
+                result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
+              } else {
+                // For other commands: use original 100-character truncation
+                result = executionResult.result.substring(0, 100);
+                if (executionResult.result.length > 100) {
+                  result += '...';
+                }
+              }
+            } else {
+              result = 'Success';
+            }
+            attemptDetails += `\n    Result: ✓ ${result}`;
           }
         } else {
           const error = executionResult.error || 'Unknown error';
@@ -304,8 +411,26 @@ RESPONSE FORMAT:
    * @returns Fallback prompt
    */
   private buildFallbackPrompt(stepName: string, schemaText: string): string {
-    return FALLBACK_TEMPLATE
-      .replace('{stepName}', stepName)
+    const fallbackMessages = this.buildFallbackMessages(stepName, schemaText);
+    return `${fallbackMessages.system}\n\n---\n\n${fallbackMessages.user}`;
+  }
+
+  /**
+   * Build fallback system and user messages when main building fails
+   * @param stepName Current step name
+   * @param schemaText JSON schema as string
+   * @returns Fallback PromptContent
+   */
+  private buildFallbackMessages(stepName: string, schemaText: string): PromptContent {
+    const systemMessage = FALLBACK_SYSTEM_TEMPLATE
       .replace('{responseSchema}', schemaText);
+    
+    const userMessage = FALLBACK_USER_TEMPLATE
+      .replace('{stepName}', stepName);
+    
+    return {
+      system: systemMessage,
+      user: userMessage
+    };
   }
 }

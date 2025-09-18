@@ -418,4 +418,180 @@ describe('AIPromptManager', () => {
       });
     });
   });
+
+  describe('GET_TEXT Result Truncation', () => {
+    const steps = ['Test GET_TEXT truncation'];
+    
+    afterEach(() => {
+      // Clean up environment variable
+      delete process.env.CONTEXT_TRUNCATE_RESULT;
+    });
+
+    it('should respect CONTEXT_TRUNCATE_RESULT environment variable', () => {
+      // Set environment variable for test
+      process.env.CONTEXT_TRUNCATE_RESULT = '500';
+      
+      // Create new instance to pick up environment variable
+      (AIPromptManager as any).instance = null;
+      const truncatingManager = AIPromptManager.getInstance();
+      const sessionId = 'truncation-env-test-session';
+      truncatingManager.init(sessionId, steps);
+      
+      // Test that the limit is applied
+      expect((truncatingManager as any).promptBuilder.contextTruncateLimit).toBe(500);
+    });
+
+    it('should use default truncation limit when environment variable is not set', () => {
+      // Ensure environment variable is not set
+      delete process.env.CONTEXT_TRUNCATE_RESULT;
+      
+      // Create new instance
+      (AIPromptManager as any).instance = null;
+      const defaultManager = AIPromptManager.getInstance();
+      
+      expect((defaultManager as any).promptBuilder.contextTruncateLimit).toBe(1000);
+    });
+
+    it('should truncate GET_TEXT results when they exceed the limit', () => {
+      // Set a small truncation limit
+      process.env.CONTEXT_TRUNCATE_RESULT = '50';
+      
+      // Create new instance to pick up environment variable
+      (AIPromptManager as any).instance = null;
+      const truncatingManager = AIPromptManager.getInstance();
+      const sessionId = 'truncation-limit-test-session';
+      truncatingManager.init(sessionId, steps);
+      
+      // Mock a GET_TEXT execution result with long text
+      const longText = 'This is a very long text that should be truncated because it exceeds the configured limit of 50 characters for the GET_TEXT command result display in AI context.';
+      
+      contextManager.logTask(sessionId, 0, {
+        aiResponse: {
+          action: { command: 'GET_TEXT', parameters: { selector: 'body' } },
+          reasoning: 'Testing truncation',
+          confidence: 'HIGH',
+          flowControl: 'continue'
+        },
+        executionResult: {
+          success: true,
+          result: longText
+        }
+      });
+      
+      const prompt = truncatingManager.getStepPrompt(sessionId, 0);
+      
+      // Should contain truncated text with message
+      expect(prompt).toContain('Value is truncated, shown 50 out of');
+      expect(prompt).toContain(`shown 50 out of ${longText.length} characters`);
+      expect(prompt).not.toContain(longText.substring(60)); // Should not contain the end of the long text
+    });
+
+    it('should not truncate GET_TEXT results when they are under the limit', () => {
+      process.env.CONTEXT_TRUNCATE_RESULT = '1000';
+      
+      // Create new instance to pick up environment variable
+      (AIPromptManager as any).instance = null;
+      const truncatingManager = AIPromptManager.getInstance();
+      const sessionId = 'truncation-no-limit-test-session';
+      truncatingManager.init(sessionId, steps);
+      
+      // Mock a GET_TEXT execution result with short text
+      const shortText = 'This is short text.';
+      
+      contextManager.logTask(sessionId, 0, {
+        aiResponse: {
+          action: { command: 'GET_TEXT', parameters: { selector: 'body' } },
+          reasoning: 'Testing no truncation',
+          confidence: 'HIGH',
+          flowControl: 'continue'
+        },
+        executionResult: {
+          success: true,
+          result: shortText
+        }
+      });
+      
+      const prompt = truncatingManager.getStepPrompt(sessionId, 0);
+      
+      // Should contain full text without truncation message
+      expect(prompt).toContain(shortText);
+      expect(prompt).not.toContain('Value is truncated');
+    });
+
+    it('should only truncate GET_TEXT commands, not other commands', () => {
+      process.env.CONTEXT_TRUNCATE_RESULT = '50';
+      
+      // Create new instance to pick up environment variable
+      (AIPromptManager as any).instance = null;
+      const truncatingManager = AIPromptManager.getInstance();
+      const sessionId = 'truncation-other-commands-test-session';
+      truncatingManager.init(sessionId, steps);
+      
+      // Mock a CLICK_ELEMENT execution result with long text (should use old truncation)
+      const longText = 'This is a very long text that should be truncated with the old 100-character limit for non-GET_TEXT commands.';
+      
+      contextManager.logTask(sessionId, 0, {
+        aiResponse: {
+          action: { command: 'CLICK_ELEMENT', parameters: { selector: 'button' } },
+          reasoning: 'Testing non-GET_TEXT truncation',
+          confidence: 'HIGH',
+          flowControl: 'continue'
+        },
+        executionResult: {
+          success: true,
+          result: longText
+        }
+      });
+      
+      const prompt = truncatingManager.getStepPrompt(sessionId, 0);
+      
+      // Should use old truncation logic (100 chars + "...")
+      expect(prompt).toContain(longText.substring(0, 100) + '...');
+      expect(prompt).not.toContain('Value is truncated, shown');
+    });
+
+    it('should handle invalid environment variable values gracefully', () => {
+      process.env.CONTEXT_TRUNCATE_RESULT = 'invalid';
+      
+      // Create new instance
+      (AIPromptManager as any).instance = null;
+      const invalidManager = AIPromptManager.getInstance();
+      
+      // Should fall back to default when environment variable is invalid
+      expect((invalidManager as any).promptBuilder.contextTruncateLimit).toBe(1000);
+    });
+
+    it('should format truncation message correctly', () => {
+      process.env.CONTEXT_TRUNCATE_RESULT = '100';
+      
+      // Create new instance to pick up environment variable
+      (AIPromptManager as any).instance = null;
+      const truncatingManager = AIPromptManager.getInstance();
+      const sessionId = 'truncation-message-test-session';
+      truncatingManager.init(sessionId, steps);
+      
+      // Create text that's exactly 150 characters
+      const exactText = 'A'.repeat(150);
+      
+      contextManager.logTask(sessionId, 0, {
+        aiResponse: {
+          action: { command: 'GET_TEXT', parameters: { selector: 'body' } },
+          reasoning: 'Testing exact truncation',
+          confidence: 'HIGH',
+          flowControl: 'continue'
+        },
+        executionResult: {
+          success: true,
+          result: exactText
+        }
+      });
+      
+      const prompt = truncatingManager.getStepPrompt(sessionId, 0);
+      
+      // Should contain exactly the right truncation message
+      expect(prompt).toContain('[Value is truncated, shown 100 out of 150 characters]');
+      expect(prompt).toContain('A'.repeat(100)); // First 100 A's
+      expect(prompt).not.toContain('A'.repeat(101)); // Should not contain 101 A's
+    });
+  });
 });

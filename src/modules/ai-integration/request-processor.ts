@@ -76,6 +76,28 @@ export class RequestProcessor {
   private async prepareRequestPayload(request: string, imageFilePath?: string): Promise<any> {
     const messages: any[] = [];
 
+    // Try to parse the request as system/user messages if it's JSON
+    let systemContent: string | undefined;
+    let userContent: string = request;
+
+    try {
+      const parsedRequest = JSON.parse(request);
+      if (parsedRequest.system && parsedRequest.user) {
+        systemContent = parsedRequest.system;
+        userContent = parsedRequest.user;
+      }
+    } catch {
+      // Not JSON, treat as single user message (backward compatibility)
+    }
+
+    // Add system message if available
+    if (systemContent) {
+      messages.push({
+        role: 'system',
+        content: systemContent
+      });
+    }
+
     if (imageFilePath) {
       // Process image file
       const imageDataUrl = await this.imageHandler.processImageFile(imageFilePath);
@@ -85,7 +107,7 @@ export class RequestProcessor {
         content: [
           {
             type: 'text',
-            text: request
+            text: userContent
           },
           {
             type: 'image_url',
@@ -99,14 +121,15 @@ export class RequestProcessor {
       // Text-only request
       messages.push({
         role: 'user',
-        content: request
+        content: userContent
       });
     }
 
     return {
       model: this.config.model,
       messages: messages,
-      max_tokens: 1000
+      max_tokens: parseInt(process.env.OPENAI_DEFAULT_MAX_TOKENS || '1000', 10),
+      temperature: parseFloat(process.env.OPENAI_DEFAULT_TEMPERATURE || '0.7')
     };
   }
 
@@ -212,28 +235,4 @@ export class RequestProcessor {
       
       // If we can't find clear JSON boundaries, just remove comments from the whole content
       let cleaned = content;
-      
-      // Remove single-line comments (// comments)
-      cleaned = cleaned.replace(/(?<!")\/\/(?:[^"\\]|\\.)*?(?=\n|$)/gm, '');
-      
-      // Remove multi-line comments (/* comments */)
-      cleaned = cleaned.replace(/\/\*[\s\S]*?\*\//g, '');
-      
-      return cleaned.trim();
-    } catch (error) {
-      // If cleaning fails, return original content
-      return content.trim();
-    }
-  }
-
-  /**
-   * Create error response
-   */
-  private createErrorResponse(errorCode: ErrorCode, message: string): AIResponse {
-    return {
-      status: 'error',
-      error: message,
-      errorCode: errorCode
-    };
-  }
-}
+   

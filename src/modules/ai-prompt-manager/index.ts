@@ -6,7 +6,7 @@
  * and specialized instructions to create optimized prompts.
  */
 
-import { IAIPromptManager, AIPromptManagerConfig } from './types';
+import { IAIPromptManager, AIPromptManagerConfig, PromptContent } from './types';
 import { IAIContextManager, ContextData } from '../ai-context-manager/types';
 import { AIContextManager } from '../ai-context-manager/ai-context-manager';
 import { IAISchemaManager } from '../ai-schema-manager/types';
@@ -70,12 +70,48 @@ export class AIPromptManager implements IAIPromptManager {
   }
 
   /**
-   * Generate complete prompt for specific workflow step
+   * Get system and user messages for specific workflow step
+   * @param sessionId Session identifier
+   * @param stepId Step index (0-based)
+   * @returns Object with system and user message content
+   */
+  getStepMessages(sessionId: string, stepId: number): PromptContent {
+    try {
+      // Validate session exists
+      const context = this.contextManager.getFullContext(sessionId);
+      
+      // Validate step ID within bounds
+      if (stepId < 0 || stepId >= context.steps.length) {
+        throw new Error(`Step ID ${stepId} is out of bounds for session "${sessionId}"`);
+      }
+
+      // Get response schema from AI Schema Manager
+      const schema = this.schemaManager.getAIResponseSchema();
+      
+      // Build and return formatted messages
+      return this.promptBuilder.buildMessages(context, stepId, schema);
+      
+    } catch (error) {
+      if (error instanceof Error) {
+        // Re-throw validation errors
+        if (error.message.includes('does not exist') || 
+            error.message.includes('out of bounds')) {
+          throw error;
+        }
+      }
+      
+      // Return fallback messages
+      return this.generateFallbackMessages(sessionId, stepId);
+    }
+  }
+
+  /**
+   * Generate complete prompt for specific workflow step (backward compatibility)
    * @param sessionId Session identifier
    * @param stepId Step index (0-based)
    * @returns Formatted prompt optimized for AI models
    */
-  getStepPrompt(sessionId: string, stepId: number): string {
+getStepPrompt(sessionId: string, stepId: number): string {
     try {
       // Validate session exists
       const context = this.contextManager.getFullContext(sessionId);
@@ -102,6 +138,49 @@ export class AIPromptManager implements IAIPromptManager {
       
       // For other errors, attempt graceful degradation
       return this.generateFallbackPrompt(sessionId, stepId);
+    }
+  }
+
+  /**
+   * Generate basic messages if main message generation fails
+   * @param sessionId Session identifier
+   * @param stepId Step index
+   * @returns Basic fallback messages
+   */
+  private generateFallbackMessages(sessionId: string, stepId: number): PromptContent {
+    try {
+      const fallbackSchema = {
+        type: "object",
+        required: ["reasoning", "confidence", "flowControl"],
+        properties: {
+          reasoning: { type: "string" },
+          confidence: { type: "string", enum: ["LOW", "MEDIUM", "HIGH"] },
+          flowControl: { type: "string", enum: ["continue", "stop_success", "stop_failure"] }
+        }
+      };
+      
+      const schemaText = JSON.stringify(fallbackSchema, null, 2);
+      
+      return {
+        system: `You are an intelligent web automation agent.
+
+AVAILABLE COMMANDS:
+- OPEN_PAGE: Navigate to a URL
+- CLICK_ELEMENT: Click on page elements using CSS selectors
+- INPUT_TEXT: Enter text into form fields
+- GET_SUBDOM: Investigate page sections for element discovery
+
+RESPONSE FORMAT:
+${schemaText}`,
+        user: `Execute automation step ${stepId + 1}.`
+      };
+      
+    } catch (error) {
+      // Absolute fallback
+      return {
+        system: `You are an intelligent web automation agent. Respond with JSON containing reasoning, confidence, and flowControl fields.`,
+        user: `Execute automation step ${stepId + 1}.`
+      };
     }
   }
 
