@@ -209,7 +209,13 @@ export class TaskLoop implements ITaskLoop {
           
           executionResult = await this.executeAction(sessionId, stepId, validatedResponse.action, iterations);
           
-          // Log action result to streamer
+          if (this.config.enableLogging) {
+            //console.log(`[TaskLoop] Action execution result for session ${sessionId}, step ${stepId}, iteration ${iterations}:`, executionResult);
+          }
+        }
+
+        // 4a. Log action to streamer whenever an action exists (regardless of flow control)
+        if (validatedResponse.action) {
           await this.streamLogger.logAction(
             sessionId, 
             stepId, 
@@ -219,10 +225,6 @@ export class TaskLoop implements ITaskLoop {
             executionResult?.error, 
             iterations
           );
-          
-          if (this.config.enableLogging) {
-            //console.log(`[TaskLoop] Action execution result for session ${sessionId}, step ${stepId}, iteration ${iterations}:`, executionResult);
-          }
         }
 
         // 5. Log execution in context manager (include execution result)
