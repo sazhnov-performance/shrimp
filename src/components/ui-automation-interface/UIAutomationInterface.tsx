@@ -321,19 +321,22 @@ export function UIAutomationInterface() {
   // Show initialization status - NOW AFTER ALL HOOKS
   if (!appInitialized) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-400 mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-white mb-2">
-            {initError ? 'Initialization Failed' : 'Initializing Application...'}
+          <div className="relative">
+            <div className="w-20 h-20 border-4 border-blue-500/30 rounded-full animate-spin border-t-blue-400 mx-auto mb-8"></div>
+            <div className="absolute inset-0 w-20 h-20 border-4 border-transparent rounded-full animate-pulse border-t-blue-300/50 mx-auto"></div>
+          </div>
+          <h2 className="text-2xl font-light text-white mb-3 tracking-wide">
+            {initError ? 'Initialization Failed' : 'Initializing System'}
           </h2>
           {initError ? (
-            <p className="text-red-400">
+            <p className="text-red-300 text-sm font-light max-w-md mx-auto">
               {initError.message || 'Failed to initialize the application'}
             </p>
           ) : (
-            <p className="text-gray-300">
-              Setting up automation modules...
+            <p className="text-slate-300 text-sm font-light">
+              Preparing automation environment...
             </p>
           )}
         </div>
@@ -343,69 +346,103 @@ export function UIAutomationInterface() {
 
   // Main UI content starts here - no more hooks after this point
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950">
       {/* Header */}
-      <div className="border-b border-white/10 bg-black/20 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-white mb-2">
-              🤖 <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                AI Automation Interface
-              </span>
-            </h1>
-            <p className="text-gray-300 text-lg">
-              Describe what you want to automate in natural language
+      <div className="border-b border-slate-700/30 bg-slate-900/30 backdrop-blur-xl">
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          <div className="text-center space-y-3">
+            <div className="inline-flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div className="text-left">
+                <h1 className="text-3xl font-light text-white tracking-wide">
+                  <span className="bg-gradient-to-r from-blue-300 to-indigo-300 bg-clip-text text-transparent">
+                    Automation Studio
+                  </span>
+                </h1>
+                <p className="text-slate-400 text-sm font-light">
+                  Intelligent browser automation platform
+                </p>
+              </div>
+            </div>
+            <p className="text-slate-300 text-base font-light max-w-2xl mx-auto leading-relaxed">
+              Transform natural language descriptions into automated browser workflows with real-time execution monitoring
             </p>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[calc(100vh-200px)]">
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 min-h-[calc(100vh-280px)]">
           
           {/* Left Panel - Step Input */}
-          <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6">
-            <StepInputComponent
-              stepText={state.stepText}
-              setStepText={setStepText}
-              onExecute={executeSteps}
-              isExecuting={state.isExecuting}
-              error={state.error}
-            />
+          <div className="xl:col-span-2">
+            <div className="bg-slate-800/40 backdrop-blur-xl border border-slate-600/30 rounded-2xl p-6 h-full shadow-2xl">
+              <StepInputComponent
+                stepText={state.stepText}
+                setStepText={setStepText}
+                onExecute={executeSteps}
+                isExecuting={state.isExecuting}
+                error={state.error}
+              />
+            </div>
           </div>
 
           {/* Right Panel - Streaming Output */}
-          <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden">
-            <StreamingOutputComponent
-              events={state.events}
-              sessionId={state.sessionId}
-              isConnected={state.isConnected}
-              error={state.error}
-              autoScroll={false}
-            />
+          <div className="xl:col-span-3">
+            <div className="bg-slate-800/40 backdrop-blur-xl border border-slate-600/30 rounded-2xl overflow-hidden h-full shadow-2xl">
+              <StreamingOutputComponent
+                events={state.events}
+                sessionId={state.sessionId}
+                isConnected={state.isConnected}
+                error={state.error}
+                autoScroll={false}
+              />
+            </div>
           </div>
         </div>
 
         {/* Reset Button */}
         {(state.sessionId || state.events.length > 0) && (
-          <div className="flex justify-center mt-6">
+          <div className="flex justify-center mt-8">
             <button
               onClick={reset}
-              className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20 transition-colors"
+              className="group px-6 py-3 bg-slate-700/50 hover:bg-slate-600/50 text-slate-200 rounded-xl border border-slate-600/50 hover:border-slate-500/50 transition-all duration-200 font-light tracking-wide backdrop-blur-sm"
               disabled={state.isExecuting}
             >
-              🔄 Reset Session
+              <div className="flex items-center space-x-2">
+                <svg className="w-4 h-4 group-hover:rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Reset Session</span>
+              </div>
             </button>
           </div>
         )}
       </div>
 
       {/* Footer */}
-      <div className="border-t border-white/10 bg-black/20 backdrop-blur-md mt-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="text-center text-gray-400 text-sm">
-            <p>Powered by AI-driven browser automation • Real-time streaming • Natural language processing</p>
+      <div className="border-t border-slate-700/30 bg-slate-900/30 backdrop-blur-xl mt-12">
+        <div className="max-w-6xl mx-auto px-6 py-6">
+          <div className="text-center">
+            <div className="flex items-center justify-center space-x-6 text-slate-400 text-sm font-light">
+              <span className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                <span>AI-Powered Automation</span>
+              </span>
+              <span className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                <span>Real-time Monitoring</span>
+              </span>
+              <span className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                <span>Natural Language Processing</span>
+              </span>
+            </div>
           </div>
         </div>
       </div>

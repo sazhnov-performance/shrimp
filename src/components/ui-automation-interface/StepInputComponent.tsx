@@ -7,7 +7,6 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Square } from 'lucide-react';
 import { SimpleStepInputComponent } from './types';
 
 interface StepInputComponentProps {
@@ -59,8 +58,8 @@ export function StepInputComponent({
     <div className="space-y-4">
       {/* Step Input Area */}
       <div className="relative">
-        <label htmlFor="step-input" className="block text-lg font-semibold text-white mb-3">
-          📝 Automation Steps
+        <label htmlFor="step-input" className="block text-lg font-light text-slate-200 mb-4 tracking-wide">
+          Automation Workflow
         </label>
         
         <textarea
@@ -69,30 +68,40 @@ export function StepInputComponent({
           value={stepText}
           onChange={(e) => setStepText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Enter your automation steps in natural language, one per line:
+          placeholder="Describe your automation workflow using natural language:
+
+• Navigate to website URL
+• Interact with page elements  
+• Fill out forms and submit data
+• Capture screenshots at key points
+• Validate page content and results
 
 Example:
 Open https://example.com
-Click on the login button
-Type my username in the email field
-Type my password in the password field
-Click the submit button"
-          className={`w-full min-h-[120px] max-h-[400px] p-4 bg-white/5 backdrop-blur-sm border rounded-lg resize-none text-gray-100 placeholder-gray-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 ${
-            error ? 'border-red-500/50' : 'border-white/20'
+Click the 'Sign In' button
+Enter credentials and submit
+Verify successful login"
+          className={`w-full min-h-[140px] max-h-[400px] p-5 bg-slate-700/20 backdrop-blur-sm border rounded-xl resize-none text-slate-100 placeholder-slate-400 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 font-light leading-relaxed ${
+            error ? 'border-red-400/50 focus:ring-red-400/50 focus:border-red-400/50' : 'border-slate-600/30'
           }`}
           disabled={isExecuting}
         />
         
         {/* Character count hint */}
-        <div className="absolute bottom-2 right-2 text-xs text-gray-500">
-          {stepText.length} chars
+        <div className="absolute bottom-3 right-4 text-xs text-slate-500 font-light">
+          {stepText.length} characters
         </div>
       </div>
 
       {/* Error Display */}
       {error && (
-        <div className="bg-red-900/20 border border-red-500/20 rounded-lg p-3">
-          <p className="text-red-400 text-sm">❌ {error}</p>
+        <div className="bg-red-900/20 border border-red-400/30 rounded-xl p-4 backdrop-blur-sm">
+          <div className="flex items-center space-x-2">
+            <svg className="w-4 h-4 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+            <p className="text-red-300 text-sm font-light">{error}</p>
+          </div>
         </div>
       )}
 
@@ -101,28 +110,28 @@ Click the submit button"
         <button
           onClick={handleExecute}
           disabled={isEmpty || isExecuting}
-          className={`group relative overflow-hidden px-12 py-4 rounded-full text-xl font-bold transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center ${
+          className={`group relative overflow-hidden px-8 py-4 rounded-xl font-light text-base tracking-wide transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center min-w-[200px] ${
             isExecuting 
-              ? 'bg-gradient-to-r from-red-500 to-red-600 text-white animate-pulse'
-              : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600'
+              ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/25'
+              : 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40'
           }`}
         >
-          {/* Background animation when executing */}
-          {isExecuting && (
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 animate-pulse"></div>
-          )}
+          {/* Shimmer effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 transform translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
           
           {/* Button content */}
-          <div className="relative flex items-center">
+          <div className="relative flex items-center space-x-3">
             {isExecuting ? (
               <>
-                <Square className="mr-3" size={24} />
-                EXECUTING...
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                <span>Processing...</span>
               </>
             ) : (
               <>
-                <Play className="mr-3 group-hover:translate-x-1 transition-transform" size={24} />
-                GOOOO!
+                <svg className="w-5 h-5 group-hover:translate-x-0.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+                </svg>
+                <span>Execute Workflow</span>
               </>
             )}
           </div>
@@ -131,8 +140,8 @@ Click the submit button"
 
       {/* Keyboard shortcut hint */}
       <div className="text-center">
-        <p className="text-sm text-gray-400">
-          Press <kbd className="px-2 py-1 bg-white/10 rounded text-xs">Ctrl + Enter</kbd> to execute
+        <p className="text-sm text-slate-400 font-light">
+          Press <kbd className="px-3 py-1 bg-slate-700/40 border border-slate-600/30 rounded-lg text-xs font-mono tracking-wider">Ctrl + Enter</kbd> to execute
         </p>
       </div>
     </div>
