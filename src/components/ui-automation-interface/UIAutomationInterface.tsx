@@ -185,7 +185,7 @@ export function UIAutomationInterface() {
         streamId: response.data.streamId || null
       }));
 
-      // Connect to stream if available - small delay to ensure "Stream Initiated" is sent first
+      // Connect to stream if available - small delay to ensure proper message ordering
       if (response.data.streamId) {
         try {
           // Small delay to ensure proper message ordering
@@ -363,16 +363,16 @@ export function UIAutomationInterface() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="border-b border-gray-200 bg-white shadow-sm">
-        <div className="w-4/5 mx-auto px-6 py-8">
-          <div className="text-center space-y-3">
-            <div className="inline-flex items-center space-x-3 mb-4">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-pink-600 to-pink-700 flex items-center justify-center shadow-lg">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-4/5 mx-auto px-6 py-4">
+          <div className="text-center">
+            <div className="inline-flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-pink-600 to-pink-700 flex items-center justify-center shadow-lg">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
               <div className="text-left">
-                <h1 className="text-4xl font-bold text-gray-900">
+                <h1 className="text-3xl font-bold text-gray-900">
                   <span className="text-pink-600">
                     SHRIMP
                   </span>
