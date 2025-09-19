@@ -376,12 +376,12 @@ export const DEFAULT_EXECUTOR_CONFIG: ExecutorConfig = {
     actionConfig: {
       [CommandAction.OPEN_PAGE]: {
         includeDOM: false,
-        includeScreenshot: false,
+        includeScreenshot: true,
         includeMetadata: false
       },
       [CommandAction.CLICK_ELEMENT]: {
         includeDOM: false,
-        includeScreenshot: false,
+        includeScreenshot: true,
         includeMetadata: false
       },
       [CommandAction.INPUT_TEXT]: {
