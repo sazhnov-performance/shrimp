@@ -612,31 +612,19 @@ export class PromptBuilder {
               // For OPEN_PAGE: just show success, don't include full page HTML
               legacyAttemptDetails += `\n    Result: ✓ Page opened successfully`;
             } else {
-              // For other commands: show truncated result
-              let result: string;
-              if (typeof executionResult.result === 'string') {
-              if (legacyAction === 'GET_TEXT') {
-                // For GET_TEXT: apply environment-configured truncation with message
-                console.log('[PromptBuilder] Legacy GET_TEXT result truncation:', {
-                  originalLength: executionResult.result.length,
-                  truncateLimit: this.contextTruncateLimit,
-                  willTruncate: executionResult.result.length > this.contextTruncateLimit
-                });
-                result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
-              } else {
-                // For other commands: use environment-configured truncation
-                console.log('[PromptBuilder] Legacy command result truncation:', {
-                  command: legacyAction,
-                  originalLength: executionResult.result.length,
-                  truncateLimit: this.contextTruncateLimit,
-                  willTruncate: executionResult.result.length > this.contextTruncateLimit
-                });
-                result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
-              }
-              } else {
-                result = 'Success';
-              }
-              legacyAttemptDetails += `\n    Result: ✓ ${result}`;
+            // Show truncated result (command-agnostic)
+            let result: string;
+            if (typeof executionResult.result === 'string') {
+              console.log('[PromptBuilder] Legacy command result truncation:', {
+                originalLength: executionResult.result.length,
+                truncateLimit: this.contextTruncateLimit,
+                willTruncate: executionResult.result.length > this.contextTruncateLimit
+              });
+              result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
+            } else {
+              result = 'Success';
+            }
+            legacyAttemptDetails += `\n    Result: ✓ ${result}`;
             }
           } else {
             const error = executionResult.error || 'Unknown error';
@@ -681,27 +669,15 @@ export class PromptBuilder {
             // For OPEN_PAGE: just show success, don't include full page HTML
             attemptDetails += `\n    Result: ✓ Page opened successfully`;
           } else {
-            // For other commands: show truncated result
+            // Show truncated result (command-agnostic)
             let result: string;
             if (typeof executionResult.result === 'string') {
-                if (action === 'GET_TEXT') {
-                  // For GET_TEXT: apply environment-configured truncation with message
-                  console.log('[PromptBuilder] GET_TEXT result truncation:', {
-                    originalLength: executionResult.result.length,
-                    truncateLimit: this.contextTruncateLimit,
-                    willTruncate: executionResult.result.length > this.contextTruncateLimit
-                  });
-                  result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
-                } else {
-                  // For other commands: use environment-configured truncation
-                  console.log('[PromptBuilder] Command result truncation:', {
-                    command: action,
-                    originalLength: executionResult.result.length,
-                    truncateLimit: this.contextTruncateLimit,
-                    willTruncate: executionResult.result.length > this.contextTruncateLimit
-                  });
-                  result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
-                }
+              console.log('[PromptBuilder] Command result truncation:', {
+                originalLength: executionResult.result.length,
+                truncateLimit: this.contextTruncateLimit,
+                willTruncate: executionResult.result.length > this.contextTruncateLimit
+              });
+              result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
             } else {
               result = 'Success';
             }

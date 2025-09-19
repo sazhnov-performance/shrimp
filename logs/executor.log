@@ -10951,3 +10951,4 @@
 2025-09-19T08:06:04.272Z [Executor][INFO] [session-1758269152745-scr41du5v] Command OPEN_PAGE completed in 4391ms {"action":"OPEN_PAGE","duration":4391,"success":true,"commandId":"taskloop_1758269159879_f6bllsne9"}
 2025-09-19T08:06:16.014Z [Executor][INFO] [session-1758269152745-scr41du5v] Executing command: CLICK_ELEMENT {"commandId":"taskloop_1758269176014_gc6wvyc5n","action":"CLICK_ELEMENT","parameters":{"selector":"button:has-text('Приемане на всички')"}}
 2025-09-19T08:06:16.511Z [Executor][INFO] [session-1758269152745-scr41du5v] Command CLICK_ELEMENT completed in 496ms {"action":"CLICK_ELEMENT","duration":496,"success":true,"commandId":"taskloop_1758269176014_gc6wvyc5n"}
+2025-09-19T08:06:36.444Z [Executor][INFO] [session-1758269152745-scr41du5v] Session destroyed {"sessionId":"a70dd355-2ac0-4880-9e7b-032f5e04a1b9"}
