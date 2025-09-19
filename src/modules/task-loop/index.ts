@@ -416,18 +416,8 @@ export class TaskLoop implements ITaskLoop {
               const overallDescription = analysisData.overallDescription || 'No description provided';
               const interactibleElements = analysisData.interactibleElements || [];
               
-              // Format rich screenshot analysis content
-              let formattedAnalysis = `📸 **Overall Description:**\n${overallDescription}`;
-              
-              if (interactibleElements.length > 0) {
-                formattedAnalysis += `\n\n🎯 **Interactive Elements (${interactibleElements.length}):**`;
-                interactibleElements.forEach((element: any, index: number) => {
-                  const elementText = element.containsText ? ` - "${element.containsText}"` : '';
-                  formattedAnalysis += `\n${index + 1}. **${element.type}** at ${element.location}: ${element.description}${elementText}`;
-                });
-              } else {
-                formattedAnalysis += '\n\n🎯 **Interactive Elements:** None detected';
-              }
+              // Format screenshot analysis content - overall description only
+              const formattedAnalysis = overallDescription;
               
               // Determine confidence level based on content quality
               let confidence: 'low' | 'medium' | 'high' = 'medium';
