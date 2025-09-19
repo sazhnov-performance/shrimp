@@ -23,7 +23,7 @@ export class ScreenshotManager implements IScreenshotManager {
   private errorHandler: ExecutorErrorHandler;
   private logger: IExecutorLogger;
   private screenshots: Map<string, ScreenshotInfo> = new Map();
-  private mediaManager: IMediaManager;
+  private mediaManager: IMediaManager | null;
 
   constructor(
     config: ScreenshotConfig, 
@@ -33,17 +33,17 @@ export class ScreenshotManager implements IScreenshotManager {
     this.config = config;
     this.errorHandler = errorHandler;
     this.logger = logger;
-    // Lazy load MediaManager to avoid Node.js API imports at build time
-    this.mediaManager = this.getMediaManager();
+    // MediaManager will be lazy loaded when needed
+    this.mediaManager = null;
   }
 
   /**
    * Lazy load MediaManager to avoid Node.js APIs during compilation
    */
-  private getMediaManager(): IMediaManager {
+  private async getMediaManager(): Promise<IMediaManager> {
     if (!this.mediaManager) {
       // Use dynamic import to avoid loading Node.js APIs at build time
-      const { MediaManager } = require('../media-manager/media-manager');
+      const { MediaManager } = await import('../media-manager/media-manager');
       this.mediaManager = MediaManager.getInstance();
     }
     return this.mediaManager;
@@ -119,7 +119,7 @@ export class ScreenshotManager implements IScreenshotManager {
       // Store screenshot in media manager and get UUID
       let mediaManagerUuid = '';
       try {
-        mediaManagerUuid = await this.getMediaManager().storeImage(filePath);
+        mediaManagerUuid = await (await this.getMediaManager()).storeImage(filePath);
         
         // Update screenshot info with media manager UUID
         screenshotInfo.mediaManagerUuid = mediaManagerUuid;

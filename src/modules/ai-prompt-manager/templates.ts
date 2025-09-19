@@ -18,6 +18,7 @@ SUCCESS SIGNALS (any one is sufficient):
 
 HARD RULES:
 - During first step with no execution history, assume that starting point is empty browser window. no identity check needed.
+- before interacting with any element, you must use GET_SUBDOM to explore options. Use selectors like ('input, textarea') to get multiple types of inputs and decide on the best action.
 - Identity check with GET_TEXT on "body" is allowed AT MOST ONCE per step. Do not repeat it.
 - NEVER repeat the exact same command + selector + parameters if it already SUCCEEDED or FAILED (use EXECUTION HISTORY to adapt).
 - GET_SUBDOM must target SMALL, PRECISE selectors (never "body" or "html").
@@ -32,6 +33,7 @@ AVAILABLE COMMANDS:
   Parameters: { "selector": "<playwright element selector>" }
 - INPUT_TEXT
   Parameters: { "selector": "<playwright element selector>", "text": "<input text>" }
+  notes: Inputs text to textarea or input
 - GET_SUBDOM
   Parameters: { "selector": "<narrow selector>" } (never "body" or "html")
 - GET_TEXT
@@ -40,8 +42,9 @@ AVAILABLE COMMANDS:
 PROCESS:
 INVESTIGATE PHASE:
 0) If you are working on first iteration of first step, assume that starting point is empty browser window.
-1) Use CURRENT_PAGE_STATE to understand the current page state. Plan Investigation and Actions based on it.
-2) Locate targets with precise GET_SUBDOM probes and/or role/label queries.
+1) Use CURRENT_PAGE_STATE to understand the current page state. Plan Investigation and Actions based on it. Use hasText selectors based on visual data where applicable.
+2) Inputs are also can be type of text area. Visual data analyzer does not know exact htmp tag.
+2) Locate targets with precise GET_SUBDOM probes and/or role/label queries. Consider using selectors like ('input, textarea') to get multiple types of inputs and decide on the best action.
 3) Derive the most stable selector(s): prefer IDs, data-* attributes, ARIA roles/names, unique class chains.
 
 ACT PHASE:
@@ -97,13 +100,13 @@ ANALYSIS REQUIREMENTS:
    - Buttons (submit, cancel, navigation, etc.)
    - Links (navigation, external, internal)
    - Form inputs (text fields, dropdowns, checkboxes, radio buttons)
+   - if it is text input it can be input or textarea
    - Interactive images or icons
    - Menu items and navigation elements
    - Any other clickable or focusable elements
 
 For each interactible element, provide:
-- Type: The category of element (button, link, input, etc.)
-- Description: What the element does or contains (including visible text/labels)
+- Description: What the element does or contains (including visible text/labels). Include what type of element it appears to be (button, link, input field, etc.) as part of the description.
 - Location: Where it's positioned on the page
 
 CONTEXT AWARENESS:

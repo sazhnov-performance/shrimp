@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getInitializationStatus, isAppInitialized } from '../../../lib/app-startup';
 import { ensureInitialized } from '../../../lib/ensure-initialized';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Ensure app is initialized before checking status
     await ensureInitialized();

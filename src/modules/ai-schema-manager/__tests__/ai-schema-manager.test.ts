@@ -300,32 +300,16 @@ describe('AISchemaManager', () => {
       const elementSchema = schema.properties.interactibleElements.items;
       
       expect(elementSchema.type).toBe('object');
-      expect(elementSchema.required).toContain('type');
       expect(elementSchema.required).toContain('description');
       expect(elementSchema.required).toContain('location');
+      expect(elementSchema.required).not.toContain('type');
       
-      expect(elementSchema.properties.type).toBeDefined();
       expect(elementSchema.properties.description).toBeDefined();
       expect(elementSchema.properties.location).toBeDefined();
       expect(elementSchema.properties.containsText).toBeDefined();
+      expect(elementSchema.properties.type).toBeUndefined();
     });
 
-    it('should include valid element types in enum', () => {
-      const schema = schemaManager.getImageAnalysisSchema();
-      const elementSchema = schema.properties.interactibleElements.items;
-      const typeProperty = elementSchema.properties.type;
-      
-      expect(typeProperty.enum).toContain('button');
-      expect(typeProperty.enum).toContain('link');
-      expect(typeProperty.enum).toContain('input');
-      expect(typeProperty.enum).toContain('select');
-      expect(typeProperty.enum).toContain('checkbox');
-      expect(typeProperty.enum).toContain('radio');
-      expect(typeProperty.enum).toContain('textarea');
-      expect(typeProperty.enum).toContain('image');
-      expect(typeProperty.enum).toContain('menu');
-      expect(typeProperty.enum).toContain('other');
-    });
 
     it('should validate example image analysis response', () => {
       const exampleResponse = {

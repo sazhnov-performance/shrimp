@@ -158,7 +158,7 @@ export class StepProcessor implements IStepProcessor {
    * @param steps Array of steps to execute
    */
   private async executeStepsAsync(sessionId: string, steps: string[]): Promise<void> {
-    let shouldCleanup = true;
+    const shouldCleanup = true;
     
     try {
         // Initialize AI context with steps - this is critical for task loop execution

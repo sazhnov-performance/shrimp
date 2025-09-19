@@ -24,10 +24,12 @@ export class MediaManager implements IMediaManager {
       baseUrl: process.env.MEDIA_BASE_URL || 'http://localhost:3000'
     };
     
-    // Load existing images on initialization
-    this.loadExistingImages().catch(error => {
-      console.error('Failed to load existing images on MediaManager initialization:', error);
-    });
+    // Only load existing images if not in test environment
+    if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
+      this.loadExistingImages().catch(error => {
+        console.error('Failed to load existing images on MediaManager initialization:', error);
+      });
+    }
   }
 
   static getInstance(): IMediaManager {

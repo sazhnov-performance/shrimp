@@ -9,10 +9,10 @@ jest.setTimeout(30000);
 // Mock console methods to reduce test noise
 global.console = {
   ...console,
-  // Uncomment to suppress console.log in tests
-  // log: jest.fn(),
-  // warn: jest.fn(),
-  // error: jest.fn(),
+  // Suppress console output during tests to reduce noise
+  log: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
 };
 
 // Setup global test environment
@@ -63,6 +63,16 @@ afterAll(async () => {
         await instance.shutdown();
       }
       (Executor as any).instance = null;
+    }
+  } catch (error) {
+    // Ignore import errors
+  }
+  
+  try {
+    // Reset MediaManager instance
+    const { MediaManager } = await import('../src/modules/media-manager/media-manager');
+    if (MediaManager && (MediaManager as any).instance) {
+      (MediaManager as any).instance = null;
     }
   } catch (error) {
     // Ignore import errors

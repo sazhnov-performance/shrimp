@@ -116,13 +116,8 @@ export interface ImageAnalysisSchema {
       description: "List of elements that can be interacted with (buttons, links, forms, etc.)";
       items: {
         type: "object";
-        required: ["type", "description", "location"];
+        required: ["description", "location"];
         properties: {
-          type: {
-            type: "string";
-            enum: ["button", "link", "input", "select", "checkbox", "radio", "textarea", "image", "menu", "other"];
-            description: "Type of interactible element";
-          };
           description: {
             type: "string";
             description: "Description of the element including visible text or labels";

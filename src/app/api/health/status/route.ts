@@ -4,11 +4,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getInitializationStatus, isAppInitialized } from '../../../../lib/app-startup';
+import { isAppInitialized } from '../../../../lib/app-startup';
 // AppInitializer will be imported lazily to avoid Node.js API loading
 import { ensureInitialized } from '../../../../lib/ensure-initialized';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   // Only allow in development mode for security
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ 
@@ -19,8 +19,6 @@ export async function GET(request: NextRequest) {
   try {
     // Ensure app is initialized before getting detailed status
     await ensureInitialized();
-    
-    const isInitialized = isAppInitialized();
 
     const AppInitializer = (await import('../../../../modules/app-initializer')).default;
     const initializer = AppInitializer.getInstance();

@@ -7,14 +7,16 @@ import getExecutorStreamer from '@/modules/executor-streamer';
 import { StepProcessor } from '@/modules/step-processor';
 
 describe('ExecutorStreamer Singleton Verification', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset singleton for clean test
-    (require('@/modules/executor-streamer').ExecutorStreamer as any).resetInstance();
+    const { ExecutorStreamer } = await import('@/modules/executor-streamer');
+    (ExecutorStreamer as any).resetInstance();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     // Clean up after each test
-    (require('@/modules/executor-streamer').ExecutorStreamer as any).resetInstance();
+    const { ExecutorStreamer } = await import('@/modules/executor-streamer');
+    (ExecutorStreamer as any).resetInstance();
   });
 
   it('should ensure StepProcessor and API use the same ExecutorStreamer instance', () => {

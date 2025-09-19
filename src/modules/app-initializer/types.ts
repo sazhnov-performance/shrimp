@@ -72,6 +72,7 @@ export interface AppConfig {
 export interface EnvironmentConfig {
   OPENAI_API_KEY?: string;
   NODE_ENV?: string;
+  TASK_LOOP_LIMIT?: string;
   // Add other required environment variables
 }
 

@@ -42,7 +42,7 @@ export class TaskLoop implements ITaskLoop {
   private executor: IExecutor;
   private streamer: IExecutorStreamer;
   private streamLogger: IStreamerLogger;
-  private mediaManager: IMediaManager;
+  private mediaManager: IMediaManager | null;
   private config: TaskLoopConfig;
 
   private constructor(config: TaskLoopConfig = DEFAULT_CONFIG) {
@@ -66,8 +66,8 @@ export class TaskLoop implements ITaskLoop {
     this.executor = Executor.getInstance(); // Use singleton instance
     this.streamer = ExecutorStreamer.getInstance(); // Use singleton instance
     this.streamLogger = new StreamerLogger(this.streamer, this.config.enableLogging);
-    // Lazy load MediaManager to avoid Node.js API imports at build time
-    this.mediaManager = this.getMediaManager();
+    // MediaManager will be lazy loaded when needed
+    this.mediaManager = null;
     
     if (this.config.enableLogging) {
       console.log('[TaskLoop] Task Loop module initialized', {
@@ -81,10 +81,10 @@ export class TaskLoop implements ITaskLoop {
   /**
    * Lazy load MediaManager to avoid Node.js APIs during compilation
    */
-  private getMediaManager(): IMediaManager {
+  private async getMediaManager(): Promise<IMediaManager> {
     if (!this.mediaManager) {
       // Use dynamic import to avoid loading Node.js APIs at build time
-      const { MediaManager } = require('../media-manager/media-manager');
+      const { MediaManager } = await import('../media-manager/media-manager');
       this.mediaManager = MediaManager.getInstance();
     }
     return this.mediaManager;
@@ -110,8 +110,7 @@ export class TaskLoop implements ITaskLoop {
    */
   async executeStep(sessionId: string, stepId: number): Promise<StepResult> {
     const startTime = Date.now();
-    let iterations = 0;
-    let finalResponse: AIResponse | undefined;
+    const iterations = 0;
 
     // Input validation (throws error if invalid)
     this.validateInputs(sessionId, stepId);
@@ -341,7 +340,7 @@ export class TaskLoop implements ITaskLoop {
       // Log action result to streamer (before screenshot)
       try {
         // Ensure all string parameters are safe for logging
-        const actionName = this.getDisplayActionName(action.command);
+        const actionName = action.command + " " + JSON.stringify(action.parameters);
         const result = response.dom || 'Command executed successfully';
         const errorMessage = response.error?.message;
         
@@ -377,9 +376,10 @@ export class TaskLoop implements ITaskLoop {
       }
 
       // Log screenshot to streamer if screenshot was captured
+      console.log("checking for screenshot", response.success, response.screenshotId);
       if (response.success && response.screenshotId) {
         try {
-          const screenshotUrl = this.getMediaManager().getImageUrl(response.screenshotId);
+          const screenshotUrl = (await this.getMediaManager()).getImageUrl(response.screenshotId);
           
           // Log screenshot to streamer
           await this.streamLogger.logScreenshot(
@@ -401,7 +401,7 @@ export class TaskLoop implements ITaskLoop {
             const imageAnalysisPrompt = this.promptManager.getImageAnalysisPrompt(sessionId, stepId);
             
             // Get image file path from media manager
-            const imageFilePath = this.getMediaManager().getImagePath(response.screenshotId);
+            const imageFilePath = (await this.getMediaManager()).getImagePath(response.screenshotId);
             
             // Send image analysis request to AI for screenshot description
             const promptRequest = JSON.stringify(imageAnalysisPrompt);

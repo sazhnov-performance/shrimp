@@ -46,7 +46,8 @@ export async function GET(
     const mimeType = getMimeType(extension || '');
     
     // Return the image with appropriate headers
-    return new Response(imageBuffer, {
+    // Convert Buffer to Uint8Array for Response constructor
+    return new Response(new Uint8Array(imageBuffer), {
       headers: {
         'Content-Type': mimeType,
         'Cache-Control': 'public, max-age=31536000', // Cache for 1 year

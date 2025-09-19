@@ -7,10 +7,34 @@ import { TaskLoopConfig } from './types';
 
 // Default configuration for Task Loop
 export const DEFAULT_CONFIG: TaskLoopConfig = {
-  maxIterations: 4,
+  maxIterations: getMaxIterationsFromEnv(),
   timeoutMs: 300000, // 5 minutes
   enableLogging: true
 };
+
+/**
+ * Get maxIterations from environment variable TASK_LOOP_LIMIT
+ * Falls back to default value of 4 if not set or invalid
+ */
+function getMaxIterationsFromEnv(): number {
+  const envValue = process.env.TASK_LOOP_LIMIT;
+  if (!envValue) {
+    return 4; // Default value
+  }
+  
+  const parsedValue = parseInt(envValue, 10);
+  if (isNaN(parsedValue) || parsedValue <= 0) {
+    console.warn(`[TaskLoop] Invalid TASK_LOOP_LIMIT value: ${envValue}. Using default value: 4`);
+    return 4;
+  }
+  
+  if (parsedValue > 100) {
+    console.warn(`[TaskLoop] TASK_LOOP_LIMIT value ${parsedValue} exceeds maximum of 100. Using default value: 4`);
+    return 4;
+  }
+  
+  return parsedValue;
+}
 
 // Configuration validation
 export function validateConfig(config: Partial<TaskLoopConfig>): TaskLoopConfig {

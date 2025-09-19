@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { StepProcessor } from '@/modules/step-processor';
-import { ExecuteStepsRequest, ExecuteStepsResponse, ErrorResponse } from '../../types';
+import { ExecuteStepsRequest } from '../../types';
 import { ensureInitialized } from '@/lib/ensure-initialized';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
