@@ -26,7 +26,7 @@ export async function initializeApp(): Promise<void> {
     try {
       const AppInitializer = (await import('../modules/app-initializer')).default;
       const initializer = AppInitializer.getInstance({
-        environment: (process.env.NODE_ENV as any) || 'development',
+        environment: (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development',
         enableLogging: process.env.NODE_ENV !== 'production',
         skipHealthChecks: process.env.NODE_ENV === 'test'
       });

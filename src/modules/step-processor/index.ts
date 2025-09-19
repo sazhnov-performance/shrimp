@@ -43,7 +43,7 @@ export class StepProcessor implements IStepProcessor {
     this.executor = Executor.getInstance();
     
     // Verify singleton instance
-    const instanceId = (this.executorStreamer as any).getInstanceId?.() || 'unknown';
+    const instanceId = this.executorStreamer.getInstanceId();
     console.log(`[StepProcessor] Using ExecutorStreamer instance #${instanceId}`);
     
     if (this.config.enableLogging) {

@@ -104,7 +104,7 @@ export enum SessionStatus {
 }
 
 // Simple API Types
-export interface APIResponse<T = any> {
+export interface APIResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: APIError;
@@ -119,7 +119,7 @@ export interface APIResponse<T = any> {
 export interface APIError {
   code: string;
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 // Simple Step Processing Request
@@ -219,7 +219,7 @@ export const ERROR_MESSAGES = {
 export interface WSClientMessage {
   type: 'subscribe' | 'unsubscribe' | 'replay' | 'ping' | 'filter_update';
   payload?: {
-    filters?: any[];
+    filters?: Record<string, unknown>[];
     replayOptions?: {
       fromTimestamp?: string;
       eventCount?: number;
@@ -233,6 +233,6 @@ export interface WSServerMessage {
   payload?: {
     event?: StreamEvent;
     error?: APIError;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   };
 }

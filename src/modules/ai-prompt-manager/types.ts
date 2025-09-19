@@ -48,5 +48,5 @@ export interface ContextualHistory {
 export interface LatestExecutedStep {
   stepName: string;
   actionName: string;
-  actionParameters: Record<string, any>;
+  actionParameters: Record<string, unknown>;
 }

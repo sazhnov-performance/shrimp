@@ -6,6 +6,16 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+interface LogData {
+  [key: string]: unknown;
+}
+
+interface LogEntry {
+  timestamp: string;
+  type: 'request' | 'response';
+  data: LogData;
+}
+
 export class Logger {
   private logFilePath: string;
 
@@ -17,7 +27,7 @@ export class Logger {
   /**
    * Log request data
    */
-  logRequest(data: any): void {
+  logRequest(data: LogData): void {
     const logEntry = {
       timestamp: new Date().toISOString(),
       type: 'request',
@@ -29,7 +39,7 @@ export class Logger {
   /**
    * Log response data
    */
-  logResponse(data: any): void {
+  logResponse(data: LogData): void {
     const logEntry = {
       timestamp: new Date().toISOString(),
       type: 'response',
@@ -41,7 +51,7 @@ export class Logger {
   /**
    * Write log entry to file (append-only)
    */
-  private writeLogEntry(entry: any): void {
+  private writeLogEntry(entry: LogEntry): void {
     try {
       const logLine = JSON.stringify(entry) + '\n';
       fs.appendFileSync(this.logFilePath, logLine, 'utf8');

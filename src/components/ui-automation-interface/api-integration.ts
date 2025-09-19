@@ -184,7 +184,7 @@ export class FrontendAPIIntegration implements SimpleFrontendAPIIntegration {
   private attemptReconnection(
     streamId: string, 
     resolve: (value: EventSource) => void, 
-    reject: (reason?: any) => void
+    reject: (reason?: Error | unknown) => void
   ): void {
     if (this.isReconnecting) {
       console.log('Already attempting reconnection, skipping...');

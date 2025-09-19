@@ -211,7 +211,7 @@ class ExecutorStreamer implements IExecutorStreamer {
     streamId: string,
     eventType: string,
     eventData: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): Promise<void> {
     await this.eventPublisher.publishStructuredEvent(streamId, eventType, eventData, metadata);
   }

@@ -169,7 +169,7 @@ export class EventPublisher implements IEventPublisher {
     streamId: string, 
     eventType: string, 
     eventData: string, 
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): Promise<void> {
     // Validate stream exists
     if (!this.streamManager.streamExists(streamId)) {

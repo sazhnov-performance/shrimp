@@ -42,7 +42,7 @@ export class AppInitializer implements IAppInitializer {
   static getInstance(config?: AppConfig): AppInitializer {
     if (!AppInitializer.instance) {
       const defaultConfig: AppConfig = {
-        environment: (process.env.NODE_ENV as any) || 'development',
+        environment: (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development',
         enableLogging: process.env.NODE_ENV !== 'production',
         initializationTimeout: 30000 // 30 seconds
       };

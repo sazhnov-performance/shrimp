@@ -12,7 +12,7 @@ export interface AIConfig {
 
 export interface AIResponse {
   status: 'success' | 'error';
-  data?: any; // OpenAI response data (when successful)
+  data?: Record<string, unknown>; // OpenAI response data (when successful)
   error?: string; // Error message (when failed)
   errorCode?: string;
 }

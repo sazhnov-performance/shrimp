@@ -69,7 +69,7 @@ export interface IExecutorStreamer {
 
   // Advanced event operations
   putBatchEvents(streamId: string, events: string[]): Promise<void>;
-  putStructuredEvent(streamId: string, eventType: string, eventData: string, metadata?: Record<string, any>): Promise<void>;
+  putStructuredEvent(streamId: string, eventType: string, eventData: string, metadata?: Record<string, unknown>): Promise<void>;
 
   // Statistics and monitoring
   getStreamStats(streamId: string): Promise<{
@@ -87,6 +87,9 @@ export interface IExecutorStreamer {
 
   // Configuration access
   getConfig(): ExecutorStreamerConfig;
+  
+  // Debug/Monitoring
+  getInstanceId(): number;
 }
 
 /**

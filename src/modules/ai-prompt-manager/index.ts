@@ -255,7 +255,7 @@ getStepPrompt(sessionId: string, stepId: number): string {
     
     // Look for the latest executed step in step logs
     let latestActionName = 'No previous action';
-    let latestActionParameters: Record<string, any> = {};
+    let latestActionParameters: Record<string, unknown> = {};
     
     // Check current step logs first
     const currentStepLogs = context.stepLogs[stepId] || [];

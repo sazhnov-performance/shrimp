@@ -47,7 +47,7 @@ class AISchemaManager implements IAISchemaManager {
         action: {
           type: "object",
           required: ["command", "parameters"],
-          properties: (executorActionSchema as any).properties,
+          properties: (executorActionSchema as { properties: Record<string, unknown> }).properties,
           description: "Executor command to execute (required only when flowControl is 'continue')"
         },
         reasoning: {

@@ -8,6 +8,24 @@ import { AuthHandler } from './auth-handler';
 import { ImageHandler } from './image-handler';
 import { Logger } from './logger';
 
+interface OpenAIMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string | Array<{
+    type: 'text' | 'image_url';
+    text?: string;
+    image_url?: {
+      url: string;
+    };
+  }>;
+}
+
+interface OpenAIRequestPayload {
+  model: string;
+  messages: OpenAIMessage[];
+  max_tokens?: number;
+  temperature?: number;
+}
+
 export class RequestProcessor {
   private config: AIConfig;
   private authHandler: AuthHandler;
@@ -73,8 +91,8 @@ export class RequestProcessor {
   /**
    * Prepare request payload for OpenAI API
    */
-  private async prepareRequestPayload(request: string, imageFilePath?: string): Promise<any> {
-    const messages: any[] = [];
+  private async prepareRequestPayload(request: string, imageFilePath?: string): Promise<OpenAIRequestPayload> {
+    const messages: OpenAIMessage[] = [];
 
     // Try to parse the request as system/user messages if it's JSON
     let systemContent: string | undefined;
@@ -136,7 +154,7 @@ export class RequestProcessor {
   /**
    * Send request to OpenAI API
    */
-  private async sendToOpenAI(payload: any): Promise<any> {
+  private async sendToOpenAI(payload: OpenAIRequestPayload): Promise<Record<string, unknown>> {
     const url = `${this.config.baseUrl}/chat/completions`;
     const headers = this.authHandler.getAuthHeaders();
 
@@ -160,7 +178,7 @@ export class RequestProcessor {
   /**
    * Parse OpenAI response
    */
-  private parseResponse(response: any): AIResponse {
+  private parseResponse(response: Record<string, unknown>): AIResponse {
     try {
       if (response.error) {
         return this.createErrorResponse('API_ERROR', response.error.message || 'OpenAI API error');

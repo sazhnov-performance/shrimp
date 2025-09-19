@@ -29,7 +29,7 @@ export async function GET(
     const executorStreamer = getExecutorStreamer();
     
     // Verify singleton instance
-    const instanceId = (executorStreamer as any).getInstanceId?.() || 'unknown';
+    const instanceId = executorStreamer.getInstanceId();
     console.log(`[SSE API] Using ExecutorStreamer instance #${instanceId}`);
 
     // Check if stream exists - first try to find it, if not found, create it
