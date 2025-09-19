@@ -430,7 +430,7 @@ export class PromptBuilder {
   private formatExecutionHistory(context: ContextData, currentStepId: number): string {
     try {
       let history = '';
-      
+
       console.log('[PromptBuilder] formatExecutionHistory called:', {
         currentStepId: currentStepId,
         contextHistoryLimit: this.contextHistoryLimit,
@@ -602,30 +602,21 @@ export class PromptBuilder {
         legacyAttemptDetails += `    Reasoning: ${legacyReasoning}\n`;
         legacyAttemptDetails += `    Parameters: ${legacyParametersText}`;
         
-        // Handle execution result in legacy format
+        // Handle execution result in legacy format (command-agnostic)
         if (executionResult) {
           if (executionResult.success) {
-            // ONLY for GET_SUBDOM: include full DOM content
-            if (legacyAction === 'GET_SUBDOM' && typeof executionResult.result === 'string') {
-              legacyAttemptDetails += `\n    Result: ✓ DOM retrieved successfully\n\nDOM CONTENT:\n${executionResult.result}`;
-            } else if (legacyAction === 'OPEN_PAGE') {
-              // For OPEN_PAGE: just show success, don't include full page HTML
-              legacyAttemptDetails += `\n    Result: ✓ Page opened successfully`;
-            } else {
-            // Show truncated result (command-agnostic)
-            let result: string;
-            if (typeof executionResult.result === 'string') {
+              let result: string;
+              if (typeof executionResult.result === 'string') {
               console.log('[PromptBuilder] Legacy command result truncation:', {
                 originalLength: executionResult.result.length,
                 truncateLimit: this.contextTruncateLimit,
                 willTruncate: executionResult.result.length > this.contextTruncateLimit
               });
-              result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
-            } else {
-              result = 'Success';
-            }
-            legacyAttemptDetails += `\n    Result: ✓ ${result}`;
-            }
+                  result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
+              } else {
+                result = 'Success';
+              }
+              legacyAttemptDetails += `\n    Result: ✓ ${result}`;
           } else {
             const error = executionResult.error || 'Unknown error';
             legacyAttemptDetails += `\n    Result: ✗ ${error}`;
@@ -659,30 +650,21 @@ export class PromptBuilder {
       attemptDetails += `    Reasoning: ${reasoning}\n`;
       attemptDetails += `    Parameters: ${actionParameters}`;
       
-      // Add execution result
+      // Add execution result (command-agnostic)
       if (executionResult) {
         if (executionResult.success) {
-          // ONLY for GET_SUBDOM: include full DOM content
-          if (action === 'GET_SUBDOM' && typeof executionResult.result === 'string') {
-            attemptDetails += `\n    Result: ✓ DOM retrieved successfully\n\nDOM CONTENT:\n${executionResult.result}`;
-          } else if (action === 'OPEN_PAGE') {
-            // For OPEN_PAGE: just show success, don't include full page HTML
-            attemptDetails += `\n    Result: ✓ Page opened successfully`;
+          let result: string;
+          if (typeof executionResult.result === 'string') {
+            console.log('[PromptBuilder] Command result truncation:', {
+              originalLength: executionResult.result.length,
+              truncateLimit: this.contextTruncateLimit,
+              willTruncate: executionResult.result.length > this.contextTruncateLimit
+            });
+            result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
           } else {
-            // Show truncated result (command-agnostic)
-            let result: string;
-            if (typeof executionResult.result === 'string') {
-              console.log('[PromptBuilder] Command result truncation:', {
-                originalLength: executionResult.result.length,
-                truncateLimit: this.contextTruncateLimit,
-                willTruncate: executionResult.result.length > this.contextTruncateLimit
-              });
-              result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
-            } else {
-              result = 'Success';
-            }
-            attemptDetails += `\n    Result: ✓ ${result}`;
+            result = 'Success';
           }
+          attemptDetails += `\n    Result: ✓ ${result}`;
         } else {
           const error = executionResult.error || 'Unknown error';
           attemptDetails += `\n    Result: ✗ ${error}`;
