@@ -29,6 +29,18 @@ export class PromptBuilder {
     const historyEnvValue = process.env.CONTEXT_HISTORY_LIMIT;
     const historyParsedValue = historyEnvValue ? parseInt(historyEnvValue, 10) : 2000;
     this.contextHistoryLimit = isNaN(historyParsedValue) ? 2000 : historyParsedValue;
+    
+    // DEBUG: Log all configuration values
+    console.log('[PromptBuilder] Configuration loaded:', {
+      maxPromptLength: this.maxPromptLength,
+      contextTruncateLimit: this.contextTruncateLimit,
+      contextHistoryLimit: this.contextHistoryLimit,
+      envValues: {
+        MAX_PROMPT_LENGTH: maxPromptEnvValue,
+        CONTEXT_TRUNCATE_RESULT: envValue,
+        CONTEXT_HISTORY_LIMIT: historyEnvValue
+      }
+    });
   }
 
   /**
@@ -39,12 +51,26 @@ export class PromptBuilder {
    */
   private truncateWithMessage(text: string, limit: number): string {
     if (!text || text.length <= limit) {
+      console.log('[PromptBuilder] truncateWithMessage: no truncation needed:', {
+        textLength: text?.length || 0,
+        limit: limit
+      });
       return text;
     }
     
     const truncated = text.substring(0, limit);
     const message = `Value is truncated, shown ${limit} out of ${text.length} characters`;
-    return `${truncated}\n\n[${message}]`;
+    const result = `${truncated}\n\n[${message}]`;
+    
+    console.log('[PromptBuilder] truncateWithMessage: truncation applied:', {
+      originalLength: text.length,
+      limit: limit,
+      truncatedLength: truncated.length,
+      finalLength: result.length,
+      reductionPercent: Math.round(((text.length - truncated.length) / text.length) * 100)
+    });
+    
+    return result;
   }
 
   /**
@@ -77,15 +103,37 @@ export class PromptBuilder {
       
       // Check total length and apply progressive truncation if needed
       const totalLength = systemMessage.length + userMessage.length;
+      console.log('[PromptBuilder] Length analysis:', {
+        systemMessageLength: systemMessage.length,
+        userMessageLength: userMessage.length,
+        totalLength: totalLength,
+        maxPromptLength: this.maxPromptLength,
+        historyLength: history.length,
+        needsTruncation: totalLength > this.maxPromptLength
+      });
+      
       if (totalLength > this.maxPromptLength) {
         // Calculate how much space we need to free up
         const excessLength = totalLength - this.maxPromptLength;
         const historyLength = history.length;
         
+        console.log('[PromptBuilder] Truncation triggered:', {
+          excessLength: excessLength,
+          historyLength: historyLength,
+          buffer: 500
+        });
+        
         // Only reduce history if it's actually large enough to make a difference
         if (historyLength > excessLength + 500) { // Keep some buffer
           // Calculate target history length that would fit within limits
           const targetHistoryLength = Math.max(500, historyLength - excessLength - 200); // Reserve 200 chars buffer
+          
+          console.log('[PromptBuilder] Intelligent truncation strategy:', {
+            originalHistoryLength: historyLength,
+            targetHistoryLength: targetHistoryLength,
+            originalLimit: this.contextHistoryLimit,
+            temporaryLimit: Math.min(this.contextHistoryLimit, targetHistoryLength)
+          });
           
           // Temporarily reduce history limit for this specific truncation
           const originalLimit = this.contextHistoryLimit;
@@ -104,9 +152,16 @@ export class PromptBuilder {
           // Restore original limit
           this.contextHistoryLimit = originalLimit;
           
+          console.log('[PromptBuilder] After intelligent truncation:', {
+            reducedHistoryLength: reducedHistory.length,
+            reducedTotalLength: systemMessage.length + userMessageReduced.length,
+            stillNeedsTruncation: (systemMessage.length + userMessageReduced.length) > this.maxPromptLength
+          });
+          
           // If still too long after intelligent reduction, use minimal history
           const reducedTotalLength = systemMessage.length + userMessageReduced.length;
           if (reducedTotalLength > this.maxPromptLength) {
+            console.log('[PromptBuilder] Still too long, using minimal history fallback');
             const minimalHistory = 'History truncated due to length limits.';
             const userMessageMinimal = USER_TEMPLATE
               .replace('{sessionId}', context.contextId)
@@ -117,18 +172,29 @@ export class PromptBuilder {
               .replace('{currentPageState}', currentPageState)
               .replace('{contextualHistory}', minimalHistory);
             
+            console.log('[PromptBuilder] Final minimal result:', {
+              finalLength: systemMessage.length + userMessageMinimal.length,
+              historyLength: minimalHistory.length
+            });
+            
             return {
               system: systemMessage,
               user: userMessageMinimal
             };
           }
           
+          console.log('[PromptBuilder] Intelligent truncation successful');
           return {
             system: systemMessage,
             user: userMessageReduced
           };
         } else {
           // History is not the problem, just use minimal history
+          console.log('[PromptBuilder] History too small to truncate, using minimal fallback:', {
+            historyLength: historyLength,
+            requiredReduction: excessLength + 500
+          });
+          
           const minimalHistory = 'History truncated due to length limits.';
           const userMessageMinimal = USER_TEMPLATE
             .replace('{sessionId}', context.contextId)
@@ -139,12 +205,25 @@ export class PromptBuilder {
             .replace('{currentPageState}', currentPageState)
             .replace('{contextualHistory}', minimalHistory);
           
+          console.log('[PromptBuilder] Final minimal result (small history):', {
+            finalLength: systemMessage.length + userMessageMinimal.length,
+            historyLength: minimalHistory.length
+          });
+          
           return {
             system: systemMessage,
             user: userMessageMinimal
           };
         }
       }
+
+      console.log('[PromptBuilder] Final result (no truncation needed):', {
+        systemMessageLength: systemMessage.length,
+        userMessageLength: userMessage.length,
+        totalLength: systemMessage.length + userMessage.length,
+        maxPromptLength: this.maxPromptLength,
+        utilizationPercent: Math.round(((systemMessage.length + userMessage.length) / this.maxPromptLength) * 100)
+      });
 
       return {
         system: systemMessage,
@@ -351,6 +430,12 @@ export class PromptBuilder {
   private formatExecutionHistory(context: ContextData, currentStepId: number): string {
     try {
       let history = '';
+      
+      console.log('[PromptBuilder] formatExecutionHistory called:', {
+        currentStepId: currentStepId,
+        contextHistoryLimit: this.contextHistoryLimit,
+        totalSteps: context.steps.length
+      });
 
       // Format previous steps summary - ACTION HISTORY ONLY, NO SCREENSHOT ANALYSIS
       if (currentStepId > 0) {
@@ -387,13 +472,27 @@ export class PromptBuilder {
       }
 
 
+      console.log('[PromptBuilder] History formatting complete:', {
+        rawHistoryLength: history.length,
+        contextHistoryLimit: this.contextHistoryLimit,
+        needsTruncation: history.length > this.contextHistoryLimit
+      });
+
       // Apply intelligent truncation if history exceeds the limit
       if (history.length > this.contextHistoryLimit) {
-        return this.smartTruncateHistory(history);
+        const truncatedHistory = this.smartTruncateHistory(history);
+        console.log('[PromptBuilder] History truncated:', {
+          originalLength: history.length,
+          truncatedLength: truncatedHistory.length,
+          reductionPercent: Math.round(((history.length - truncatedHistory.length) / history.length) * 100)
+        });
+        return truncatedHistory;
       }
 
+      console.log('[PromptBuilder] No history truncation needed');
       return history || 'No execution history available.';
     } catch (error) {
+      console.error('[PromptBuilder] Error formatting execution history:', error);
       return 'Error formatting execution history.';
     }
   }
@@ -516,16 +615,27 @@ export class PromptBuilder {
               // For other commands: show truncated result
               let result: string;
               if (typeof executionResult.result === 'string') {
-                if (legacyAction === 'GET_TEXT') {
-                  // For GET_TEXT: apply environment-configured truncation with message
-                  result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
-                } else {
-                  // For other commands: use original 100-character truncation
-                  result = executionResult.result.substring(0, 100);
-                  if (executionResult.result.length > 100) {
-                    result += '...';
-                  }
+              if (legacyAction === 'GET_TEXT') {
+                // For GET_TEXT: apply environment-configured truncation with message
+                console.log('[PromptBuilder] Legacy GET_TEXT result truncation:', {
+                  originalLength: executionResult.result.length,
+                  truncateLimit: this.contextTruncateLimit,
+                  willTruncate: executionResult.result.length > this.contextTruncateLimit
+                });
+                result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
+              } else {
+                // For other commands: use original 100-character truncation
+                console.log('[PromptBuilder] Legacy command result truncation:', {
+                  command: legacyAction,
+                  originalLength: executionResult.result.length,
+                  truncateLimit: 100,
+                  willTruncate: executionResult.result.length > 100
+                });
+                result = executionResult.result.substring(0, 100);
+                if (executionResult.result.length > 100) {
+                  result += '...';
                 }
+              }
               } else {
                 result = 'Success';
               }
@@ -577,16 +687,27 @@ export class PromptBuilder {
             // For other commands: show truncated result
             let result: string;
             if (typeof executionResult.result === 'string') {
-              if (action === 'GET_TEXT') {
-                // For GET_TEXT: apply environment-configured truncation with message
-                result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
-              } else {
-                // For other commands: use original 100-character truncation
-                result = executionResult.result.substring(0, 100);
-                if (executionResult.result.length > 100) {
-                  result += '...';
+                if (action === 'GET_TEXT') {
+                  // For GET_TEXT: apply environment-configured truncation with message
+                  console.log('[PromptBuilder] GET_TEXT result truncation:', {
+                    originalLength: executionResult.result.length,
+                    truncateLimit: this.contextTruncateLimit,
+                    willTruncate: executionResult.result.length > this.contextTruncateLimit
+                  });
+                  result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
+                } else {
+                  // For other commands: use original 100-character truncation
+                  console.log('[PromptBuilder] Command result truncation:', {
+                    command: action,
+                    originalLength: executionResult.result.length,
+                    truncateLimit: 100,
+                    willTruncate: executionResult.result.length > 100
+                  });
+                  result = executionResult.result.substring(0, 100);
+                  if (executionResult.result.length > 100) {
+                    result += '...';
+                  }
                 }
-              }
             } else {
               result = 'Success';
             }
