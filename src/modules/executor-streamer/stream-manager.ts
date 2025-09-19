@@ -88,14 +88,14 @@ import { DBManager } from './db-manager';
   /**
    * Adds an event to the specified stream
    * @param streamId Target stream ID
-   * @param eventData Event data to add
+   * @param eventData Event data to add (should already be formatted JSON)
    * @throws ExecutorStreamerError if stream not found
    */
   async addEvent(streamId: string, eventData: string): Promise<void> {
-    // Generate a unique event ID and format the event
+    // Generate a unique event ID for database storage
     const eventId = this.generateEventId();
-    const formattedEvent = this.formatEvent(eventData, eventId);
-    await this.dbManager.addEvent(streamId, formattedEvent, eventId);
+    // eventData is already formatted by EventPublisher, just store it
+    await this.dbManager.addEvent(streamId, eventData, eventId);
   }
 
   /**
@@ -158,24 +158,6 @@ import { DBManager } from './db-manager';
     return `evt_${timestamp}_${random}`;
   }
 
-  /**
-   * Formats event data with timestamp and metadata
-   * @param eventData Raw event data
-   * @param eventId Event identifier
-   * @returns Formatted event string
-   */
-  private formatEvent(eventData: string, eventId: string): string {
-    const timestamp = new Date().toISOString();
-    
-    // Create a structured event format
-    const formattedEvent = {
-      timestamp,
-      data: eventData,
-      id: eventId
-    };
-
-    return JSON.stringify(formattedEvent);
-  }
 
   /**
    * Validates stream ID format

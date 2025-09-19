@@ -11193,3 +11193,4 @@
 2025-09-19T09:19:08.610Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
 2025-09-19T09:19:10.917Z [Executor][INFO] [session-1758273534832-xr8p1y7j5] Executing command: OPEN_PAGE {"commandId":"taskloop_1758273550903_hpu618s3z","action":"OPEN_PAGE","parameters":{"url":"https://www.google.com"}}
 2025-09-19T09:19:17.749Z [Executor][INFO] [session-1758273534832-xr8p1y7j5] Command OPEN_PAGE completed in 6832ms {"action":"OPEN_PAGE","duration":6832,"success":true,"commandId":"taskloop_1758273550903_hpu618s3z"}
+2025-09-19T09:20:03.277Z [Executor][INFO] [session-1758273534832-xr8p1y7j5] Session destroyed {"sessionId":"724fbd73-8bf9-48b2-bc65-2205ba4e398c"}

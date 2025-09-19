@@ -91,7 +91,12 @@ describe('StreamManager with SQLite Backend', () => {
       const streamId = 'deletable-stream';
       
       await streamManager.createStream(streamId);
-      await streamManager.addEvent(streamId, 'test event');
+      const formattedEvent = JSON.stringify({
+        timestamp: new Date().toISOString(),
+        data: 'test event',
+        id: 'test_delete_event'
+      });
+      await streamManager.addEvent(streamId, formattedEvent);
       
       expect(await streamManager.hasEvents(streamId)).toBe(true);
       
@@ -110,8 +115,14 @@ describe('StreamManager with SQLite Backend', () => {
 
     test('should add and retrieve events', async () => {
       const eventData = 'test event data';
+      // Format the event as the EventPublisher would
+      const formattedEvent = JSON.stringify({
+        timestamp: new Date().toISOString(),
+        data: eventData,
+        id: 'test_event_id'
+      });
       
-      await streamManager.addEvent(streamId, eventData);
+      await streamManager.addEvent(streamId, formattedEvent);
       
       expect(await streamManager.hasEvents(streamId)).toBe(true);
       const events = await streamManager.getEvents(streamId);
@@ -123,7 +134,12 @@ describe('StreamManager with SQLite Backend', () => {
       const events = ['first', 'second', 'third'];
       
       for (const event of events) {
-        await streamManager.addEvent(streamId, event);
+        const formattedEvent = JSON.stringify({
+          timestamp: new Date().toISOString(),
+          data: event,
+          id: `test_event_${event}`
+        });
+        await streamManager.addEvent(streamId, formattedEvent);
       }
       
       const lastEvent = await streamManager.extractLastEvent(streamId);
@@ -140,7 +156,12 @@ describe('StreamManager with SQLite Backend', () => {
       const events = ['alpha', 'beta', 'gamma'];
       
       for (const event of events) {
-        await streamManager.addEvent(streamId, event);
+        const formattedEvent = JSON.stringify({
+          timestamp: new Date().toISOString(),
+          data: event,
+          id: `test_event_${event}`
+        });
+        await streamManager.addEvent(streamId, formattedEvent);
       }
       
       const extractedEvents = await streamManager.extractAllEvents(streamId);
@@ -162,7 +183,12 @@ describe('StreamManager with SQLite Backend', () => {
     });
 
     test('should get events without removing them', async () => {
-      await streamManager.addEvent(streamId, 'persistent event');
+      const formattedEvent = JSON.stringify({
+        timestamp: new Date().toISOString(),
+        data: 'persistent event',
+        id: 'test_persistent_event'
+      });
+      await streamManager.addEvent(streamId, formattedEvent);
       
       const events1 = await streamManager.getEvents(streamId);
       expect(events1).toHaveLength(1);
@@ -191,7 +217,12 @@ describe('StreamManager with SQLite Backend', () => {
       expect(metadata.createdAt).toBeInstanceOf(Date);
       expect(metadata.lastAccessedAt).toBeInstanceOf(Date);
       
-      await streamManager.addEvent(streamId, 'test event');
+      const formattedEvent = JSON.stringify({
+        timestamp: new Date().toISOString(),
+        data: 'test event',
+        id: 'test_metadata_event'
+      });
+      await streamManager.addEvent(streamId, formattedEvent);
       
       const updatedMetadata = streamManager.getStreamMetadata(streamId);
       expect(updatedMetadata.eventCount).toBe(1);
@@ -236,7 +267,12 @@ describe('StreamManager with SQLite Backend', () => {
       
       // Create stream and add event with first manager
       await streamManager.createStream(streamId);
-      await streamManager.addEvent(streamId, eventData);
+      const formattedEvent = JSON.stringify({
+        timestamp: new Date().toISOString(),
+        data: eventData,
+        id: 'test_persistent_event'
+      });
+      await streamManager.addEvent(streamId, formattedEvent);
       
       // Verify data exists
       expect(await streamManager.hasEvents(streamId)).toBe(true);
@@ -275,7 +311,12 @@ describe('StreamManager with SQLite Backend', () => {
       // Add events concurrently
       const promises = [];
       for (let i = 0; i < 10; i++) {
-        promises.push(streamManager.addEvent(streamId, `event-${i}`));
+        const formattedEvent = JSON.stringify({
+          timestamp: new Date().toISOString(),
+          data: `event-${i}`,
+          id: `test_concurrent_${i}`
+        });
+        promises.push(streamManager.addEvent(streamId, formattedEvent));
       }
       
       await Promise.all(promises);
@@ -293,16 +334,21 @@ describe('StreamManager with SQLite Backend', () => {
       
       // Add some initial events
       for (let i = 0; i < 5; i++) {
-        await streamManager.addEvent(streamId, `initial-${i}`);
+        const formattedEvent = JSON.stringify({
+          timestamp: new Date().toISOString(),
+          data: `initial-${i}`,
+          id: `test_initial_${i}`
+        });
+        await streamManager.addEvent(streamId, formattedEvent);
       }
       
       // Mix of operations
       const operations = [
-        streamManager.addEvent(streamId, 'new-event-1'),
-        streamManager.addEvent(streamId, 'new-event-2'),
+        streamManager.addEvent(streamId, JSON.stringify({ timestamp: new Date().toISOString(), data: 'new-event-1', id: 'test_new_1' })),
+        streamManager.addEvent(streamId, JSON.stringify({ timestamp: new Date().toISOString(), data: 'new-event-2', id: 'test_new_2' })),
         streamManager.getEvents(streamId),
         streamManager.hasEvents(streamId),
-        streamManager.addEvent(streamId, 'new-event-3')
+        streamManager.addEvent(streamId, JSON.stringify({ timestamp: new Date().toISOString(), data: 'new-event-3', id: 'test_new_3' }))
       ];
       
       const results = await Promise.all(operations);
@@ -322,7 +368,12 @@ describe('StreamManager with SQLite Backend', () => {
       await streamManager.createStream(streamId);
       
       const originalData = 'test event for formatting';
-      await streamManager.addEvent(streamId, originalData);
+      const formattedEvent = JSON.stringify({
+        timestamp: new Date().toISOString(),
+        data: originalData,
+        id: 'test_format_event'
+      });
+      await streamManager.addEvent(streamId, formattedEvent);
       
       const events = await streamManager.getEvents(streamId);
       expect(events).toHaveLength(1);
@@ -333,7 +384,7 @@ describe('StreamManager with SQLite Backend', () => {
       expect(parsedEvent).toHaveProperty('id');
       
       expect(parsedEvent.data).toBe(originalData);
-      expect(parsedEvent.id).toMatch(/^evt_\d+_\w+$/);
+      expect(parsedEvent.id).toBe('test_format_event');
       expect(new Date(parsedEvent.timestamp)).toBeInstanceOf(Date);
     });
   });
