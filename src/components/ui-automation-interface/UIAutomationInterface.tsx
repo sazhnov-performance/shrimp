@@ -335,21 +335,21 @@ export function UIAutomationInterface() {
   // Show initialization status - NOW AFTER ALL HOOKS
   if (!appInitialized) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="relative">
-            <div className="w-20 h-20 border-4 border-blue-500/30 rounded-full animate-spin border-t-blue-400 mx-auto mb-8"></div>
-            <div className="absolute inset-0 w-20 h-20 border-4 border-transparent rounded-full animate-pulse border-t-blue-300/50 mx-auto"></div>
+            <div className="w-20 h-20 border-4 border-gray-200 rounded-full animate-spin border-t-pink-600 mx-auto mb-8"></div>
+            <div className="absolute inset-0 w-20 h-20 border-4 border-transparent rounded-full animate-pulse border-t-pink-400 mx-auto"></div>
           </div>
-          <h2 className="text-2xl font-light text-white mb-3 tracking-wide">
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">
             {initError ? 'Initialization Failed' : 'Initializing System'}
           </h2>
           {initError ? (
-            <p className="text-red-300 text-sm font-light max-w-md mx-auto">
+            <p className="text-red-600 text-sm font-medium max-w-md mx-auto">
               {initError.message || 'Failed to initialize the application'}
             </p>
           ) : (
-            <p className="text-slate-300 text-sm font-light">
+            <p className="text-gray-600 text-sm font-medium">
               Preparing automation environment...
             </p>
           )}
@@ -360,20 +360,20 @@ export function UIAutomationInterface() {
 
   // Main UI content starts here - no more hooks after this point
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="border-b border-slate-700/30 bg-slate-900/30 backdrop-blur-xl">
+      <div className="border-b border-gray-200 bg-white shadow-sm">
         <div className="w-4/5 mx-auto px-6 py-8">
           <div className="text-center space-y-3">
             <div className="inline-flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-pink-600 to-pink-700 flex items-center justify-center shadow-lg">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
               <div className="text-left">
-                <h1 className="text-4xl font-light text-white tracking-wide">
-                  <span className="bg-gradient-to-r from-blue-300 to-indigo-300 bg-clip-text text-transparent">
+                <h1 className="text-4xl font-bold text-gray-900">
+                  <span className="text-pink-600">
                     SHRIMP
                   </span>
                 </h1>
@@ -389,7 +389,7 @@ export function UIAutomationInterface() {
           
           {/* Left Panel - Step Input */}
           <div className="xl:col-span-2 min-h-0">
-            <div className="bg-slate-800/40 backdrop-blur-xl border border-slate-600/30 rounded-2xl p-6 h-full shadow-2xl">
+            <div className="bg-white border border-gray-200 rounded-xl p-6 h-full shadow-lg">
               <StepInputComponent
                 stepText={state.stepText}
                 setStepText={setStepText}
@@ -402,7 +402,7 @@ export function UIAutomationInterface() {
 
           {/* Right Panel - Streaming Output */}
           <div className="xl:col-span-3 min-h-0">
-            <div className="bg-slate-800/40 backdrop-blur-xl border border-slate-600/30 rounded-2xl overflow-hidden h-full shadow-2xl flex flex-col">
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden h-full shadow-lg flex flex-col">
               <StreamingOutputComponent
                 events={state.events}
                 sessionId={state.sessionId}
@@ -421,12 +421,12 @@ export function UIAutomationInterface() {
           <div className="flex justify-center">
             <button
               onClick={reset}
-              className="group px-6 py-3 bg-slate-700/50 hover:bg-slate-600/50 text-slate-200 rounded-xl border border-slate-600/50 hover:border-slate-500/50 transition-all duration-200 font-light tracking-wide backdrop-blur-sm"
+              className="group px-6 py-3 bg-white hover:bg-gray-50 text-gray-900 rounded-lg border border-gray-300 hover:border-pink-300 transition-all duration-200 font-medium shadow-sm"
               disabled={state.isExecuting}
             >
               <div className="flex items-center space-x-2">
-                <svg className="w-4 h-4 group-hover:rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <svg className="w-4 h-4 group-hover:rotate-180 transition-transform duration-300 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
                 <span>Reset Session</span>
               </div>
@@ -436,20 +436,20 @@ export function UIAutomationInterface() {
       )}
 
       {/* Footer */}
-      <div className="border-t border-slate-700/30 bg-slate-900/30 backdrop-blur-xl mt-12">
+      <div className="border-t border-gray-200 bg-white mt-12">
         <div className="w-4/5 mx-auto px-6 py-6">
           <div className="text-center">
-            <div className="flex items-center justify-center space-x-6 text-slate-400 text-sm font-light">
+            <div className="flex items-center justify-center space-x-6 text-gray-600 text-sm font-medium">
               <span className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                <div className="w-2 h-2 bg-pink-600 rounded-full"></div>
                 <span>AI-Powered Automation</span>
               </span>
               <span className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span>Real-time Monitoring</span>
               </span>
               <span className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                 <span>Natural Language Processing</span>
               </span>
             </div>

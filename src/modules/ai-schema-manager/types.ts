@@ -116,7 +116,7 @@ export interface ImageAnalysisSchema {
       description: "List of elements that can be interacted with (buttons, links, forms, etc.)";
       items: {
         type: "object";
-        required: ["type", "description", "location"];
+        required: ["type", "description", "location", "coordinates"];
         properties: {
           type: {
             type: "string";
@@ -130,6 +130,21 @@ export interface ImageAnalysisSchema {
           location: {
             type: "string";
             description: "Description of where the element is positioned (e.g., 'top-right corner', 'center of page', 'navigation bar')";
+          };
+          coordinates: {
+            type: "object";
+            required: ["x", "y"];
+            properties: {
+              x: {
+                type: "number";
+                description: "Horizontal position in pixels from the left edge of the viewport";
+              };
+              y: {
+                type: "number";
+                description: "Vertical position in pixels from the top edge of the viewport";
+              };
+            };
+            description: "Pixel coordinates of the UI element with origin at top-left corner (0,0)";
           };
           containsText: {
             type: "string";

@@ -58,7 +58,7 @@ export function StepInputComponent({
     <div className="space-y-4">
       {/* Step Input Area */}
       <div className="relative">
-        <label htmlFor="step-input" className="block text-lg font-light text-slate-200 mb-4 tracking-wide">
+        <label htmlFor="step-input" className="block text-lg font-bold text-gray-900 mb-4">
           Automation Workflow
         </label>
         
@@ -78,26 +78,26 @@ Examples:
 • Navigate through multiple pages and validate content
 
 Feel free to describe complex workflows with multiple steps!`}
-          className={`w-full min-h-[340px] max-h-[620px] p-5 bg-slate-700/20 backdrop-blur-sm border rounded-xl resize-none text-slate-100 placeholder-slate-400 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 font-light leading-7 whitespace-pre-line overflow-y-auto scrollbar-thin scrollbar-track-slate-700/20 scrollbar-thumb-slate-500/50 hover:scrollbar-thumb-slate-400/70 ${
-            error ? 'border-red-400/50 focus:ring-red-400/50 focus:border-red-400/50' : 'border-slate-600/30'
+          className={`w-full min-h-[340px] max-h-[620px] p-5 bg-white border rounded-xl resize-none text-gray-900 placeholder-gray-500 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 font-medium leading-7 whitespace-pre-line overflow-y-auto ${
+            error ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'
           }`}
           disabled={isExecuting}
         />
         
         {/* Character count hint */}
-        <div className="absolute bottom-3 right-4 text-xs text-slate-500 font-light">
+        <div className="absolute bottom-3 right-4 text-xs text-gray-500 font-medium">
           {stepText.length} characters
         </div>
       </div>
 
       {/* Error Display */}
       {error && (
-        <div className="bg-red-900/20 border border-red-400/30 rounded-xl p-4 backdrop-blur-sm">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
           <div className="flex items-center space-x-2">
-            <svg className="w-4 h-4 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            <svg className="w-4 h-4 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
             </svg>
-            <p className="text-red-300 text-sm font-light">{error}</p>
+            <p className="text-red-700 text-sm font-medium">{error}</p>
           </div>
         </div>
       )}
@@ -107,10 +107,10 @@ Feel free to describe complex workflows with multiple steps!`}
         <button
           onClick={handleExecute}
           disabled={isEmpty || isExecuting}
-          className={`group relative overflow-hidden px-8 py-4 rounded-xl font-light text-base tracking-wide transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center min-w-[200px] ${
+          className={`group relative overflow-hidden px-8 py-4 rounded-xl font-bold text-base transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center min-w-[200px] ${
             isExecuting 
-              ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/25'
-              : 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40'
+              ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg'
+              : 'bg-gradient-to-r from-pink-600 to-pink-700 text-white hover:from-pink-700 hover:to-pink-800 shadow-lg hover:shadow-xl'
           }`}
         >
           {/* Shimmer effect */}
@@ -126,7 +126,7 @@ Feel free to describe complex workflows with multiple steps!`}
             ) : (
               <>
                 <svg className="w-5 h-5 group-hover:translate-x-0.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
                 </svg>
                 <span>Execute Workflow</span>
               </>
@@ -137,8 +137,8 @@ Feel free to describe complex workflows with multiple steps!`}
 
       {/* Keyboard shortcut hint */}
       <div className="text-center">
-        <p className="text-sm text-slate-400 font-light">
-          Press <kbd className="px-3 py-1 bg-slate-700/40 border border-slate-600/30 rounded-lg text-xs font-mono tracking-wider">Ctrl + Enter</kbd> to execute
+        <p className="text-sm text-gray-600 font-medium">
+          Press <kbd className="px-3 py-1 bg-gray-100 border border-gray-300 rounded-lg text-xs font-mono font-semibold">Ctrl + Enter</kbd> to execute
         </p>
       </div>
     </div>
