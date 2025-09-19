@@ -391,7 +391,7 @@ export class PromptBuilder {
   private formatCurrentPageState(context: ContextData, currentStepId: number): string {
     try {
       // Find the latest screenshot description across all steps up to and including current step
-      let latestScreenshot: Record<string, unknown> | null = null;
+      let latestScreenshot: any | null = null;
       let latestTimestamp: Date | null = null;
       
       for (let stepId = 0; stepId <= currentStepId; stepId++) {
@@ -502,7 +502,7 @@ export class PromptBuilder {
    * @param logs Step execution logs
    * @returns Step outcome status
    */
-  private determineStepOutcome(logs: Record<string, unknown>[]): string {
+  private determineStepOutcome(logs: any[]): string {
     if (!logs || logs.length === 0) {
       return 'not started';
     }
@@ -526,7 +526,7 @@ export class PromptBuilder {
    * @param logs Step execution logs
    * @returns Summary string
    */
-  private summarizeStep(stepName: string, logs: Record<string, unknown>[]): string {
+  private summarizeStep(stepName: string, logs: any[]): string {
     if (!logs || logs.length === 0) {
       return 'No actions taken';
     }
@@ -564,7 +564,7 @@ export class PromptBuilder {
    * @param attemptNumber Attempt number
    * @returns Formatted log string
    */
-  private formatLogEntry(log: Record<string, unknown>, attemptNumber: number): string {
+  private formatLogEntry(log: any, attemptNumber: number): string {
     try {
       // Check if log exists and has expected structure
       if (!log) {
@@ -594,7 +594,7 @@ export class PromptBuilder {
             legacyConfidence = 'LOW';
           }
         } else {
-          legacyConfidence = log?.confidence || 'LOW';
+          legacyConfidence = (log?.confidence as string) || 'LOW';
         }
         
         // Format legacy attempt with full details
@@ -642,7 +642,7 @@ export class PromptBuilder {
           confidence = 'LOW';
         }
       } else {
-        confidence = aiResponse?.confidence || 'LOW';
+        confidence = (aiResponse?.confidence as string) || 'LOW';
       }
       
       // Format the attempt with full details

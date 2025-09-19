@@ -3,8 +3,8 @@
  */
 
 import { MediaManager } from '../index';
-import { IMediaManager } from '../types';
-import { promises as fs } from 'fs';
+import { IMediaManager, MediaManagerConfig, ImageMetadata } from '../types';
+import { promises as fs, Stats } from 'fs';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 
@@ -42,7 +42,8 @@ describe('MediaManager', () => {
 
   beforeEach(() => {
     // Reset singleton instance for each test
-    (MediaManager as any).instance = null;
+    // @ts-expect-error - accessing private property for testing
+    MediaManager.instance = null;
     
     // Reset environment variables
     process.env = { ...originalEnv };
@@ -56,7 +57,7 @@ describe('MediaManager', () => {
     
     // Setup default mock implementations
     mockJoin.mockImplementation((...args) => args.join('/'));
-    mockExtname.mockImplementation((path) => {
+    mockExtname.mockImplementation((path: string) => {
       const parts = path.split('.');
       return parts.length > 1 ? `.${parts[parts.length - 1]}` : '';
     });
@@ -76,7 +77,7 @@ describe('MediaManager', () => {
     });
 
     it('should use default configuration', () => {
-      const config = (mediaManager as any).config;
+      const config = (mediaManager as IMediaManager & { config: MediaManagerConfig }).config;
       
       expect(config.storageDirectory).toBe('./media-storage');
       expect(config.maxStoredImages).toBe(1000);
@@ -86,10 +87,11 @@ describe('MediaManager', () => {
 
     it('should use MEDIA_BASE_URL environment variable when provided', () => {
       process.env.MEDIA_BASE_URL = 'https://example.com';
-      (MediaManager as any).instance = null;
+      // @ts-expect-error - accessing private property for testing
+      MediaManager.instance = null;
       
       const instance = MediaManager.getInstance();
-      const config = (instance as any).config;
+      const config = (instance as IMediaManager & { config: MediaManagerConfig }).config;
       
       expect(config.baseUrl).toBe('https://example.com');
     });
@@ -108,7 +110,7 @@ describe('MediaManager', () => {
       mockFs.stat.mockResolvedValue({
         isFile: () => true,
         size: 1024
-      } as any);
+      } as Stats);
     });
 
     it('should store image successfully and return UUID', async () => {
@@ -137,7 +139,7 @@ describe('MediaManager', () => {
       mockFs.stat.mockResolvedValue({
         isFile: () => false,
         size: 0
-      } as any);
+      } as Stats);
 
       await expect(mediaManager.storeImage(mockImagePath))
         .rejects.toThrow('Path "/test/image.png" is not a file');
@@ -166,15 +168,15 @@ describe('MediaManager', () => {
       mockFs.copyFile.mockResolvedValue(undefined);
 
       const result = await mediaManager.storeImage(mockImagePath);
-      const metadata = (mediaManager as any).imageMetadata.get(result);
+      const metadata = (mediaManager as IMediaManager & { imageMetadata: Map<string, ImageMetadata> }).imageMetadata.get(result);
 
       expect(metadata).toBeDefined();
-      expect(metadata.uuid).toBe(mockUuid);
-      expect(metadata.originalPath).toBe(mockImagePath);
-      expect(metadata.storedPath).toBe(mockStoredPath);
-      expect(metadata.format).toBe('png');
-      expect(metadata.fileSize).toBe(1024);
-      expect(metadata.storedAt).toBeInstanceOf(Date);
+      expect(metadata?.uuid).toBe(mockUuid);
+      expect(metadata?.originalPath).toBe(mockImagePath);
+      expect(metadata?.storedPath).toBe(mockStoredPath);
+      expect(metadata?.format).toBe('png');
+      expect(metadata?.fileSize).toBe(1024);
+      expect(metadata?.storedAt).toBeInstanceOf(Date);
     });
   });
 
@@ -189,7 +191,7 @@ describe('MediaManager', () => {
       mockExtname.mockReturnValue('.png');
       mockJoin.mockReturnValue(mockStoredPath);
       mockFs.access.mockResolvedValue(undefined);
-      mockFs.stat.mockResolvedValue({ isFile: () => true, size: 1024 } as any);
+      mockFs.stat.mockResolvedValue({ isFile: () => true, size: 1024 } as Stats);
       mockFs.mkdir.mockResolvedValue(undefined);
       mockFs.copyFile.mockResolvedValue(undefined);
 
@@ -219,7 +221,7 @@ describe('MediaManager', () => {
       mockExtname.mockReturnValue('.png');
       mockJoin.mockReturnValue(mockStoredPath);
       mockFs.access.mockResolvedValue(undefined);
-      mockFs.stat.mockResolvedValue({ isFile: () => true, size: 1024 } as any);
+      mockFs.stat.mockResolvedValue({ isFile: () => true, size: 1024 } as Stats);
       mockFs.mkdir.mockResolvedValue(undefined);
       mockFs.copyFile.mockResolvedValue(undefined);
 
@@ -278,7 +280,7 @@ describe('MediaManager', () => {
       mockExtname.mockReturnValue('.png');
       mockJoin.mockReturnValue(mockStoredPath);
       mockFs.access.mockResolvedValue(undefined);
-      mockFs.stat.mockResolvedValue({ isFile: () => true, size: 1024 } as any);
+      mockFs.stat.mockResolvedValue({ isFile: () => true, size: 1024 } as Stats);
       mockFs.mkdir.mockResolvedValue(undefined);
       mockFs.copyFile.mockResolvedValue(undefined);
 
@@ -292,12 +294,13 @@ describe('MediaManager', () => {
 
     it('should return correct URL with custom base URL', () => {
       process.env.MEDIA_BASE_URL = 'https://example.com';
-      (MediaManager as any).instance = null;
+      // @ts-expect-error - accessing private property for testing
+      MediaManager.instance = null;
       const customManager = MediaManager.getInstance();
       
       // Store image in custom manager
       mockFs.access.mockResolvedValue(undefined);
-      mockFs.stat.mockResolvedValue({ isFile: () => true, size: 1024 } as any);
+      mockFs.stat.mockResolvedValue({ isFile: () => true, size: 1024 } as Stats);
       mockFs.mkdir.mockResolvedValue(undefined);
       mockFs.copyFile.mockResolvedValue(undefined);
       
@@ -316,7 +319,7 @@ describe('MediaManager', () => {
 
   describe('getMimeType', () => {
     it('should return correct MIME types for supported formats', () => {
-      const manager = mediaManager as any;
+      const manager = mediaManager as IMediaManager & { getMimeType(format: string): string };
       
       expect(manager.getMimeType('png')).toBe('image/png');
       expect(manager.getMimeType('jpg')).toBe('image/jpeg');
@@ -326,7 +329,7 @@ describe('MediaManager', () => {
     });
 
     it('should return default MIME type for unknown formats', () => {
-      const manager = mediaManager as any;
+      const manager = mediaManager as IMediaManager & { getMimeType(format: string): string };
       expect(manager.getMimeType('unknown')).toBe('image/png');
     });
   });

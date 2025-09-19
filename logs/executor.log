@@ -12489,3 +12489,34 @@
 2025-09-19T15:02:19.420Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
 2025-09-19T15:02:19.525Z [Executor][INFO] Shutting down executor module
 2025-09-19T15:02:19.535Z [Executor][INFO] Executor module shutdown complete
+2025-09-19T15:04:19.375Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
+2025-09-19T15:04:39.389Z [Executor][INFO] [session-1758294274858-1hl5bs4pu] Session created {"sessionId":"0521d2cd-793e-471a-a10c-aaa9b382a983","browserType":"chromium"}
+2025-09-19T15:04:43.468Z [Executor][INFO] [session-1758294274858-1hl5bs4pu] Executing command: OPEN_PAGE {"commandId":"taskloop_1758294283466_dq91vro9n","action":"OPEN_PAGE","parameters":{"url":"https://www.google.com"}}
+2025-09-19T15:04:46.856Z [Executor][INFO] [session-1758294274858-1hl5bs4pu] Command OPEN_PAGE completed in 3388ms {"action":"OPEN_PAGE","duration":3388,"success":true,"commandId":"taskloop_1758294283466_dq91vro9n"}
+2025-09-19T15:05:07.522Z [Executor][INFO] [session-1758294274858-1hl5bs4pu] Session destroyed {"sessionId":"0521d2cd-793e-471a-a10c-aaa9b382a983"}
+2025-09-19T15:16:49.056Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
+2025-09-19T15:17:17.261Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Session created {"sessionId":"5af67d94-c1f3-4c5b-b965-1f4d2b457e30","browserType":"chromium"}
+2025-09-19T15:17:20.573Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Executing command: OPEN_PAGE {"commandId":"taskloop_1758295040572_djrcrzovi","action":"OPEN_PAGE","parameters":{"url":"https://the-internet.herokuapp.com"}}
+2025-09-19T15:17:23.163Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Command OPEN_PAGE completed in 2590ms {"action":"OPEN_PAGE","duration":2590,"success":true,"commandId":"taskloop_1758295040572_djrcrzovi"}
+2025-09-19T15:18:11.873Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Executing command: GET_SUBDOM {"commandId":"taskloop_1758295091873_lqgrpbm1r","action":"GET_SUBDOM","parameters":{"selector":"a:contains('Form Authentication')"}}
+2025-09-19T15:18:11.939Z [Executor][ERROR] [session-1758295033255-zfb25hyhg] Command GET_SUBDOM failed in 65ms {"action":"GET_SUBDOM","duration":65,"success":false,"commandId":"taskloop_1758295091873_lqgrpbm1r","error":"[object Object]"}
+2025-09-19T15:18:14.786Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Executing command: GET_SUBDOM {"commandId":"taskloop_1758295094786_zppffnd79","action":"GET_SUBDOM","parameters":{"selector":"a"}}
+2025-09-19T15:18:15.323Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Command GET_SUBDOM completed in 537ms {"action":"GET_SUBDOM","duration":537,"success":true,"commandId":"taskloop_1758295094786_zppffnd79"}
+2025-09-19T15:18:18.405Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Executing command: CLICK_ELEMENT {"commandId":"taskloop_1758295098404_xnoy7hc4s","action":"CLICK_ELEMENT","parameters":{"selector":"a[href='/login']"}}
+2025-09-19T15:18:20.453Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Command CLICK_ELEMENT completed in 2048ms {"action":"CLICK_ELEMENT","duration":2048,"success":true,"commandId":"taskloop_1758295098404_xnoy7hc4s"}
+2025-09-19T15:18:33.281Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Executing command: GET_SUBDOM {"commandId":"taskloop_1758295113281_cn4bn26jk","action":"GET_SUBDOM","parameters":{"selector":"input, textarea"}}
+2025-09-19T15:18:33.402Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Command GET_SUBDOM completed in 121ms {"action":"GET_SUBDOM","duration":121,"success":true,"commandId":"taskloop_1758295113281_cn4bn26jk"}
+2025-09-19T15:18:46.885Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Executing command: GET_TEXT {"commandId":"taskloop_1758295126884_wyithbt35","action":"GET_TEXT","parameters":{"selector":"body"}}
+2025-09-19T15:18:47.485Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Command GET_TEXT completed in 600ms {"action":"GET_TEXT","duration":600,"success":true,"commandId":"taskloop_1758295126884_wyithbt35"}
+2025-09-19T15:18:53.597Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Executing command: GET_SUBDOM {"commandId":"taskloop_1758295133597_acyycru6z","action":"GET_SUBDOM","parameters":{"selector":"input"}}
+2025-09-19T15:18:53.670Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Command GET_SUBDOM completed in 73ms {"action":"GET_SUBDOM","duration":73,"success":true,"commandId":"taskloop_1758295133597_acyycru6z"}
+2025-09-19T15:18:57.441Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Executing command: INPUT_TEXT {"commandId":"taskloop_1758295137440_i5vhjq40p","action":"INPUT_TEXT","parameters":{"selector":"#username","text":"tomsmith"}}
+2025-09-19T15:18:57.628Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Command INPUT_TEXT completed in 188ms {"action":"INPUT_TEXT","duration":188,"success":true,"commandId":"taskloop_1758295137440_i5vhjq40p"}
+2025-09-19T15:19:00.156Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Executing command: INPUT_TEXT {"commandId":"taskloop_1758295140156_dzso6bo07","action":"INPUT_TEXT","parameters":{"selector":"#password","text":"SuperSecretPassword!"}}
+2025-09-19T15:19:00.344Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Command INPUT_TEXT completed in 188ms {"action":"INPUT_TEXT","duration":188,"success":true,"commandId":"taskloop_1758295140156_dzso6bo07"}
+2025-09-19T15:19:03.232Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Executing command: CLICK_ELEMENT {"commandId":"taskloop_1758295143232_0s9mynjum","action":"CLICK_ELEMENT","parameters":{"selector":"button[type='submit']"}}
+2025-09-19T15:19:04.613Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Command CLICK_ELEMENT completed in 1381ms {"action":"CLICK_ELEMENT","duration":1381,"success":true,"commandId":"taskloop_1758295143232_0s9mynjum"}
+2025-09-19T15:19:13.874Z [Executor][INFO] [session-1758295033255-zfb25hyhg] Session destroyed {"sessionId":"5af67d94-c1f3-4c5b-b965-1f4d2b457e30"}
+2025-09-19T21:39:00.853Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
+2025-09-19T21:39:00.987Z [Executor][INFO] Shutting down executor module
+2025-09-19T21:39:01.002Z [Executor][INFO] Executor module shutdown complete

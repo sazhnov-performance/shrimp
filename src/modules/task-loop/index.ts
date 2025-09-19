@@ -271,7 +271,7 @@ export class TaskLoop implements ITaskLoop {
         // Log the failed attempt
         this.contextManager.logTask(sessionId, stepId, {
           iteration: iterations,
-          aiResponse: null,
+          aiResponse: undefined,
           error: errorMessage,
           timestamp: new Date()
         });

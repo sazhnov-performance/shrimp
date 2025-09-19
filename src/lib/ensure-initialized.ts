@@ -12,8 +12,8 @@
  */
 export function withInitialization<T extends (...args: unknown[]) => unknown>(
   handler: T
-): (...args: Parameters<T>) => Promise<ReturnType<T>> {
-  return async (...args: Parameters<T>): Promise<ReturnType<T>> => {
+): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>> {
+  return async (...args: Parameters<T>): Promise<Awaited<ReturnType<T>>> => {
     // Lazy import to avoid Node.js API loading
     const { initializeApp, isAppInitialized } = await import('./app-startup');
     
@@ -21,7 +21,7 @@ export function withInitialization<T extends (...args: unknown[]) => unknown>(
       console.log('[InitGuard] Initializing application...');
       await initializeApp();
     }
-    return handler(...args);
+    return await handler(...args) as Awaited<ReturnType<T>>;
   };
 }
 

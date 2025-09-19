@@ -11,7 +11,8 @@ describe('AISchemaManager', () => {
 
   beforeEach(() => {
     // Reset singleton instance for each test
-    (AISchemaManager as any).instance = null;
+    // @ts-expect-error - accessing private property for testing
+    AISchemaManager.instance = null;
     schemaManager = AISchemaManager.getInstance();
   });
 
@@ -24,7 +25,8 @@ describe('AISchemaManager', () => {
     });
 
     it('should accept configuration on first instantiation', () => {
-      (AISchemaManager as any).instance = null;
+      // @ts-expect-error - accessing private property for testing
+      AISchemaManager.instance = null;
       
       const config: AISchemaManagerConfig = {
         schemaVersion: '2.0',
@@ -34,7 +36,7 @@ describe('AISchemaManager', () => {
       
       const instance = AISchemaManager.getInstance(config);
       expect(instance).toBeDefined();
-      expect((instance as any).config.schemaVersion).toBe('2.0');
+      expect((instance as IAISchemaManager & { config: AISchemaManagerConfig }).config.schemaVersion).toBe('2.0');
     });
   });
 
@@ -233,7 +235,7 @@ describe('AISchemaManager', () => {
         reasoning: string;
         confidence: string;
         flowControl: string;
-        action?: any;
+        action?: undefined;
       } = {
         reasoning: 'Successfully completed all automation steps. Login form filled and submitted, confirmation page loaded.',
         confidence: 'HIGH',
@@ -250,7 +252,7 @@ describe('AISchemaManager', () => {
         reasoning: string;
         confidence: string;
         flowControl: string;
-        action?: any;
+        action?: undefined;
       } = {
         reasoning: 'Unable to locate expected elements after multiple attempts. Page structure may have changed.',
         confidence: 'HIGH',
@@ -264,7 +266,7 @@ describe('AISchemaManager', () => {
   });
 
   describe('Image Analysis Schema', () => {
-    let schemaManager: any;
+    let schemaManager: IAISchemaManager;
 
     beforeEach(() => {
       schemaManager = AISchemaManager.getInstance();
@@ -307,7 +309,8 @@ describe('AISchemaManager', () => {
       expect(elementSchema.properties.description).toBeDefined();
       expect(elementSchema.properties.location).toBeDefined();
       expect(elementSchema.properties.containsText).toBeDefined();
-      expect(elementSchema.properties.type).toBeUndefined();
+      // The schema should not define a 'type' property for elements
+      expect(elementSchema.properties).not.toHaveProperty('type');
     });
 
 

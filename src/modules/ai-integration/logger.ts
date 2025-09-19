@@ -28,7 +28,7 @@ export class Logger {
    * Log request data
    */
   logRequest(data: LogData): void {
-    const logEntry = {
+    const logEntry: LogEntry = {
       timestamp: new Date().toISOString(),
       type: 'request',
       data: data
@@ -40,7 +40,7 @@ export class Logger {
    * Log response data
    */
   logResponse(data: LogData): void {
-    const logEntry = {
+    const logEntry: LogEntry = {
       timestamp: new Date().toISOString(),
       type: 'response',
       data: data

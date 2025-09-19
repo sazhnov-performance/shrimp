@@ -5,29 +5,33 @@
 
 import getExecutorStreamer from '@/modules/executor-streamer';
 import { StepProcessor } from '@/modules/step-processor';
+import { IExecutorStreamer } from '@/modules/executor-streamer/types';
+import { IStepProcessor } from '@/modules/step-processor/types';
 
 describe('ExecutorStreamer Singleton Verification', () => {
   beforeEach(async () => {
     // Reset singleton for clean test
     const { ExecutorStreamer } = await import('@/modules/executor-streamer');
-    (ExecutorStreamer as any).resetInstance();
+    // @ts-expect-error - accessing static method for testing
+    ExecutorStreamer.resetInstance();
   });
 
   afterEach(async () => {
     // Clean up after each test
     const { ExecutorStreamer } = await import('@/modules/executor-streamer');
-    (ExecutorStreamer as any).resetInstance();
+    // @ts-expect-error - accessing static method for testing
+    ExecutorStreamer.resetInstance();
   });
 
   it('should ensure StepProcessor and API use the same ExecutorStreamer instance', () => {
     // Simulate API getting ExecutorStreamer instance
     const apiInstance = getExecutorStreamer();
-    const apiInstanceId = (apiInstance as any).getInstanceId();
+    const apiInstanceId = apiInstance.getInstanceId();
     
     // Simulate StepProcessor getting ExecutorStreamer instance
     const stepProcessor = StepProcessor.getInstance({ enableLogging: false });
-    const stepProcessorInstance = (stepProcessor as any).executorStreamer;
-    const stepProcessorInstanceId = (stepProcessorInstance as any).getInstanceId();
+    const stepProcessorInstance = (stepProcessor as IStepProcessor & { executorStreamer: IExecutorStreamer }).executorStreamer;
+    const stepProcessorInstanceId = stepProcessorInstance.getInstanceId();
     
     // Verify they're the same instance
     expect(apiInstance).toBe(stepProcessorInstance);
@@ -41,9 +45,9 @@ describe('ExecutorStreamer Singleton Verification', () => {
     const instance2 = getExecutorStreamer();
     const instance3 = getExecutorStreamer();
     
-    const id1 = (instance1 as any).getInstanceId();
-    const id2 = (instance2 as any).getInstanceId();
-    const id3 = (instance3 as any).getInstanceId();
+    const id1 = instance1.getInstanceId();
+    const id2 = instance2.getInstanceId();
+    const id3 = instance3.getInstanceId();
     
     // All should be the same instance
     expect(instance1).toBe(instance2);
@@ -59,8 +63,8 @@ describe('ExecutorStreamer Singleton Verification', () => {
     const instance1 = getExecutorStreamer();
     const instance2 = getExecutorStreamer();
     
-    const id1 = (instance1 as any).getInstanceId();
-    const id2 = (instance2 as any).getInstanceId();
+    const id1 = instance1.getInstanceId();
+    const id2 = instance2.getInstanceId();
     
     // Should be the same instance and same ID within the test
     expect(instance1).toBe(instance2);
