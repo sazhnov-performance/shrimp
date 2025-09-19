@@ -363,7 +363,7 @@ export function UIAutomationInterface() {
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950">
       {/* Header */}
       <div className="border-b border-slate-700/30 bg-slate-900/30 backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="w-4/5 mx-auto px-6 py-8">
           <div className="text-center space-y-3">
             <div className="inline-flex items-center space-x-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
@@ -377,9 +377,6 @@ export function UIAutomationInterface() {
                     SHRIMP
                   </span>
                 </h1>
-                <p className="text-slate-400 text-sm font-light">
-                  Intelligent browser automation platform
-                </p>
               </div>
             </div>
           </div>
@@ -387,7 +384,7 @@ export function UIAutomationInterface() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-6 py-8 h-[calc(100vh-200px)] flex flex-col">
+      <div className="w-4/5 mx-auto px-6 py-8 h-[calc(100vh-200px)] flex flex-col">
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 flex-1 min-h-0">
           
           {/* Left Panel - Step Input */}
@@ -420,7 +417,7 @@ export function UIAutomationInterface() {
 
       {/* Reset Button */}
       {(state.sessionId || state.events.length > 0) && (
-        <div className="max-w-6xl mx-auto px-6 pb-8">
+        <div className="w-4/5 mx-auto px-6 pb-8">
           <div className="flex justify-center">
             <button
               onClick={reset}
@@ -440,7 +437,7 @@ export function UIAutomationInterface() {
 
       {/* Footer */}
       <div className="border-t border-slate-700/30 bg-slate-900/30 backdrop-blur-xl mt-12">
-        <div className="max-w-6xl mx-auto px-6 py-6">
+        <div className="w-4/5 mx-auto px-6 py-6">
           <div className="text-center">
             <div className="flex items-center justify-center space-x-6 text-slate-400 text-sm font-light">
               <span className="flex items-center space-x-2">

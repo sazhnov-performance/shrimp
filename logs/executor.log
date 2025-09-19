@@ -10247,3 +10247,14 @@
 2025-09-18T20:44:48.329Z [Executor][WARN] Attempt to destroy non-existent session: test-workflow-session
 2025-09-18T20:44:48.777Z [Executor][INFO] Shutting down executor module
 2025-09-18T20:44:48.824Z [Executor][INFO] Executor module shutdown complete
+2025-09-18T20:46:30.913Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
+2025-09-18T20:49:08.149Z [Executor][INFO] [session-1758228540236-ozvvldnwk] Session created {"sessionId":"cf16cde6-2979-46d8-bc38-d162e6467850","browserType":"chromium"}
+2025-09-18T20:49:13.987Z [Executor][INFO] [session-1758228540236-ozvvldnwk] Executing command: OPEN_PAGE {"commandId":"taskloop_1758228553984_r59hnlwum","action":"OPEN_PAGE","parameters":{"url":"https://www.google.com"}}
+2025-09-18T20:49:22.588Z [Executor][INFO] [session-1758228540236-ozvvldnwk] Command OPEN_PAGE completed in 8602ms {"action":"OPEN_PAGE","duration":8602,"success":true,"commandId":"taskloop_1758228553984_r59hnlwum"}
+2025-09-18T20:49:34.740Z [Executor][INFO] [session-1758228540236-ozvvldnwk] Executing command: CLICK_ELEMENT {"commandId":"taskloop_1758228574734_t5uz7izu7","action":"CLICK_ELEMENT","parameters":{"selector":"button[aria-label='Приемам']"}}
+2025-09-18T20:49:44.842Z [Executor][ERROR] [session-1758228540236-ozvvldnwk] Command CLICK_ELEMENT failed in 10101ms {"action":"CLICK_ELEMENT","duration":10101,"success":false,"commandId":"taskloop_1758228574734_t5uz7izu7","error":"[object Object]"}
+2025-09-18T20:49:48.417Z [Executor][INFO] [session-1758228540236-ozvvldnwk] Executing command: GET_SUBDOM {"commandId":"taskloop_1758228588416_3rqqsib0h","action":"GET_SUBDOM","parameters":{"selector":"button[aria-label='Отказвам']"}}
+2025-09-18T20:49:58.434Z [Executor][ERROR] [session-1758228540236-ozvvldnwk] Command GET_SUBDOM failed in 10017ms {"action":"GET_SUBDOM","duration":10017,"success":false,"commandId":"taskloop_1758228588416_3rqqsib0h","error":"[object Object]"}
+2025-09-18T20:50:01.551Z [Executor][INFO] [session-1758228540236-ozvvldnwk] Executing command: GET_SUBDOM {"commandId":"taskloop_1758228601550_n9riq9y5y","action":"GET_SUBDOM","parameters":{"selector":"button[aria-label='Още настройки']"}}
+2025-09-18T20:50:11.578Z [Executor][ERROR] [session-1758228540236-ozvvldnwk] Command GET_SUBDOM failed in 10027ms {"action":"GET_SUBDOM","duration":10027,"success":false,"commandId":"taskloop_1758228601550_n9riq9y5y","error":"[object Object]"}
+2025-09-18T20:50:13.533Z [Executor][INFO] [session-1758228540236-ozvvldnwk] Session destroyed {"sessionId":"cf16cde6-2979-46d8-bc38-d162e6467850"}

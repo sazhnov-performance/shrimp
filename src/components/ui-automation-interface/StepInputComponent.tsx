@@ -68,20 +68,17 @@ export function StepInputComponent({
           value={stepText}
           onChange={(e) => setStepText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Describe your automation workflow using natural language:
+          placeholder={`Describe your automation workflow using natural language...
 
-• Navigate to website URL
-• Interact with page elements  
-• Fill out forms and submit data
-• Capture screenshots at key points
-• Validate page content and results
+Examples:
 
-Example:
-Open https://example.com
-Click the 'Sign In' button
-Enter credentials and submit
-Verify successful login"
-          className={`w-full min-h-[140px] max-h-[400px] p-5 bg-slate-700/20 backdrop-blur-sm border rounded-xl resize-none text-slate-100 placeholder-slate-400 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 font-light leading-relaxed ${
+• Open https://example.com and take a screenshot
+• Click the 'Sign In' button and enter credentials  
+• Fill out the contact form and submit
+• Navigate through multiple pages and validate content
+
+Feel free to describe complex workflows with multiple steps!`}
+          className={`w-full min-h-[340px] max-h-[620px] p-5 bg-slate-700/20 backdrop-blur-sm border rounded-xl resize-none text-slate-100 placeholder-slate-400 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 font-light leading-7 whitespace-pre-line overflow-y-auto scrollbar-thin scrollbar-track-slate-700/20 scrollbar-thumb-slate-500/50 hover:scrollbar-thumb-slate-400/70 ${
             error ? 'border-red-400/50 focus:ring-red-400/50 focus:border-red-400/50' : 'border-slate-600/30'
           }`}
           disabled={isExecuting}
