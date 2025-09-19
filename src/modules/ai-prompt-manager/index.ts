@@ -105,6 +105,7 @@ export class AIPromptManager implements IAIPromptManager {
         contextId: sessionId,
         steps: [`Step ${stepId + 1}`],
         stepLogs: {},
+        screenshotDescriptions: {},
         createdAt: new Date(),
         lastUpdated: new Date()
       };
@@ -157,6 +158,7 @@ getStepPrompt(sessionId: string, stepId: number): string {
         contextId: sessionId,
         steps: [`Step ${stepId + 1}`],
         stepLogs: {},
+        screenshotDescriptions: {},
         createdAt: new Date(),
         lastUpdated: new Date()
       };
