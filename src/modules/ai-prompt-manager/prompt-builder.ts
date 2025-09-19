@@ -624,17 +624,14 @@ export class PromptBuilder {
                 });
                 result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
               } else {
-                // For other commands: use original 100-character truncation
+                // For other commands: use environment-configured truncation
                 console.log('[PromptBuilder] Legacy command result truncation:', {
                   command: legacyAction,
                   originalLength: executionResult.result.length,
-                  truncateLimit: 100,
-                  willTruncate: executionResult.result.length > 100
+                  truncateLimit: this.contextTruncateLimit,
+                  willTruncate: executionResult.result.length > this.contextTruncateLimit
                 });
-                result = executionResult.result.substring(0, 100);
-                if (executionResult.result.length > 100) {
-                  result += '...';
-                }
+                result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
               }
               } else {
                 result = 'Success';
@@ -696,17 +693,14 @@ export class PromptBuilder {
                   });
                   result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
                 } else {
-                  // For other commands: use original 100-character truncation
+                  // For other commands: use environment-configured truncation
                   console.log('[PromptBuilder] Command result truncation:', {
                     command: action,
                     originalLength: executionResult.result.length,
-                    truncateLimit: 100,
-                    willTruncate: executionResult.result.length > 100
+                    truncateLimit: this.contextTruncateLimit,
+                    willTruncate: executionResult.result.length > this.contextTruncateLimit
                   });
-                  result = executionResult.result.substring(0, 100);
-                  if (executionResult.result.length > 100) {
-                    result += '...';
-                  }
+                  result = this.truncateWithMessage(executionResult.result, this.contextTruncateLimit);
                 }
             } else {
               result = 'Success';

@@ -10945,3 +10945,9 @@
 2025-09-19T07:52:48.100Z [Executor][ERROR] [session-1758268286078-5w2xwd8yq] Command INPUT_TEXT failed in 10007ms {"action":"INPUT_TEXT","duration":10007,"success":false,"commandId":"taskloop_1758268358093_o162xaq7d","error":"[object Object]"}
 2025-09-19T07:52:49.489Z [Executor][INFO] [session-1758268286078-5w2xwd8yq] Session destroyed {"sessionId":"5f6a366f-4f1e-4d3a-8635-70d8d68ea915"}
 2025-09-19T07:55:43.636Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
+2025-09-19T08:05:56.769Z [Executor][INFO] [session-1758269152745-scr41du5v] Session created {"sessionId":"a70dd355-2ac0-4880-9e7b-032f5e04a1b9","browserType":"chromium"}
+2025-09-19T08:05:59.881Z [Executor][INFO] [session-1758269152745-scr41du5v] Executing command: OPEN_PAGE {"commandId":"taskloop_1758269159879_f6bllsne9","action":"OPEN_PAGE","parameters":{"url":"https://www.google.com"}}
+2025-09-19T08:06:02.970Z [Executor][INFO] Executor module initialized {"moduleId":"executor","config":{"browserType":"chromium","headless":false,"maxSessions":10,"screenshotsEnabled":true}}
+2025-09-19T08:06:04.272Z [Executor][INFO] [session-1758269152745-scr41du5v] Command OPEN_PAGE completed in 4391ms {"action":"OPEN_PAGE","duration":4391,"success":true,"commandId":"taskloop_1758269159879_f6bllsne9"}
+2025-09-19T08:06:16.014Z [Executor][INFO] [session-1758269152745-scr41du5v] Executing command: CLICK_ELEMENT {"commandId":"taskloop_1758269176014_gc6wvyc5n","action":"CLICK_ELEMENT","parameters":{"selector":"button:has-text('Приемане на всички')"}}
+2025-09-19T08:06:16.511Z [Executor][INFO] [session-1758269152745-scr41du5v] Command CLICK_ELEMENT completed in 496ms {"action":"CLICK_ELEMENT","duration":496,"success":true,"commandId":"taskloop_1758269176014_gc6wvyc5n"}
