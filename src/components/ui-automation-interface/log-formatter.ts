@@ -39,27 +39,27 @@ export function formatLogEntry(event: StreamEvent): SimpleLogEntry {
 export function getLevelColor(level: SimpleLogEntry['level']): string {
   switch (level) {
     case 'success':
-      return 'text-green-400';
+      return 'text-green-700';
     case 'error':
-      return 'text-red-400';
+      return 'text-red-700';
     case 'warning':
-      return 'text-yellow-400';
+      return 'text-yellow-700';
     case 'info':
     default:
-      return 'text-gray-300';
+      return 'text-gray-900';
   }
 }
 
 export function getLevelBgColor(level: SimpleLogEntry['level']): string {
   switch (level) {
     case 'success':
-      return 'bg-green-900/20 border-green-500/20';
+      return 'bg-green-50 border-green-200';
     case 'error':
-      return 'bg-red-900/20 border-red-500/20';
+      return 'bg-red-50 border-red-200';
     case 'warning':
-      return 'bg-yellow-900/20 border-yellow-500/20';
+      return 'bg-yellow-50 border-yellow-200';
     case 'info':
     default:
-      return 'bg-white/5 border-white/10';
+      return 'bg-white border-gray-200';
   }
 }

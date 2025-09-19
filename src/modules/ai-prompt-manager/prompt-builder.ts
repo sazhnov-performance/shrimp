@@ -295,7 +295,12 @@ export class PromptBuilder {
           const stepScreenshots = context.screenshotDescriptions?.[i] || [];
           if (stepScreenshots.length > 0) {
             const latestScreenshot = stepScreenshots[stepScreenshots.length - 1];
-            history += `  Latest Screenshot: ${latestScreenshot.description}\n`;
+            history += `  Latest Screenshot Description: ${latestScreenshot.description}\n`;
+            
+            // Include interactive elements if available for previous steps
+            if (latestScreenshot.interactibleElements && latestScreenshot.interactibleElements.length > 0) {
+              history += `  Interactive Elements: ${JSON.stringify(latestScreenshot.interactibleElements, null, 2).split('\n').map(line => `    ${line}`).join('\n')}\n`;
+            }
           }
         }
         history += '\n';
@@ -324,7 +329,14 @@ export class PromptBuilder {
         
         lastThreeScreenshots.forEach((screenshot, index) => {
           const screenshotNumber = currentStepScreenshots.length - (lastThreeScreenshots.length - 1) + index;
-          history += `  Screenshot ${screenshotNumber} (${screenshot.actionType}${screenshot.iteration ? `, iteration ${screenshot.iteration}` : ''}): ${screenshot.description}\n`;
+          history += `  Screenshot ${screenshotNumber} (${screenshot.actionType}${screenshot.iteration ? `, iteration ${screenshot.iteration}` : ''}):\n`;
+          history += `    Overall Description: ${screenshot.description}\n`;
+          
+          // Include interactive elements with coordinates if available
+          if (screenshot.interactibleElements && screenshot.interactibleElements.length > 0) {
+            history += `    Interactive Elements:\n`;
+            history += `${JSON.stringify(screenshot.interactibleElements, null, 2).split('\n').map(line => `      ${line}`).join('\n')}\n`;
+          }
         });
       }
 

@@ -57,42 +57,42 @@ export function StreamingOutputComponent({
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Header */}
-      <div className="flex items-center justify-between p-5 border-b border-slate-600/30 bg-slate-700/20 flex-shrink-0">
+      <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50 flex-shrink-0">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-600 to-pink-700 flex items-center justify-center shadow-sm">
             <Activity className="text-white" size={16} />
           </div>
-          <h2 className="text-lg font-light text-slate-200 tracking-wide">Execution Monitor</h2>
+          <h2 className="text-lg font-bold text-gray-900">Execution Monitor</h2>
         </div>
         
         {/* Connection Status */}
         <div className="flex items-center space-x-3">
           {sessionId && (
-            <span className="text-xs text-slate-400 font-mono bg-slate-700/40 px-2 py-1 rounded-lg">
+            <span className="text-xs text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded-lg border border-gray-200">
               {sessionId.slice(0, 8)}
             </span>
           )}
           
-          <div className={`flex items-center space-x-2 px-3 py-1 rounded-lg text-xs font-light backdrop-blur-sm ${
+          <div className={`flex items-center space-x-2 px-3 py-1 rounded-lg text-xs font-medium ${
             isConnected 
-              ? 'bg-emerald-900/30 text-emerald-300 border border-emerald-500/20' 
+              ? 'bg-green-50 text-green-700 border border-green-200' 
               : isReconnecting
-                ? 'bg-amber-900/30 text-amber-300 border border-amber-500/20'
-                : 'bg-red-900/30 text-red-300 border border-red-500/20'
+                ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+                : 'bg-red-50 text-red-700 border border-red-200'
           }`}>
             {isConnected ? (
               <>
-                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                 <span>Live</span>
               </>
             ) : isReconnecting ? (
               <>
-                <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
                 <span>Reconnecting ({reconnectAttempt}/3)</span>
               </>
             ) : (
               <>
-                <div className="w-2 h-2 bg-red-400 rounded-full"></div>
+                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                 <span>Offline</span>
               </>
             )}
@@ -102,12 +102,12 @@ export function StreamingOutputComponent({
 
       {/* Error Display */}
       {error && (
-        <div className="p-5 bg-red-900/20 border-b border-red-400/20 backdrop-blur-sm flex-shrink-0">
-          <div className="flex items-center space-x-3 text-red-300">
-            <div className="w-6 h-6 rounded-lg bg-red-500/20 flex items-center justify-center flex-shrink-0">
+        <div className="p-5 bg-red-50 border-b border-red-200 flex-shrink-0">
+          <div className="flex items-center space-x-3 text-red-700">
+            <div className="w-6 h-6 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
               <AlertCircle size={14} />
             </div>
-            <span className="text-sm font-light">{error}</span>
+            <span className="text-sm font-medium">{error}</span>
           </div>
         </div>
       )}
@@ -119,27 +119,27 @@ export function StreamingOutputComponent({
         style={{ maxHeight: '100%' }}
       >
         {logEntries.length === 0 ? (
-          <div className="text-center text-slate-400 py-16">
+          <div className="text-center text-gray-600 py-16">
             {sessionId ? (
               <div className="space-y-4">
-                <div className="w-12 h-12 mx-auto rounded-xl bg-blue-500/20 flex items-center justify-center">
-                  <Activity className="animate-pulse" size={24} />
+                <div className="w-12 h-12 mx-auto rounded-xl bg-pink-100 flex items-center justify-center">
+                  <Activity className="animate-pulse text-pink-600" size={24} />
                 </div>
               <div className="space-y-2">
-                  <p className="font-light text-lg">Monitoring Execution</p>
-                  <p className="text-sm text-slate-500">Waiting for workflow events...</p>
+                  <p className="font-bold text-lg text-gray-900">Monitoring Execution</p>
+                  <p className="text-sm text-gray-600">Waiting for workflow events...</p>
                 </div>
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-slate-700/30 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h4.125m0-15.75c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V8.25m-6.75 0V4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V8.25" />
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-gray-100 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h4.125m0-15.75c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V8.25m-6.75 0V4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V8.25" />
                   </svg>
                 </div>
               <div className="space-y-2">
-                  <p className="font-light text-lg">Ready to Execute</p>
-                  <p className="text-sm text-slate-500">Define your workflow and execute to see real-time logs</p>
+                  <p className="font-bold text-lg text-gray-900">Ready to Execute</p>
+                  <p className="text-sm text-gray-600">Define your workflow and execute to see real-time logs</p>
                 </div>
               </div>
             )}
@@ -155,14 +155,14 @@ export function StreamingOutputComponent({
       </div>
       
       {/* Footer */}
-      <div className="p-4 border-t border-slate-600/30 bg-slate-700/20 flex-shrink-0">
-        <div className="flex items-center justify-between text-xs text-slate-400 font-light">
-          <span className="bg-slate-700/40 px-2 py-1 rounded-lg">
+      <div className="p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+        <div className="flex items-center justify-between text-xs text-gray-600 font-medium">
+          <span className="bg-gray-100 px-2 py-1 rounded-lg border border-gray-200">
             {logEntries.length} {logEntries.length === 1 ? 'event' : 'events'}
           </span>
           {autoScroll && (
             <span className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
               <span>Auto-scroll active</span>
             </span>
           )}
@@ -186,16 +186,16 @@ function LogEntry({ entry }: LogEntryProps) {
   const screenshotData = isScreenshot ? entry.structuredData as ScreenshotLogMessage : null;
 
   return (
-    <div className={`p-4 rounded-xl border backdrop-blur-sm ${levelBgColor} transition-all hover:bg-slate-600/10 group max-w-full`}>
+    <div className={`p-4 rounded-xl border ${levelBgColor} transition-all hover:bg-gray-50 group max-w-full shadow-sm`}>
       <div className="flex items-start space-x-4 min-w-0">
         {/* Timestamp */}
-        <span className="text-xs text-slate-500 font-mono min-w-[70px] mt-1 bg-slate-700/30 px-2 py-1 rounded-lg">
+        <span className="text-xs text-gray-600 font-mono min-w-[70px] mt-1 bg-gray-100 px-2 py-1 rounded-lg border border-gray-200">
           {new Date(entry.timestamp).toLocaleTimeString()}
         </span>
         
         {/* Message and content */}
         <div className="flex-1 min-w-0 overflow-hidden">
-          <p className={`text-sm ${levelColor} break-words font-light leading-relaxed overflow-wrap-anywhere`}>
+          <p className={`text-sm ${levelColor} break-words font-medium leading-relaxed overflow-wrap-anywhere`}>
             {entry.message}
           </p>
           
@@ -213,15 +213,15 @@ function LogEntry({ entry }: LogEntryProps) {
           {/* Confidence indicator for reasoning events */}
           {entry.structuredData?.type === 'reasoning' && (
             <div className="mt-3">
-              <span className={`inline-flex items-center text-xs px-3 py-1 rounded-lg font-light ${
-                entry.structuredData.confidence === 'high' ? 'bg-emerald-900/30 text-emerald-300 border border-emerald-500/20' :
-                entry.structuredData.confidence === 'medium' ? 'bg-amber-900/30 text-amber-300 border border-amber-500/20' :
-                'bg-red-900/30 text-red-300 border border-red-500/20'
+              <span className={`inline-flex items-center text-xs px-3 py-1 rounded-lg font-medium ${
+                entry.structuredData.confidence === 'high' ? 'bg-green-50 text-green-700 border border-green-200' :
+                entry.structuredData.confidence === 'medium' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
+                'bg-red-50 text-red-700 border border-red-200'
               }`}>
                 <div className={`w-1.5 h-1.5 rounded-full mr-2 ${
-                  entry.structuredData.confidence === 'high' ? 'bg-emerald-400' :
-                  entry.structuredData.confidence === 'medium' ? 'bg-amber-400' :
-                  'bg-red-400'
+                  entry.structuredData.confidence === 'high' ? 'bg-green-500' :
+                  entry.structuredData.confidence === 'medium' ? 'bg-yellow-500' :
+                  'bg-red-500'
                 }`}></div>
                 {entry.structuredData.confidence} confidence
               </span>
@@ -231,15 +231,15 @@ function LogEntry({ entry }: LogEntryProps) {
           {/* Step and iteration info for structured events */}
           {entry.structuredData && (
             <div className="flex items-center space-x-3 mt-3">
-              <span className="text-xs text-slate-400 font-mono bg-slate-700/30 px-2 py-1 rounded-lg">
+              <span className="text-xs text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded-lg border border-gray-200">
                 Step {entry.structuredData.stepId}
               </span>
               {entry.structuredData.iteration && (
-                <span className="text-xs text-slate-400 font-mono bg-slate-700/30 px-2 py-1 rounded-lg">
+                <span className="text-xs text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded-lg border border-gray-200">
                   Iteration {entry.structuredData.iteration}
                 </span>
               )}
-              <span className="text-xs text-slate-500 font-light bg-slate-800/30 px-2 py-1 rounded-lg">
+              <span className="text-xs text-gray-500 font-medium bg-gray-50 px-2 py-1 rounded-lg border border-gray-200">
                 {entry.structuredData.type}
               </span>
             </div>
