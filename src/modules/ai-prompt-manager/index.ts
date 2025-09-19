@@ -27,13 +27,12 @@ export class AIPromptManager implements IAIPromptManager {
     this.schemaManager = AISchemaManager.getInstance();
     
     this.config = {
-      maxPromptLength: 8000,
       templateVersion: '1.0',
       cacheEnabled: false,
       ...config
     };
 
-    this.promptBuilder = new PromptBuilder(this.config.maxPromptLength);
+    this.promptBuilder = new PromptBuilder(); // Let constructor read from environment variables
   }
 
   /**

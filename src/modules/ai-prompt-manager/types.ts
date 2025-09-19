@@ -22,7 +22,6 @@ export interface IAIPromptManager {
 }
 
 export interface AIPromptManagerConfig {
-  maxPromptLength?: number;
   templateVersion?: string;
   cacheEnabled?: boolean;
 }
