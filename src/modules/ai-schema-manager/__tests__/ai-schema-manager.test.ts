@@ -303,12 +303,10 @@ describe('AISchemaManager', () => {
       expect(elementSchema.required).toContain('type');
       expect(elementSchema.required).toContain('description');
       expect(elementSchema.required).toContain('location');
-      expect(elementSchema.required).toContain('coordinates');
       
       expect(elementSchema.properties.type).toBeDefined();
       expect(elementSchema.properties.description).toBeDefined();
       expect(elementSchema.properties.location).toBeDefined();
-      expect(elementSchema.properties.coordinates).toBeDefined();
       expect(elementSchema.properties.containsText).toBeDefined();
     });
 
@@ -329,20 +327,6 @@ describe('AISchemaManager', () => {
       expect(typeProperty.enum).toContain('other');
     });
 
-    it('should define coordinates structure correctly', () => {
-      const schema = schemaManager.getImageAnalysisSchema();
-      const elementSchema = schema.properties.interactibleElements.items;
-      const coordinatesProperty = elementSchema.properties.coordinates;
-      
-      expect(coordinatesProperty.type).toBe('object');
-      expect(coordinatesProperty.required).toContain('x');
-      expect(coordinatesProperty.required).toContain('y');
-      expect(coordinatesProperty.properties.x).toBeDefined();
-      expect(coordinatesProperty.properties.y).toBeDefined();
-      expect(coordinatesProperty.properties.x.type).toBe('number');
-      expect(coordinatesProperty.properties.y.type).toBe('number');
-    });
-
     it('should validate example image analysis response', () => {
       const exampleResponse = {
         overallDescription: "Login page with form fields and submit button",
@@ -351,14 +335,12 @@ describe('AISchemaManager', () => {
             type: "input",
             description: "Username input field",
             location: "center-left of form",
-            coordinates: { x: 300, y: 150 },
             containsText: "Enter username"
           },
           {
             type: "button",
             description: "Submit login button",
             location: "bottom of form",
-            coordinates: { x: 350, y: 200 },
             containsText: "Login"
           }
         ]
@@ -370,8 +352,6 @@ describe('AISchemaManager', () => {
       expect(exampleResponse.interactibleElements[0]).toHaveProperty('type');
       expect(exampleResponse.interactibleElements[0]).toHaveProperty('description');
       expect(exampleResponse.interactibleElements[0]).toHaveProperty('location');
-      expect(exampleResponse.interactibleElements[0]).toHaveProperty('coordinates');
-      expect(exampleResponse.interactibleElements[1]).toHaveProperty('coordinates');
     });
   });
 });

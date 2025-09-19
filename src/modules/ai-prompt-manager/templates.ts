@@ -105,8 +105,6 @@ For each interactible element, provide:
 - Type: The category of element (button, link, input, etc.)
 - Description: What the element does or contains (including visible text/labels)
 - Location: Where it's positioned on the page
-- Coordinates: Exact pixel coordinates of center point {x, y} where x is horizontal distance from left edge and y is vertical distance from top edge (origin at top-left corner)
-- Suggested Selector: If you can identify unique attributes, classes, or text that could be used to target the element
 
 CONTEXT AWARENESS:
 This analysis will be used by a testing agent that is currently working on: "{taskName}"

@@ -14,8 +14,12 @@ export class PromptBuilder {
   private contextTruncateLimit: number;
   private contextHistoryLimit: number;
 
-  constructor(maxPromptLength: number = 8000) {
-    this.maxPromptLength = maxPromptLength;
+  constructor(maxPromptLength?: number) {
+    // Get max prompt length from environment variable, default to 8000
+    const maxPromptEnvValue = process.env.MAX_PROMPT_LENGTH;
+    const maxPromptParsedValue = maxPromptEnvValue ? parseInt(maxPromptEnvValue, 10) : 8000;
+    this.maxPromptLength = maxPromptLength ?? (isNaN(maxPromptParsedValue) ? 8000 : maxPromptParsedValue);
+    
     // Get truncation limit from environment variable, default to 1000
     const envValue = process.env.CONTEXT_TRUNCATE_RESULT;
     const parsedValue = envValue ? parseInt(envValue, 10) : 1000;
@@ -72,25 +76,55 @@ export class PromptBuilder {
       // Check total length and apply progressive truncation if needed
       const totalLength = systemMessage.length + userMessage.length;
       if (totalLength > this.maxPromptLength) {
-        // Try with reduced history limit for aggressive truncation
-        const originalLimit = this.contextHistoryLimit;
-        this.contextHistoryLimit = Math.min(originalLimit, 1000); // Reduce to 1000 chars max
+        // Calculate how much space we need to free up
+        const excessLength = totalLength - this.maxPromptLength;
+        const historyLength = history.length;
         
-        const reducedHistory = this.formatExecutionHistory(context, stepId);
-        const userMessageReduced = USER_TEMPLATE
-          .replace('{sessionId}', context.contextId)
-          .replace('{stepNumber}', (stepId + 1).toString())
-          .replace('{totalSteps}', context.steps.length.toString())
-          .replace('{stepName}', stepName)
-          .replace('{currentStepName}', stepName)
-          .replace('{contextualHistory}', reducedHistory);
-        
-        // Restore original limit
-        this.contextHistoryLimit = originalLimit;
-        
-        // If still too long, use minimal history
-        const reducedTotalLength = systemMessage.length + userMessageReduced.length;
-        if (reducedTotalLength > this.maxPromptLength) {
+        // Only reduce history if it's actually large enough to make a difference
+        if (historyLength > excessLength + 500) { // Keep some buffer
+          // Calculate target history length that would fit within limits
+          const targetHistoryLength = Math.max(500, historyLength - excessLength - 200); // Reserve 200 chars buffer
+          
+          // Temporarily reduce history limit for this specific truncation
+          const originalLimit = this.contextHistoryLimit;
+          this.contextHistoryLimit = Math.min(originalLimit, targetHistoryLength);
+          
+          const reducedHistory = this.formatExecutionHistory(context, stepId);
+          const userMessageReduced = USER_TEMPLATE
+            .replace('{sessionId}', context.contextId)
+            .replace('{stepNumber}', (stepId + 1).toString())
+            .replace('{totalSteps}', context.steps.length.toString())
+            .replace('{stepName}', stepName)
+            .replace('{currentStepName}', stepName)
+            .replace('{contextualHistory}', reducedHistory);
+          
+          // Restore original limit
+          this.contextHistoryLimit = originalLimit;
+          
+          // If still too long after intelligent reduction, use minimal history
+          const reducedTotalLength = systemMessage.length + userMessageReduced.length;
+          if (reducedTotalLength > this.maxPromptLength) {
+            const minimalHistory = 'History truncated due to length limits.';
+            const userMessageMinimal = USER_TEMPLATE
+              .replace('{sessionId}', context.contextId)
+              .replace('{stepNumber}', (stepId + 1).toString())
+              .replace('{totalSteps}', context.steps.length.toString())
+              .replace('{stepName}', stepName)
+              .replace('{currentStepName}', stepName)
+              .replace('{contextualHistory}', minimalHistory);
+            
+            return {
+              system: systemMessage,
+              user: userMessageMinimal
+            };
+          }
+          
+          return {
+            system: systemMessage,
+            user: userMessageReduced
+          };
+        } else {
+          // History is not the problem, just use minimal history
           const minimalHistory = 'History truncated due to length limits.';
           const userMessageMinimal = USER_TEMPLATE
             .replace('{sessionId}', context.contextId)
@@ -105,11 +139,6 @@ export class PromptBuilder {
             user: userMessageMinimal
           };
         }
-        
-        return {
-          system: systemMessage,
-          user: userMessageReduced
-        };
       }
 
       return {
@@ -256,14 +285,14 @@ export class PromptBuilder {
       // Add truncation message
       const originalLength = history.length;
       const truncatedLength = truncatedHistory.length;
-      const message = `EXECUTION HISTORY:\nHistory truncated due to length limits. Showing ${truncatedLength} of ${originalLength} characters (most recent content preserved).\n\n`;
+      const message = `History truncated due to length limits. Showing ${truncatedLength} of ${originalLength} characters (most recent content preserved).\n\n`;
       
       return message + truncatedHistory;
     } catch (error) {
       // Fallback to simple tail truncation if smart truncation fails
       const simpleLimit = Math.max(500, this.contextHistoryLimit - 200);
       const simpleTail = history.substring(history.length - simpleLimit);
-      return `EXECUTION HISTORY:\nHistory truncated due to length limits.\n\n${simpleTail}`;
+      return `History truncated due to length limits.\n\n${simpleTail}`;
     }
   }
 
