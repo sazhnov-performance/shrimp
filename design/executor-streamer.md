@@ -103,18 +103,53 @@ const EXECUTOR_STREAMER_ERRORS = {
   ├── index.ts              # Main interface implementation
   ├── stream-manager.ts     # Core stream storage and operations
   ├── event-publisher.ts    # Event publishing functionality
+  ├── db-manager.ts         # SQLite database operations for event queues
   └── types.ts              # TypeScript type definitions
+```
+
+### Storage Backend - SQLite Integration
+
+The module now uses SQLite as the persistent storage backend for event queues instead of in-memory Map storage. This provides:
+
+- **Persistence**: Events survive application restarts
+- **Concurrency**: Multiple processes can safely access the same event queues
+- **Scalability**: Better performance for large numbers of events
+- **Reliability**: ACID transactions ensure data integrity
+
+#### Database Schema
+```sql
+-- Event queues table
+CREATE TABLE IF NOT EXISTS event_queues (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  stream_id TEXT NOT NULL,
+  event_data TEXT NOT NULL,
+  event_id TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_stream_id (stream_id),
+  INDEX idx_created_at (created_at)
+);
+
+-- Stream metadata table
+CREATE TABLE IF NOT EXISTS stream_metadata (
+  stream_id TEXT PRIMARY KEY,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  last_accessed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  event_count INTEGER DEFAULT 0
+);
 ```
 
 ### Singleton Implementation Pattern
 ```typescript
 class ExecutorStreamer implements IExecutorStreamer {
   private static instance: ExecutorStreamer | null = null;
-  private streams: Map<string, string[]> = new Map();
+  private streamManager: StreamManager;
+  private eventPublisher: EventPublisher;
   private config: ExecutorStreamerConfig;
 
   private constructor(config: ExecutorStreamerConfig = DEFAULT_CONFIG) {
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.streamManager = new StreamManager(this.config);
+    this.eventPublisher = new EventPublisher(this.streamManager, this.config);
   }
 
   static getInstance(config?: ExecutorStreamerConfig): IExecutorStreamer {
@@ -125,18 +160,11 @@ class ExecutorStreamer implements IExecutorStreamer {
   }
 
   async createStream(streamId: string): Promise<void> {
-    if (this.streams.has(streamId)) {
-      throw new Error(`Stream ${streamId} already exists`);
-    }
-    this.streams.set(streamId, []);
+    await this.streamManager.createStream(streamId);
   }
 
   async putEvent(streamId: string, eventData: string): Promise<void> {
-    const stream = this.streams.get(streamId);
-    if (!stream) {
-      throw new Error(`Stream ${streamId} not found`);
-    }
-    stream.push(eventData);
+    await this.eventPublisher.publishEvent(streamId, eventData);
   }
 
   // ... other interface methods
@@ -150,13 +178,25 @@ interface ExecutorStreamerConfig {
   maxEventsPerStream: number;  // Maximum events queued per stream
   streamTTL: number;           // Stream time-to-live in milliseconds
   queueMode: 'fifo' | 'lifo';  // Queue ordering (First-In-First-Out or Last-In-First-Out)
+  database: {
+    path: string;              // SQLite database file path
+    enableWAL: boolean;        // Enable Write-Ahead Logging for better concurrency
+    busyTimeout: number;       // Timeout for database operations in milliseconds
+    maxConnections: number;    // Maximum number of database connections
+  };
 }
 
 const DEFAULT_CONFIG: ExecutorStreamerConfig = {
   maxStreams: 100,
   maxEventsPerStream: 1000,
   streamTTL: 3600000,  // 1 hour
-  queueMode: 'fifo'    // First-In-First-Out by default
+  queueMode: 'fifo',   // First-In-First-Out by default
+  database: {
+    path: './data/event-queues.db',
+    enableWAL: true,
+    busyTimeout: 5000,
+    maxConnections: 10
+  }
 };
 ```
 

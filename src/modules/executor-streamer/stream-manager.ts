@@ -1,6 +1,6 @@
 /**
  * Stream Manager implementation for Executor Streamer
- * Handles core stream storage and operations
+ * Handles core stream storage and operations using SQLite backend
  */
 
 import { 
@@ -10,25 +10,19 @@ import {
   EXECUTOR_STREAMER_ERRORS,
   StreamMetadata 
 } from './types';
-
-/**
- * Internal stream data structure
- */
-interface StreamData {
-  events: string[];
-  metadata: StreamMetadata;
-}
+import { DBManager } from './db-manager';
 
   /**
-   * StreamManager class handles the core stream storage and queue operations
+   * StreamManager class handles the core stream storage and queue operations using SQLite
    */
   export class StreamManager implements IStreamManager {
-    private streams: Map<string, StreamData> = new Map();
+    private dbManager: DBManager;
     private config: ExecutorStreamerConfig;
     private cleanupTimer?: NodeJS.Timeout;
 
     constructor(config: ExecutorStreamerConfig) {
       this.config = config;
+      this.dbManager = new DBManager(config);
       this.startCleanupTimer();
     }
 
@@ -46,16 +40,8 @@ interface StreamData {
       );
     }
 
-    if (this.streams.has(streamId)) {
-      throw new ExecutorStreamerError(
-        EXECUTOR_STREAMER_ERRORS.STREAM_ALREADY_EXISTS,
-        `Stream ${streamId} already exists`,
-        streamId
-      );
-    }
-
     // Check if we've reached the maximum number of streams
-    if (this.streams.size >= this.config.maxStreams) {
+    if (this.dbManager.getStreamCount() >= this.config.maxStreams) {
       throw new ExecutorStreamerError(
         EXECUTOR_STREAMER_ERRORS.INVALID_STREAM_ID,
         `Maximum number of streams (${this.config.maxStreams}) reached`,
@@ -63,16 +49,7 @@ interface StreamData {
       );
     }
 
-    const now = new Date();
-    this.streams.set(streamId, {
-      events: [],
-      metadata: {
-        id: streamId,
-        createdAt: now,
-        lastAccessedAt: now,
-        eventCount: 0
-      }
-    });
+    await this.dbManager.createStream(streamId);
   }
 
   /**
@@ -80,7 +57,7 @@ interface StreamData {
    * @param streamId Stream identifier to delete
    */
   async deleteStream(streamId: string): Promise<void> {
-    this.streams.delete(streamId);
+    await this.dbManager.deleteStream(streamId);
   }
 
   /**
@@ -89,7 +66,7 @@ interface StreamData {
    * @returns true if stream exists
    */
   streamExists(streamId: string): boolean {
-    return this.streams.has(streamId);
+    return this.dbManager.streamExists(streamId);
   }
 
   /**
@@ -97,7 +74,7 @@ interface StreamData {
    * @returns Array of stream IDs
    */
   getStreamIds(): string[] {
-    return Array.from(this.streams.keys());
+    return this.dbManager.getStreamIds();
   }
 
   /**
@@ -105,7 +82,7 @@ interface StreamData {
    * @returns Number of active streams
    */
   getStreamCount(): number {
-    return this.streams.size;
+    return this.dbManager.getStreamCount();
   }
 
   /**
@@ -115,17 +92,10 @@ interface StreamData {
    * @throws ExecutorStreamerError if stream not found
    */
   async addEvent(streamId: string, eventData: string): Promise<void> {
-    const streamData = this.getStreamData(streamId);
-    
-    // Check if we've reached the maximum events per stream
-    if (streamData.events.length >= this.config.maxEventsPerStream) {
-      // Remove oldest event to make room (FIFO)
-      streamData.events.shift();
-    }
-
-    streamData.events.push(eventData);
-    streamData.metadata.eventCount++;
-    streamData.metadata.lastAccessedAt = new Date();
+    // Generate a unique event ID and format the event
+    const eventId = this.generateEventId();
+    const formattedEvent = this.formatEvent(eventData, eventId);
+    await this.dbManager.addEvent(streamId, formattedEvent, eventId);
   }
 
   /**
@@ -135,10 +105,7 @@ interface StreamData {
    * @throws ExecutorStreamerError if stream not found
    */
   async extractLastEvent(streamId: string): Promise<string | null> {
-    const streamData = this.getStreamData(streamId);
-    streamData.metadata.lastAccessedAt = new Date();
-    
-    return streamData.events.pop() || null;
+    return await this.dbManager.extractLastEvent(streamId);
   }
 
   /**
@@ -148,13 +115,7 @@ interface StreamData {
    * @throws ExecutorStreamerError if stream not found
    */
   async extractAllEvents(streamId: string): Promise<string[]> {
-    const streamData = this.getStreamData(streamId);
-    streamData.metadata.lastAccessedAt = new Date();
-    
-    const events = [...streamData.events]; // Copy events in chronological order
-    streamData.events.length = 0; // Clear the queue
-    
-    return events;
+    return await this.dbManager.extractAllEvents(streamId);
   }
 
   /**
@@ -164,10 +125,7 @@ interface StreamData {
    * @throws ExecutorStreamerError if stream not found
    */
   async getEvents(streamId: string): Promise<string[]> {
-    const streamData = this.getStreamData(streamId);
-    streamData.metadata.lastAccessedAt = new Date();
-    
-    return [...streamData.events]; // Return copy to prevent external modification
+    return await this.dbManager.getEvents(streamId);
   }
 
   /**
@@ -177,10 +135,7 @@ interface StreamData {
    * @throws ExecutorStreamerError if stream not found
    */
   async hasEvents(streamId: string): Promise<boolean> {
-    const streamData = this.getStreamData(streamId);
-    streamData.metadata.lastAccessedAt = new Date();
-    
-    return streamData.events.length > 0;
+    return await this.dbManager.hasEvents(streamId);
   }
 
   /**
@@ -190,26 +145,36 @@ interface StreamData {
    * @throws ExecutorStreamerError if stream not found
    */
   getStreamMetadata(streamId: string): StreamMetadata {
-    const streamData = this.getStreamData(streamId);
-    return { ...streamData.metadata };
+    return this.dbManager.getStreamMetadata(streamId);
   }
 
   /**
-   * Gets stream data or throws error if not found
-   * @param streamId Target stream ID
-   * @returns Stream data
-   * @throws ExecutorStreamerError if stream not found
+   * Generates a unique event ID
+   * @returns Unique event identifier
    */
-  private getStreamData(streamId: string): StreamData {
-    const streamData = this.streams.get(streamId);
-    if (!streamData) {
-      throw new ExecutorStreamerError(
-        EXECUTOR_STREAMER_ERRORS.STREAM_NOT_FOUND,
-        `Stream ${streamId} not found`,
-        streamId
-      );
-    }
-    return streamData;
+  private generateEventId(): string {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 15);
+    return `evt_${timestamp}_${random}`;
+  }
+
+  /**
+   * Formats event data with timestamp and metadata
+   * @param eventData Raw event data
+   * @param eventId Event identifier
+   * @returns Formatted event string
+   */
+  private formatEvent(eventData: string, eventId: string): string {
+    const timestamp = new Date().toISOString();
+    
+    // Create a structured event format
+    const formattedEvent = {
+      timestamp,
+      data: eventData,
+      id: eventId
+    };
+
+    return JSON.stringify(formattedEvent);
   }
 
   /**
@@ -245,21 +210,13 @@ interface StreamData {
    */
   destroy(): void {
     this.stopCleanupTimer();
-    this.streams.clear();
+    this.dbManager.destroy();
   }
 
   /**
    * Removes expired streams based on TTL configuration
    */
   private cleanupExpiredStreams(): void {
-    const now = new Date().getTime();
-    const ttl = this.config.streamTTL;
-
-    for (const [streamId, streamData] of this.streams.entries()) {
-      const lastAccessed = streamData.metadata.lastAccessedAt.getTime();
-      if (now - lastAccessed > ttl) {
-        this.streams.delete(streamId);
-      }
-    }
+    this.dbManager.cleanupExpiredStreams();
   }
 }

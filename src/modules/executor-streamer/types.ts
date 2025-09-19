@@ -20,6 +20,12 @@ export interface ExecutorStreamerConfig {
   maxEventsPerStream: number;  // Maximum events queued per stream
   streamTTL: number;           // Stream time-to-live in milliseconds
   queueMode: 'fifo' | 'lifo';  // Queue ordering (First-In-First-Out or Last-In-First-Out)
+  database: {
+    path: string;              // SQLite database file path
+    enableWAL: boolean;        // Enable Write-Ahead Logging for better concurrency
+    busyTimeout: number;       // Timeout for database operations in milliseconds
+    maxConnections: number;    // Maximum number of database connections
+  };
 }
 
 /**
@@ -29,7 +35,13 @@ export const DEFAULT_CONFIG: ExecutorStreamerConfig = {
   maxStreams: 100,
   maxEventsPerStream: 1000,
   streamTTL: 3600000,  // 1 hour
-  queueMode: 'fifo'    // First-In-First-Out by default
+  queueMode: 'fifo',   // First-In-First-Out by default
+  database: {
+    path: './data/event-queues.db',
+    enableWAL: true,
+    busyTimeout: 5000,
+    maxConnections: 10
+  }
 };
 
 /**
@@ -86,6 +98,13 @@ export interface IStreamManager {
   streamExists(streamId: string): boolean;
   getStreamIds(): string[];
   getStreamCount(): number;
+  addEvent(streamId: string, eventData: string): Promise<void>;
+  extractLastEvent(streamId: string): Promise<string | null>;
+  extractAllEvents(streamId: string): Promise<string[]>;
+  getEvents(streamId: string): Promise<string[]>;
+  hasEvents(streamId: string): Promise<boolean>;
+  getStreamMetadata(streamId: string): StreamMetadata;
+  destroy(): void;
 }
 
 /**
