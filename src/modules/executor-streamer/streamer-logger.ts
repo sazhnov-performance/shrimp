@@ -211,10 +211,10 @@ export class StreamerLogger implements IStreamerLogger {
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove control chars except \t, \n, \r
       .replace(/\0/g, ''); // Explicitly remove null bytes
 
-    // Truncate very long content (especially DOM content) to prevent size issues
-    const maxLength = 8192; // 8KB limit for individual field
+    // With user's 50K result limit, allow much larger content without truncation
+    const maxLength = 45000; // 45KB limit for individual field to stay under 50K total
     if (sanitized.length > maxLength) {
-      sanitized = sanitized.substring(0, maxLength) + '... [truncated]';
+      sanitized = sanitized.substring(0, maxLength) + '... [truncated due to 50K limit]';
     }
 
     return sanitized;

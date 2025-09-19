@@ -15,20 +15,20 @@ export class PromptBuilder {
   private contextHistoryLimit: number;
 
   constructor(maxPromptLength?: number) {
-    // Get max prompt length from environment variable, default to 8000
+    // Get max prompt length from environment variable, default to 100000 to match user's 100K limit
     const maxPromptEnvValue = process.env.MAX_PROMPT_LENGTH;
-    const maxPromptParsedValue = maxPromptEnvValue ? parseInt(maxPromptEnvValue, 10) : 8000;
-    this.maxPromptLength = maxPromptLength ?? (isNaN(maxPromptParsedValue) ? 8000 : maxPromptParsedValue);
+    const maxPromptParsedValue = maxPromptEnvValue ? parseInt(maxPromptEnvValue, 10) : 100000;
+    this.maxPromptLength = maxPromptLength ?? (isNaN(maxPromptParsedValue) ? 100000 : maxPromptParsedValue);
     
-    // Get truncation limit from environment variable, default to 1000
+    // Get truncation limit from environment variable, default to 50000 to match user's 50K result limit
     const envValue = process.env.CONTEXT_TRUNCATE_RESULT;
-    const parsedValue = envValue ? parseInt(envValue, 10) : 1000;
-    this.contextTruncateLimit = isNaN(parsedValue) ? 1000 : parsedValue;
+    const parsedValue = envValue ? parseInt(envValue, 10) : 50000;
+    this.contextTruncateLimit = isNaN(parsedValue) ? 50000 : parsedValue;
     
-    // Get history limit from environment variable, default to 2000 characters
+    // Get history limit from environment variable, default to 80000 characters (80% of max prompt)
     const historyEnvValue = process.env.CONTEXT_HISTORY_LIMIT;
-    const historyParsedValue = historyEnvValue ? parseInt(historyEnvValue, 10) : 2000;
-    this.contextHistoryLimit = isNaN(historyParsedValue) ? 2000 : historyParsedValue;
+    const historyParsedValue = historyEnvValue ? parseInt(historyEnvValue, 10) : 80000;
+    this.contextHistoryLimit = isNaN(historyParsedValue) ? 80000 : historyParsedValue;
   }
 
   /**
@@ -58,6 +58,7 @@ export class PromptBuilder {
     try {
       const stepName = context.steps[stepId] || 'Unknown Step';
       const history = this.formatExecutionHistory(context, stepId);
+      const currentPageState = this.formatCurrentPageState(context, stepId);
       const schemaText = JSON.stringify(schema, null, 2);
       
       // Build system message (instructions, rules, capabilities)
@@ -71,9 +72,11 @@ export class PromptBuilder {
         .replace('{totalSteps}', context.steps.length.toString())
         .replace('{stepName}', stepName)
         .replace('{currentStepName}', stepName)
+        .replace('{currentPageState}', currentPageState)
         .replace('{contextualHistory}', history);
       
       // Check total length and apply progressive truncation if needed
+      // With 100K prompt limit, most content should fit without truncation
       const totalLength = systemMessage.length + userMessage.length;
       if (totalLength > this.maxPromptLength) {
         // Calculate how much space we need to free up
@@ -81,9 +84,10 @@ export class PromptBuilder {
         const historyLength = history.length;
         
         // Only reduce history if it's actually large enough to make a difference
-        if (historyLength > excessLength + 500) { // Keep some buffer
+        // Increased buffer since we have higher limits
+        if (historyLength > excessLength + 5000) { // Keep larger buffer with higher limits
           // Calculate target history length that would fit within limits
-          const targetHistoryLength = Math.max(500, historyLength - excessLength - 200); // Reserve 200 chars buffer
+          const targetHistoryLength = Math.max(5000, historyLength - excessLength - 2000); // Reserve 2K chars buffer
           
           // Temporarily reduce history limit for this specific truncation
           const originalLimit = this.contextHistoryLimit;
@@ -96,26 +100,29 @@ export class PromptBuilder {
             .replace('{totalSteps}', context.steps.length.toString())
             .replace('{stepName}', stepName)
             .replace('{currentStepName}', stepName)
+            .replace('{currentPageState}', currentPageState)
             .replace('{contextualHistory}', reducedHistory);
           
           // Restore original limit
           this.contextHistoryLimit = originalLimit;
           
-          // If still too long after intelligent reduction, use minimal history
+          // If still too long after intelligent reduction, use substantial history (not minimal)
           const reducedTotalLength = systemMessage.length + userMessageReduced.length;
           if (reducedTotalLength > this.maxPromptLength) {
-            const minimalHistory = 'History truncated due to length limits.';
-            const userMessageMinimal = USER_TEMPLATE
+            // With high limits, provide more substantial truncation message
+            const substantialHistory = `History truncated due to length limits. Showing ${targetHistoryLength} characters of most recent content.`;
+            const userMessageSubstantial = USER_TEMPLATE
               .replace('{sessionId}', context.contextId)
               .replace('{stepNumber}', (stepId + 1).toString())
               .replace('{totalSteps}', context.steps.length.toString())
               .replace('{stepName}', stepName)
               .replace('{currentStepName}', stepName)
-              .replace('{contextualHistory}', minimalHistory);
+              .replace('{currentPageState}', currentPageState)
+              .replace('{contextualHistory}', substantialHistory);
             
             return {
               system: systemMessage,
-              user: userMessageMinimal
+              user: userMessageSubstantial
             };
           }
           
@@ -124,19 +131,20 @@ export class PromptBuilder {
             user: userMessageReduced
           };
         } else {
-          // History is not the problem, just use minimal history
-          const minimalHistory = 'History truncated due to length limits.';
-          const userMessageMinimal = USER_TEMPLATE
+          // History is not the problem, provide informative message
+          const informativeHistory = `History truncated due to length limits. Original length: ${historyLength} characters.`;
+          const userMessageInformative = USER_TEMPLATE
             .replace('{sessionId}', context.contextId)
             .replace('{stepNumber}', (stepId + 1).toString())
             .replace('{totalSteps}', context.steps.length.toString())
             .replace('{stepName}', stepName)
             .replace('{currentStepName}', stepName)
-            .replace('{contextualHistory}', minimalHistory);
+            .replace('{currentPageState}', currentPageState)
+            .replace('{contextualHistory}', informativeHistory);
           
           return {
             system: systemMessage,
-            user: userMessageMinimal
+            user: userMessageInformative
           };
         }
       }
@@ -159,7 +167,8 @@ export class PromptBuilder {
         .replace('{totalSteps}', totalSteps.toString())
         .replace('{stepName}', stepName)
         .replace('{currentStepName}', stepName)
-        .replace('{contextualHistory}', `Error occurred while building prompt: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        .replace('{currentPageState}', 'Error retrieving current page state')
+        .replace('{contextualHistory}', 'Error retrieving execution history');
       
       return {
         system: systemMessage,
@@ -194,7 +203,8 @@ export class PromptBuilder {
         .replace('{totalSteps}', totalSteps.toString())
         .replace('{stepName}', stepName)
         .replace('{currentStepName}', stepName)
-        .replace('{contextualHistory}', `Error occurred while building prompt: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        .replace('{currentPageState}', 'Error retrieving current page state')
+        .replace('{contextualHistory}', 'Error retrieving execution history');
       
       return `${systemMessage}\n\n---\n\n${userMessage}`;
     }
@@ -282,7 +292,7 @@ export class PromptBuilder {
         truncatedHistory = tailHistory.substring(startIndex);
       }
       
-      // Add truncation message
+      // Add informative truncation message with higher limits in mind
       const originalLength = history.length;
       const truncatedLength = truncatedHistory.length;
       const message = `History truncated due to length limits. Showing ${truncatedLength} of ${originalLength} characters (most recent content preserved).\n\n`;
@@ -290,9 +300,49 @@ export class PromptBuilder {
       return message + truncatedHistory;
     } catch (error) {
       // Fallback to simple tail truncation if smart truncation fails
-      const simpleLimit = Math.max(500, this.contextHistoryLimit - 200);
+      // Use higher fallback limit since we have 80K history limit now
+      const simpleLimit = Math.max(5000, this.contextHistoryLimit - 2000);
       const simpleTail = history.substring(history.length - simpleLimit);
-      return `History truncated due to length limits.\n\n${simpleTail}`;
+      return `History truncated due to length limits. Showing ${simpleLimit} characters of most recent content.\n\n${simpleTail}`;
+    }
+  }
+
+  /**
+   * Format current page state - preserve original JSON structure as-is
+   * @param context Execution context data
+   * @param currentStepId Current step index
+   * @returns Current page state as JSON string
+   */
+  private formatCurrentPageState(context: ContextData, currentStepId: number): string {
+    try {
+      // Find the latest screenshot description across all steps up to and including current step
+      let latestScreenshot: any = null;
+      let latestTimestamp: Date | null = null;
+      
+      for (let stepId = 0; stepId <= currentStepId; stepId++) {
+        const stepScreenshots = context.screenshotDescriptions?.[stepId] || [];
+        for (const screenshot of stepScreenshots) {
+          if (!latestTimestamp || screenshot.timestamp > latestTimestamp) {
+            latestScreenshot = screenshot;
+            latestTimestamp = screenshot.timestamp;
+          }
+        }
+      }
+      
+      if (!latestScreenshot) {
+        return 'No screenshot data available';
+      }
+      
+      // Return the screenshot analysis as pure JSON to preserve original structure
+      // This maintains the AI analysis format exactly as it came from the AI
+      const pageStateJson = {
+        overallDescription: latestScreenshot.description,
+        interactibleElements: latestScreenshot.interactibleElements || []
+      };
+      
+      return JSON.stringify(pageStateJson, null, 2);
+    } catch (error) {
+      return 'Error retrieving current page state';
     }
   }
 
@@ -306,7 +356,7 @@ export class PromptBuilder {
     try {
       let history = '';
 
-      // Format previous steps summary
+      // Format previous steps summary - ACTION HISTORY ONLY, NO SCREENSHOT ANALYSIS
       if (currentStepId > 0) {
         history += 'PREVIOUS STEPS:\n';
         for (let i = 0; i < currentStepId; i++) {
@@ -320,17 +370,8 @@ export class PromptBuilder {
             history += `  Summary: ${summary}\n`;
           }
           
-          // Include latest screenshot description for completed steps
-          const stepScreenshots = context.screenshotDescriptions?.[i] || [];
-          if (stepScreenshots.length > 0) {
-            const latestScreenshot = stepScreenshots[stepScreenshots.length - 1];
-            history += `  Latest Screenshot Description: ${latestScreenshot.description}\n`;
-            
-            // Include interactive elements if available for previous steps
-            if (latestScreenshot.interactibleElements && latestScreenshot.interactibleElements.length > 0) {
-              history += `  Interactive Elements: ${JSON.stringify(latestScreenshot.interactibleElements, null, 2).split('\n').map(line => `    ${line}`).join('\n')}\n`;
-            }
-          }
+          // REMOVED: Screenshot descriptions should NOT be in execution history
+          // History should only contain actions taken, not screenshot analysis
         }
         history += '\n';
       }
@@ -349,25 +390,6 @@ export class PromptBuilder {
         });
       }
 
-      // Format screenshot descriptions for current step
-      const currentStepScreenshots = context.screenshotDescriptions?.[currentStepId] || [];
-      if (currentStepScreenshots.length > 0) {
-        history += '\nCURRENT STEP SCREENSHOT DESCRIPTIONS:\n';
-        // Show the last 3 screenshot descriptions to avoid overwhelming the context
-        const lastThreeScreenshots = currentStepScreenshots.slice(-3);
-        
-        lastThreeScreenshots.forEach((screenshot, index) => {
-          const screenshotNumber = currentStepScreenshots.length - (lastThreeScreenshots.length - 1) + index;
-          history += `  Screenshot ${screenshotNumber} (${screenshot.actionType}${screenshot.iteration ? `, iteration ${screenshot.iteration}` : ''}):\n`;
-          history += `    Overall Description: ${screenshot.description}\n`;
-          
-          // Include interactive elements with coordinates if available
-          if (screenshot.interactibleElements && screenshot.interactibleElements.length > 0) {
-            history += `    Interactive Elements:\n`;
-            history += `${JSON.stringify(screenshot.interactibleElements, null, 2).split('\n').map(line => `      ${line}`).join('\n')}\n`;
-          }
-        });
-      }
 
       // Apply intelligent truncation if history exceeds the limit
       if (history.length > this.contextHistoryLimit) {

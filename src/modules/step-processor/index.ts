@@ -116,7 +116,7 @@ export class StepProcessor implements IStepProcessor {
         console.log(`[StepProcessor] Stream created successfully for session ${sessionId}`);
       }
 
-      await this.executorStreamer.putEvent(sessionId, 'Stream Initiated');
+      //await this.executorStreamer.putEvent(sessionId, 'Stream Initiated');
       
       if (this.config.enableLogging) {
         console.log(`[StepProcessor] Initial event pushed to stream for session ${sessionId}`);

@@ -55,7 +55,7 @@ export async function GET(
         };
         
         const encoder = new TextEncoder();
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(connectMessage)}\n\n`));
+       // controller.enqueue(encoder.encode(`data: ${JSON.stringify(connectMessage)}\n\n`));
 
         // Poll for events
         const pollForEvents = async () => {
@@ -72,7 +72,7 @@ export async function GET(
               // Parse the event wrapper first (events are double-JSON-encoded)
               try {
                 const eventWrapper = JSON.parse(latestEvent);
-                console.log('[SSE] Event wrapper:', eventWrapper);
+                //console.log('[SSE] Event wrapper:', eventWrapper);
                 
                 // Check if this is a structured event by looking at the inner data
                 let isStructuredEvent = false;
@@ -81,7 +81,7 @@ export async function GET(
                 try {
                   // Try to parse the inner data
                   const innerData = JSON.parse(eventWrapper.data);
-                  console.log('[SSE] Inner data:', innerData);
+                 // console.log('[SSE] Inner data:', innerData);
                   
                   // Check if it's a structured log message
                   if (innerData && innerData.type && ['reasoning', 'action', 'screenshot'].includes(innerData.type)) {
@@ -93,7 +93,7 @@ export async function GET(
                   }
                 } catch (innerParseError) {
                   // If inner parsing fails, use the wrapper data as is
-                  console.log('[SSE] Using wrapper data as is:', eventWrapper.data);
+                  //console.log('[SSE] Using wrapper data as is:', eventWrapper.data);
                   eventData = eventWrapper.data || 'Event data unavailable';
                 }
                 
@@ -149,7 +149,7 @@ export async function GET(
       },
 
       cancel() {
-        console.log(`[SSE] Stream cancelled for session ${sessionId}`);
+        //console.log(`[SSE] Stream cancelled for session ${sessionId}`);
         isStreamClosed = true;
       }
     });

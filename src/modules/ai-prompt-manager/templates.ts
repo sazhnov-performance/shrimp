@@ -40,7 +40,7 @@ AVAILABLE COMMANDS:
 PROCESS:
 INVESTIGATE PHASE:
 0) If you are working on first iteration of first step, assume that starting point is empty browser window.
-1) If identity check not yet done this step, perform GET_TEXT on "body" ONCE to identify page.
+1) Use CURRENT_PAGE_STATE to understand the current page state. Plan Investigation and Actions based on it.
 2) Locate targets with precise GET_SUBDOM probes and/or role/label queries.
 3) Derive the most stable selector(s): prefer IDs, data-* attributes, ARIA roles/names, unique class chains.
 
@@ -68,9 +68,9 @@ RESPONSE FORMAT:
 
 // User message: Contains current context, execution history, and specific request
 export const USER_TEMPLATE = `CURRENT CONTEXT:
-- Session: {sessionId}
 - Step {stepNumber} of {totalSteps}: "{stepName}"
-- Current Page State: [Based on latest screenshot/DOM data]
+CURRENT_PAGE_STATE: 
+{currentPageState}
 
 EXECUTION HISTORY:
 {contextualHistory}

@@ -128,8 +128,8 @@ export class RequestProcessor {
     return {
       model: this.config.model,
       messages: messages,
-      max_tokens: parseInt(process.env.OPENAI_DEFAULT_MAX_TOKENS || '1000', 10),
-      temperature: parseFloat(process.env.OPENAI_DEFAULT_TEMPERATURE || '0.7')
+      max_tokens: parseInt(process.env.OPENAI_DEFAULT_MAX_TOKENS || '50000', 10),
+      temperature: parseFloat(process.env.OPENAI_DEFAULT_TEMPERATURE || '0.1')
     };
   }
 
