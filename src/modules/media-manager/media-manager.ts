@@ -8,7 +8,7 @@
 
 import { promises as fs } from 'fs';
 import { randomUUID } from 'crypto';
-import { join, extname, dirname } from 'path';
+import { join, extname } from 'path';
 import { IMediaManager, MediaManagerConfig, ImageMetadata } from './types';
 
 export class MediaManager implements IMediaManager {

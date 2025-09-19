@@ -11,7 +11,6 @@ import {
   ICommandProcessor,
   NetworkIdleConfig,
   ResponseConfig,
-  ResponseFieldConfig,
   StandardError
 } from './types';
 import { ExecutorErrorHandler } from './error-handler';
@@ -1047,7 +1046,7 @@ export class CommandProcessor implements ICommandProcessor {
         if (resolvedSelector.toLowerCase().trim() === 'body' || resolvedSelector.toLowerCase().trim() === 'html' || 
             resolvedSelector.includes('body') || resolvedSelector.includes('html')) {
           
-          readableText = await element.evaluate((el) => {
+          readableText = await element.evaluate(() => {
             // Get all elements that are currently visible
             const allElements = Array.from(document.querySelectorAll('*')).filter((element) => {
               const style = window.getComputedStyle(element);

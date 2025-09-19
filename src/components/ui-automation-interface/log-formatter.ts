@@ -4,7 +4,7 @@
  * Based on design/ui-automation-interface.md
  */
 
-import { StreamEvent, StreamEventType, SimpleLogEntry } from './types';
+import { StreamEvent, SimpleLogEntry } from './types';
 
 export function formatLogEntry(event: StreamEvent): SimpleLogEntry {
   // For structured events, we may want to enhance the message

@@ -7,7 +7,8 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Activity, AlertCircle, ExternalLink } from 'lucide-react';
+import Image from 'next/image';
+import { Activity, AlertCircle } from 'lucide-react';
 import { StreamEvent, SimpleLogEntry, ScreenshotLogMessage } from './types';
 import { formatLogEntry, getLevelColor, getLevelBgColor } from './log-formatter';
 
@@ -314,9 +315,11 @@ function ScreenshotThumbnail({ screenshotUrl, screenshotId, actionName }: Screen
                 <div className="w-6 h-6 border-2 border-slate-500/30 border-t-slate-400 rounded-full animate-spin"></div>
               </div>
             )}
-      <img
+      <Image
         src={thumbnailUrl}
         alt={`Screenshot${actionName ? ` for ${actionName}` : ''}`}
+        width={800}
+        height={600}
               className={`w-full h-auto max-w-full object-contain transition-all duration-300 group-hover:scale-[1.02] ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
         onClick={handleImageClick}
               onLoad={() => setImageLoaded(true)}
@@ -381,9 +384,11 @@ function ScreenshotThumbnail({ screenshotUrl, screenshotId, actionName }: Screen
 
             {/* Modal Content */}
             <div className="bg-slate-900/90 backdrop-blur-sm border-x border-b border-slate-600/30 rounded-b-xl overflow-hidden">
-              <img
+              <Image
                 src={screenshotUrl}
                 alt={`Screenshot${actionName ? ` for ${actionName}` : ''}`}
+                width={1920}
+                height={1080}
                 className="w-full h-auto max-h-[70vh] object-contain"
                 onClick={(e) => e.stopPropagation()}
               />

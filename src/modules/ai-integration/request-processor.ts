@@ -62,7 +62,7 @@ export class RequestProcessor {
       const requestPayload = await this.prepareRequestPayload(request, imageFilePath);
       
       // Log request
-      this.logger.logRequest(requestPayload);
+      this.logger.logRequest(requestPayload as unknown as Record<string, unknown>);
 
       // Send request to OpenAI API
       const response = await this.sendToOpenAI(requestPayload);
@@ -181,15 +181,21 @@ export class RequestProcessor {
   private parseResponse(response: Record<string, unknown>): AIResponse {
     try {
       if (response.error) {
-        return this.createErrorResponse('API_ERROR', response.error.message || 'OpenAI API error');
+        const errorMessage = (response.error && typeof response.error === 'object' && 'message' in response.error) 
+          ? (response.error as { message: string }).message 
+          : 'OpenAI API error';
+        return this.createErrorResponse('API_ERROR', errorMessage);
       }
 
       // Extract the content from the OpenAI response
-      if (!response.choices || !response.choices[0] || !response.choices[0].message) {
+      const choices = response.choices as unknown[];
+      if (!Array.isArray(choices) || !choices[0] || !(choices[0] as Record<string, unknown>).message) {
         return this.createErrorResponse('INVALID_RESPONSE', 'Invalid OpenAI response structure');
       }
 
-      const content = response.choices[0].message.content;
+      const firstChoice = choices[0] as Record<string, unknown>;
+      const message = firstChoice.message as Record<string, unknown>;
+      const content = message.content as string;
       if (!content) {
         return this.createErrorResponse('EMPTY_RESPONSE', 'Empty response content from OpenAI');
       }
@@ -219,7 +225,7 @@ export class RequestProcessor {
         status: 'success',
         data: parsedContent
       };
-    } catch (error) {
+    } catch {
       return this.createErrorResponse('REQUEST_ERROR', 'Failed to parse response');
     }
   }
@@ -261,7 +267,7 @@ export class RequestProcessor {
       cleaned = cleaned.replace(/\/\*[\s\S]*?\*\//g, '');
       
       return cleaned.trim();
-    } catch (error) {
+    } catch {
       // If cleaning fails, return original content
       return content.trim();
     }

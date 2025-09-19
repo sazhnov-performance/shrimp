@@ -81,7 +81,7 @@ export class ScreenshotManager implements IScreenshotManager {
     }
 
     const screenshotId = this.generateScreenshotId(sessionId, actionType);
-    const fileName = this.generateFileName(sessionId, actionType, screenshotId);
+    const fileName = this.generateFileName(sessionId, actionType);
     const filePath = path.join(this.config.directory, fileName);
 
     try {
@@ -89,7 +89,7 @@ export class ScreenshotManager implements IScreenshotManager {
       await this.ensureDirectoryExists();
 
       // Capture screenshot
-      const screenshotBuffer = await page.screenshot({
+      await page.screenshot({
         path: filePath,
         type: this.config.format,
         quality: this.config.format === 'jpeg' ? this.config.quality : undefined,
@@ -98,7 +98,7 @@ export class ScreenshotManager implements IScreenshotManager {
 
       // Get file stats
       const stats = await fs.stat(filePath);
-      const dimensions = await this.getImageDimensions(screenshotBuffer);
+      const dimensions = await this.getImageDimensions();
 
       // Create screenshot info
       const screenshotInfo: ScreenshotInfo = {
@@ -236,7 +236,7 @@ export class ScreenshotManager implements IScreenshotManager {
         screenshot.sessionId,
         { filePath: screenshot.filePath }
       );
-    } catch (error) {
+    } catch {
       // File might not exist, just remove from memory
       this.screenshots.delete(screenshotId);
     }
@@ -296,7 +296,7 @@ export class ScreenshotManager implements IScreenshotManager {
           bySession.get(screenshot.sessionId)!.push(screenshot);
         });
 
-        bySession.forEach((sessionScreenshots, sid) => {
+        bySession.forEach((sessionScreenshots) => {
           if (sessionScreenshots.length > maxCount) {
             const excess = sessionScreenshots.length - maxCount;
             toDelete.push(...sessionScreenshots.slice(0, excess));
@@ -398,7 +398,7 @@ export class ScreenshotManager implements IScreenshotManager {
     return `${sessionId}_${Date.now()}_${actionType}_${uuidv4()}`;
   }
 
-  private generateFileName(sessionId: string, actionType: CommandAction, screenshotId: string): string {
+  private generateFileName(sessionId: string, actionType: CommandAction): string {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const uuid = uuidv4().substring(0, 8);
     
@@ -423,7 +423,7 @@ export class ScreenshotManager implements IScreenshotManager {
     }
   }
 
-  private async getImageDimensions(buffer: Buffer): Promise<{ width: number; height: number }> {
+  private async getImageDimensions(): Promise<{ width: number; height: number }> {
     // Simple implementation - could use sharp for more accurate dimensions
     // For now, return default dimensions
     return { width: 1920, height: 1080 };

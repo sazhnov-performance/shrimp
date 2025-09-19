@@ -2,8 +2,8 @@
  * Core prompt generation logic for AI automation agents
  */
 
-import { ContextData } from '../ai-context-manager/types';
-import { ContextualHistory, PromptContent } from './types';
+import { ContextData, ScreenshotDescription, TaskLogEntry } from '../ai-context-manager/types';
+import { PromptContent } from './types';
 import { 
   SYSTEM_TEMPLATE, 
   USER_TEMPLATE
@@ -229,7 +229,7 @@ export class PromptBuilder {
         system: systemMessage,
         user: userMessage
       };
-    } catch (error) {
+    } catch {
       // Use main templates with minimal context if building fails
       const stepName = context.steps?.[stepId] || 'Unknown Step';
       const schemaText = JSON.stringify(schema, null, 2);
@@ -265,7 +265,7 @@ export class PromptBuilder {
       // Use the new buildMessages method which handles truncation internally
       const messages = this.buildMessages(context, stepId, schema);
       return `${messages.system}\n\n---\n\n${messages.user}`;
-    } catch (error) {
+    } catch {
       // Use main templates with minimal context if building fails
       const stepName = context.steps?.[stepId] || 'Unknown Step';
       const schemaText = JSON.stringify(schema, null, 2);
@@ -374,7 +374,7 @@ export class PromptBuilder {
       const message = `History truncated due to length limits. Showing ${truncatedLength} of ${originalLength} characters (most recent content preserved).\n\n`;
       
       return message + truncatedHistory;
-    } catch (error) {
+    } catch {
       // Fallback to simple tail truncation if smart truncation fails
       const simpleLimit = Math.max(500, this.contextHistoryLimit - 200);
       const simpleTail = history.substring(history.length - simpleLimit);
@@ -391,7 +391,7 @@ export class PromptBuilder {
   private formatCurrentPageState(context: ContextData, currentStepId: number): string {
     try {
       // Find the latest screenshot description across all steps up to and including current step
-      let latestScreenshot: any | null = null;
+      let latestScreenshot: ScreenshotDescription | null = null;
       let latestTimestamp: Date | null = null;
       
       for (let stepId = 0; stepId <= currentStepId; stepId++) {
@@ -416,7 +416,7 @@ export class PromptBuilder {
       };
       
       return JSON.stringify(pageStateJson, null, 2);
-    } catch (error) {
+    } catch {
       return 'Error retrieving current page state';
     }
   }
@@ -502,7 +502,7 @@ export class PromptBuilder {
    * @param logs Step execution logs
    * @returns Step outcome status
    */
-  private determineStepOutcome(logs: any[]): string {
+  private determineStepOutcome(logs: TaskLogEntry[]): string {
     if (!logs || logs.length === 0) {
       return 'not started';
     }
@@ -526,7 +526,7 @@ export class PromptBuilder {
    * @param logs Step execution logs
    * @returns Summary string
    */
-  private summarizeStep(stepName: string, logs: any[]): string {
+  private summarizeStep(stepName: string, logs: TaskLogEntry[]): string {
     if (!logs || logs.length === 0) {
       return 'No actions taken';
     }
@@ -564,7 +564,7 @@ export class PromptBuilder {
    * @param attemptNumber Attempt number
    * @returns Formatted log string
    */
-  private formatLogEntry(log: any, attemptNumber: number): string {
+  private formatLogEntry(log: TaskLogEntry, attemptNumber: number): string {
     try {
       // Check if log exists and has expected structure
       if (!log) {
@@ -578,23 +578,25 @@ export class PromptBuilder {
       // Handle case where aiResponse is missing or malformed
       if (!aiResponse) {
         // Check if data is in the log directly (legacy format)
-        const legacyAction = log?.action?.command || log?.command || 'Unknown';
-        const legacyParameters = log?.action?.parameters || log?.parameters;
+        const logData = log as Record<string, unknown>;
+        const action = logData.action as Record<string, unknown> | undefined;
+        const legacyAction = action?.command || logData.command || 'Unknown';
+        const legacyParameters = action?.parameters || logData.parameters;
         const legacyParametersText = legacyParameters ? JSON.stringify(legacyParameters, null, 2) : 'No parameters';
-        const legacyReasoning = log?.reasoning || 'No reasoning provided'; // Show full reasoning, no truncation
+        const legacyReasoning = logData.reasoning || 'No reasoning provided'; // Show full reasoning, no truncation
         
         // Handle both numeric and string confidence in legacy format
         let legacyConfidence: string;
-        if (typeof log?.confidence === 'number') {
-          if (log.confidence >= 80) {
+        if (typeof logData.confidence === 'number') {
+          if ((logData.confidence as number) >= 80) {
             legacyConfidence = 'HIGH';
-          } else if (log.confidence >= 50) {
+          } else if ((logData.confidence as number) >= 50) {
             legacyConfidence = 'MEDIUM';
           } else {
             legacyConfidence = 'LOW';
           }
         } else {
-          legacyConfidence = (log?.confidence as string) || 'LOW';
+          legacyConfidence = (logData.confidence as string) || 'LOW';
         }
         
         // Format legacy attempt with full details

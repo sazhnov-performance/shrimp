@@ -5,7 +5,6 @@
 
 import { 
   ITaskLoop, 
-  ITaskLoopConstructor,
   TaskLoopConfig, 
   StepResult, 
   AIResponse, 

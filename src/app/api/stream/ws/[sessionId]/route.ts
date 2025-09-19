@@ -61,12 +61,7 @@ export async function GET(
     const stream = new ReadableStream({
       async start(controller) {
         // Send initial connection event
-        const connectMessage: WebSocketMessage = {
-          type: 'event',
-          sessionId,
-          data: 'Stream connection established',
-          timestamp: new Date().toISOString()
-        };
+        // Note: Connection message prepared but not sent in current implementation
         
         const encoder = new TextEncoder();
        // controller.enqueue(encoder.encode(`data: ${JSON.stringify(connectMessage)}\n\n`));
@@ -105,7 +100,7 @@ export async function GET(
                     // Regular event - use the inner data as the message
                     eventData = innerData;
                   }
-                } catch (innerParseError) {
+                } catch {
                   // If inner parsing fails, use the wrapper data as is
                   //console.log('[SSE] Using wrapper data as is:', eventWrapper.data);
                   eventData = eventWrapper.data || 'Event data unavailable';

@@ -12,7 +12,7 @@ import { AIContextManager } from '../ai-context-manager/ai-context-manager';
 import { IAISchemaManager } from '../ai-schema-manager/types';
 import AISchemaManager from '../ai-schema-manager/index';
 import { PromptBuilder } from './prompt-builder';
-import { SYSTEM_TEMPLATE, USER_TEMPLATE, IMAGE_ANALYSIS_SYSTEM_TEMPLATE, IMAGE_ANALYSIS_USER_TEMPLATE } from './templates';
+import { IMAGE_ANALYSIS_SYSTEM_TEMPLATE, IMAGE_ANALYSIS_USER_TEMPLATE } from './templates';
 
 export class AIPromptManager implements IAIPromptManager {
   private static instance: AIPromptManager | null = null;

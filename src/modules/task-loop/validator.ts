@@ -3,7 +3,7 @@
  * Validates AI responses against the expected schema
  */
 
-import { AIResponse, TaskLoopError, TaskLoopErrorType } from './types';
+import { AIResponse, ActionParameters, ConfidenceLevel, TaskLoopError, TaskLoopErrorType } from './types';
 
 /**
  * Validates AI response data against the expected schema
@@ -27,39 +27,47 @@ export function validateAIResponse(
     );
   }
 
+  // Cast to Record<string, unknown> for property access
+  const dataRecord = data as Record<string, unknown>;
+
   // Validate required fields
-  validateRequiredFields(data, sessionId, stepId);
+  validateRequiredFields(dataRecord, sessionId, stepId);
   
   // Validate reasoning field
-  validateReasoning(data.reasoning, sessionId, stepId);
+  validateReasoning(dataRecord.reasoning, sessionId, stepId);
   
   // Validate confidence field (and normalize if numeric)
-  const normalizedConfidence = validateConfidence(data.confidence, sessionId, stepId);
+  const normalizedConfidence = validateConfidence(dataRecord.confidence, sessionId, stepId);
   
   // Validate flowControl field
-  validateFlowControl(data.flowControl, sessionId, stepId);
+  validateFlowControl(dataRecord.flowControl, sessionId, stepId);
   
   // Validate action field (if present)
-  if (data.action !== undefined) {
-    validateAction(data.action, sessionId, stepId);
+  if (dataRecord.action !== undefined) {
+    validateAction(dataRecord.action, sessionId, stepId);
   }
 
   // Check if action is required but missing
-  if (data.flowControl === 'continue' && !data.action) {
+  if (dataRecord.flowControl === 'continue' && !dataRecord.action) {
     throw createValidationError(
       'Action is required when flowControl is "continue"',
       sessionId,
       stepId,
-      { flowControl: data.flowControl, hasAction: false }
+      { flowControl: dataRecord.flowControl, hasAction: false }
     );
   }
 
-  return {
-    reasoning: data.reasoning,
-    confidence: normalizedConfidence,
-    flowControl: data.flowControl,
-    ...(data.action && { action: data.action })
+  const result: AIResponse = {
+    reasoning: dataRecord.reasoning as string,
+    confidence: normalizedConfidence as ConfidenceLevel,
+    flowControl: dataRecord.flowControl as 'continue' | 'stop_success' | 'stop_failure'
   };
+  
+  if (dataRecord.action) {
+    result.action = dataRecord.action as { command: string; parameters: ActionParameters };
+  }
+  
+  return result;
 }
 
 /**
@@ -67,14 +75,15 @@ export function validateAIResponse(
  */
 function validateRequiredFields(data: unknown, sessionId: string, stepId: number): void {
   const requiredFields = ['reasoning', 'confidence', 'flowControl'];
-  const missingFields = requiredFields.filter(field => !(field in data));
+  const dataRecord = data as Record<string, unknown>;
+  const missingFields = requiredFields.filter(field => !(field in dataRecord));
   
   if (missingFields.length > 0) {
     throw createValidationError(
       `Missing required fields: ${missingFields.join(', ')}`,
       sessionId,
       stepId,
-      { missingFields, receivedFields: Object.keys(data) }
+      { missingFields, receivedFields: Object.keys(dataRecord) }
     );
   }
 }
@@ -230,7 +239,7 @@ function validateAction(action: unknown, sessionId: string, stepId: number): voi
   }
 
   // Validate command-specific parameters
-  validateCommandParameters(action.command, action.parameters, sessionId, stepId);
+  validateCommandParameters(action.command, action.parameters as Record<string, unknown>, sessionId, stepId);
 }
 
 /**

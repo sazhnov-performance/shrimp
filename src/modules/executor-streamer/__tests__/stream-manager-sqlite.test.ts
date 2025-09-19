@@ -7,7 +7,6 @@ import { StreamManager } from '../stream-manager';
 import { 
   ExecutorStreamerConfig,
   ExecutorStreamerError,
-  EXECUTOR_STREAMER_ERRORS,
   DEFAULT_CONFIG 
 } from '../types';
 
@@ -37,7 +36,7 @@ describe('StreamManager with SQLite Backend', () => {
     // Remove test database file
     try {
       await fs.unlink(testDbPath);
-    } catch (error) {
+    } catch {
       // Ignore if file doesn't exist
     }
   });

@@ -39,3 +39,22 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# project-specific
+# Logs
+ai-requests.log
+logs/
+*.log
+
+# Database files  
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Media and screenshots (temporary files)
+media-storage/
+screenshots/
+test-screenshots/
+test-screenshots-api/
+test-screenshots-integration/

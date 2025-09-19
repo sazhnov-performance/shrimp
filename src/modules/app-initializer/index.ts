@@ -10,8 +10,7 @@ import {
   AppConfig, 
   EnvironmentConfig,
   InitializationError,
-  ConfigurationError,
-  InitializationPhase 
+  ConfigurationError
 } from './types';
 
 // Lazy imports to avoid Node.js API loading in Edge Runtime

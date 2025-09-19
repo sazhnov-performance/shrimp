@@ -6,8 +6,7 @@
 
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { SimpleStepInputComponent } from './types';
+import React, { useRef, useEffect } from 'react';
 
 interface StepInputComponentProps {
   stepText: string;

@@ -13,8 +13,6 @@ import {
 import { 
   ExecuteStepsResponse, 
   SimpleFrontendAPIIntegration,
-  WSClientMessage,
-  WSServerMessage,
   ERROR_MESSAGES 
 } from './types';
 

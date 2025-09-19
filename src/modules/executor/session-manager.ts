@@ -3,7 +3,7 @@
  * Implements standardized session management for Playwright browser sessions
  */
 
-import { chromium, firefox, webkit, Browser, Page } from 'playwright';
+import { chromium, firefox, webkit, Browser } from 'playwright';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   SessionStatus,
@@ -179,7 +179,10 @@ export class ExecutorSessionManager implements IExecutorSessionManager {
 
       // Trigger error callback
       if (this.lifecycleCallbacks?.onSessionError) {
-        await this.lifecycleCallbacks.onSessionError(this.moduleId, workflowSessionId, error);
+        const standardError = error instanceof Error 
+          ? this.errorHandler.createStandardError('SESSION_ERROR', error.message, {}, error)
+          : this.errorHandler.createStandardError('SESSION_ERROR', String(error));
+        await this.lifecycleCallbacks.onSessionError(this.moduleId, workflowSessionId, standardError);
       }
     }
   }
@@ -282,16 +285,20 @@ export class ExecutorSessionManager implements IExecutorSessionManager {
         if (session.browser.isConnected()) {
           activeSessions++;
         } else {
-          errors.push({
-            workflowSessionId,
-            error: 'Browser disconnected'
-          });
+          errors.push(
+            this.errorHandler.createStandardError(
+              'BROWSER_DISCONNECTED',
+              `Browser disconnected for session: ${workflowSessionId}`
+            )
+          );
         }
       } catch (error) {
-        errors.push({
-          workflowSessionId,
-          error: error instanceof Error ? error.message : String(error)
-        });
+        errors.push(
+          this.errorHandler.createStandardError(
+            'SESSION_CHECK_ERROR',
+            `Error checking session ${workflowSessionId}: ${error instanceof Error ? error.message : String(error)}`
+          )
+        );
       }
     }
 

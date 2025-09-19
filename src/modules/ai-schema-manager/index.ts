@@ -4,7 +4,7 @@
  */
 
 import { IAISchemaManager, AISchemaManagerConfig, AIResponseSchema, ImageAnalysisSchema } from './types';
-import { AI_RESPONSE_SCHEMA, EXECUTOR_ACTION_SCHEMA, IMAGE_ANALYSIS_SCHEMA } from './schemas';
+import { IMAGE_ANALYSIS_SCHEMA } from './schemas';
 
 /**
  * AISchemaManager - Singleton class that provides JSON schemas for AI responses
@@ -47,7 +47,20 @@ class AISchemaManager implements IAISchemaManager {
         action: {
           type: "object",
           required: ["command", "parameters"],
-          properties: (executorActionSchema as { properties: Record<string, unknown> }).properties,
+          properties: (executorActionSchema as Record<string, unknown>).properties as {
+            command: {
+              type: "string";
+              enum: ["OPEN_PAGE", "CLICK_ELEMENT", "INPUT_TEXT", "GET_SUBDOM"];
+            };
+            parameters: {
+              type: "object";
+              properties: {
+                url: { type: "string"; description: "URL for OPEN_PAGE command" };
+                selector: { type: "string"; description: "CSS selector for element targeting" };
+                text: { type: "string"; description: "Text input for INPUT_TEXT command" };
+              };
+            };
+          },
           description: "Executor command to execute (required only when flowControl is 'continue')"
         },
         reasoning: {

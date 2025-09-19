@@ -6,7 +6,6 @@
 import { IExecutorStreamer } from './types';
 import { 
   IStreamerLogger, 
-  LogMessage, 
   LogMessageType, 
   ReasoningLogMessage, 
   ActionLogMessage, 

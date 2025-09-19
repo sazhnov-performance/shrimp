@@ -5,7 +5,6 @@
 
 import { 
   IStepProcessor, 
-  IStepProcessorConstructor,
   StepProcessorConfig 
 } from './types';
 import { IExecutorStreamer } from '@/modules/executor-streamer/types';

@@ -90,7 +90,7 @@ export class EventPublisher implements IEventPublisher {
       }
 
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
