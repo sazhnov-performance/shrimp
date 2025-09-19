@@ -32,13 +32,27 @@ export async function GET(
     const instanceId = (executorStreamer as any).getInstanceId?.() || 'unknown';
     console.log(`[SSE API] Using ExecutorStreamer instance #${instanceId}`);
 
-    // Check if stream exists by trying to get events
-    try {
-      await executorStreamer.getEvents(sessionId);
+    // Check if stream exists - first try to find it, if not found, create it
+    let streamExists = executorStreamer.streamExists(sessionId);
+    
+    if (!streamExists) {
+      console.log(`[SSE API] Stream not found for session ${sessionId}, attempting to create it`);
+      try {
+        await executorStreamer.createStream(sessionId);
+        streamExists = true;
+        console.log(`[SSE API] Created stream for session ${sessionId}`);
+      } catch (error) {
+        // If creation fails, check if it already exists (race condition)
+        if (executorStreamer.streamExists(sessionId)) {
+          streamExists = true;
+          console.log(`[SSE API] Stream was created by another process for session ${sessionId}`);
+        } else {
+          console.error(`[SSE API] Failed to create stream for session ${sessionId}:`, error instanceof Error ? error.message : error);
+          return new Response(`Failed to create stream for session ${sessionId}`, { status: 500 });
+        }
+      }
+    } else {
       console.log(`[SSE API] Stream found for session ${sessionId}`);
-    } catch (error) {
-      console.error(`[SSE API] Stream not found for session ${sessionId}:`, error instanceof Error ? error.message : error);
-      return new Response(`Stream not found for session ${sessionId}`, { status: 404 });
     }
 
     // Create SSE stream

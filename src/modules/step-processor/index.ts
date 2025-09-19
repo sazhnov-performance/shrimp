@@ -110,10 +110,16 @@ export class StepProcessor implements IStepProcessor {
         console.log(`[StepProcessor] Creating stream for session ${sessionId}`);
       }
       
-      await this.executorStreamer.createStream(sessionId);
-      
-      if (this.config.enableLogging) {
-        console.log(`[StepProcessor] Stream created successfully for session ${sessionId}`);
+      // Check if stream already exists (defensive programming)
+      if (!this.executorStreamer.streamExists(sessionId)) {
+        await this.executorStreamer.createStream(sessionId);
+        if (this.config.enableLogging) {
+          console.log(`[StepProcessor] Stream created successfully for session ${sessionId}`);
+        }
+      } else {
+        if (this.config.enableLogging) {
+          console.log(`[StepProcessor] Stream already exists for session ${sessionId}`);
+        }
       }
 
       //await this.executorStreamer.putEvent(sessionId, 'Stream Initiated');

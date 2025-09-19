@@ -9,7 +9,9 @@ import {
   ExecutorCommand, 
   CommandResponse, 
   ICommandProcessor,
-  NetworkIdleConfig 
+  NetworkIdleConfig,
+  ResponseConfig,
+  ResponseFieldConfig
 } from './types';
 import { ExecutorErrorHandler } from './error-handler';
 import { IExecutorLogger } from './types';
@@ -24,19 +26,39 @@ export class CommandProcessor implements ICommandProcessor {
   private variableResolver: IVariableResolver;
   private screenshotManager: IScreenshotManager;
   private networkIdleConfig: NetworkIdleConfig;
+  private responseConfig: ResponseConfig;
 
   constructor(
     errorHandler: ExecutorErrorHandler,
     logger: IExecutorLogger,
     variableResolver: IVariableResolver,
     screenshotManager: IScreenshotManager,
-    networkIdleConfig: NetworkIdleConfig
+    networkIdleConfig: NetworkIdleConfig,
+    responseConfig: ResponseConfig
   ) {
     this.errorHandler = errorHandler;
     this.logger = logger;
     this.variableResolver = variableResolver;
     this.screenshotManager = screenshotManager;
     this.networkIdleConfig = networkIdleConfig;
+    this.responseConfig = responseConfig;
+  }
+
+  /**
+   * Filter response fields based on action configuration
+   */
+  private filterResponse(response: CommandResponse, action: CommandAction): CommandResponse {
+    const fieldConfig = this.responseConfig.actionConfig[action];
+    
+    return {
+      success: response.success,
+      commandId: response.commandId,
+      dom: fieldConfig.includeDOM ? response.dom : '',
+      screenshotId: fieldConfig.includeScreenshot ? response.screenshotId : '',
+      duration: response.duration,
+      error: response.error,
+      metadata: fieldConfig.includeMetadata ? response.metadata : undefined
+    };
   }
 
   /**
@@ -314,7 +336,7 @@ export class CommandProcessor implements ICommandProcessor {
 
       const duration = Date.now() - startTime;
 
-      return {
+      const response: CommandResponse = {
         success: true,
         commandId,
         dom,
@@ -322,6 +344,8 @@ export class CommandProcessor implements ICommandProcessor {
         duration,
         metadata: { url: resolvedUrl, originalUrl: url }
       };
+
+      return this.filterResponse(response, CommandAction.OPEN_PAGE);
 
     } catch (error) {
       throw this.errorHandler.createPageLoadError(
@@ -382,7 +406,7 @@ export class CommandProcessor implements ICommandProcessor {
 
       const duration = Date.now() - startTime;
 
-      return {
+      const response: CommandResponse = {
         success: true,
         commandId,
         dom,
@@ -390,6 +414,8 @@ export class CommandProcessor implements ICommandProcessor {
         duration,
         metadata: { selector: resolvedSelector, originalSelector: selector }
       };
+
+      return this.filterResponse(response, CommandAction.CLICK_ELEMENT);
 
     } catch (error) {
       if (error instanceof Error && 'code' in error) {
@@ -466,7 +492,7 @@ export class CommandProcessor implements ICommandProcessor {
 
       const duration = Date.now() - startTime;
 
-      return {
+      const response: CommandResponse = {
         success: true,
         commandId,
         dom,
@@ -479,6 +505,8 @@ export class CommandProcessor implements ICommandProcessor {
           originalText: text
         }
       };
+
+      return this.filterResponse(response, CommandAction.INPUT_TEXT);
 
     } catch (error) {
       if (error instanceof Error && 'code' in error) {
@@ -560,7 +588,7 @@ export class CommandProcessor implements ICommandProcessor {
 
       const duration = Date.now() - startTime;
 
-      return {
+      const response: CommandResponse = {
         success: true,
         commandId,
         dom,
@@ -573,6 +601,8 @@ export class CommandProcessor implements ICommandProcessor {
           value
         }
       };
+
+      return this.filterResponse(response, CommandAction.SAVE_VARIABLE);
 
     } catch (error) {
       if (error instanceof Error && 'code' in error) {
@@ -612,7 +642,7 @@ export class CommandProcessor implements ICommandProcessor {
         { domLength: dom.length }
       );
 
-      return {
+      const response: CommandResponse = {
         success: true,
         commandId,
         dom,
@@ -620,6 +650,8 @@ export class CommandProcessor implements ICommandProcessor {
         duration,
         metadata: { domLength: dom.length, url: session.page.url() }
       };
+
+      return this.filterResponse(response, CommandAction.GET_DOM);
 
     } catch (error) {
       throw this.errorHandler.createStandardError(
@@ -766,7 +798,7 @@ export class CommandProcessor implements ICommandProcessor {
 
       const duration = Date.now() - startTime;
 
-      return {
+      const response: CommandResponse = {
         success: true,
         commandId: finalCommandId,
         dom,
@@ -782,6 +814,8 @@ export class CommandProcessor implements ICommandProcessor {
           elementsFound: Array.isArray(content) ? content.length : 1
         }
       };
+
+      return this.filterResponse(response, CommandAction.GET_CONTENT);
 
     } catch (error) {
       if (error instanceof Error && 'code' in error) {
@@ -890,7 +924,7 @@ export class CommandProcessor implements ICommandProcessor {
 
       const duration = Date.now() - startTime;
 
-      return {
+      const response: CommandResponse = {
         success: true,
         commandId: finalCommandId,
         dom: subDomElements.join('\n'), // Return the sub-DOM elements instead of full page
@@ -907,6 +941,8 @@ export class CommandProcessor implements ICommandProcessor {
           fullPageDOM: dom // Keep full page DOM in metadata for reference
         }
       };
+
+      return this.filterResponse(response, CommandAction.GET_SUBDOM);
 
     } catch (error) {
       // Check if it's a StandardError (like SUBDOM_SIZE_EXCEEDED)
@@ -1091,7 +1127,7 @@ export class CommandProcessor implements ICommandProcessor {
 
       const duration = Date.now() - startTime;
 
-      return {
+      const response: CommandResponse = {
         success: true,
         commandId: finalCommandId,
         dom: readableText, // Return readable text instead of full DOM
@@ -1107,6 +1143,8 @@ export class CommandProcessor implements ICommandProcessor {
           fullDomLength: dom_content.length // Keep track of original DOM size for reference
         }
       };
+
+      return this.filterResponse(response, CommandAction.GET_TEXT);
 
     } catch (error) {
       if (error instanceof Error && 'code' in error) {

@@ -237,6 +237,24 @@ export interface ActionScreenshotConfig {
   [CommandAction.GET_TEXT]: boolean;
 }
 
+// Response Field Configuration
+export interface ResponseFieldConfig {
+  includeDOM: boolean;
+  includeScreenshot: boolean;
+  includeMetadata: boolean;
+}
+
+export interface ActionResponseConfig {
+  [CommandAction.OPEN_PAGE]: ResponseFieldConfig;
+  [CommandAction.CLICK_ELEMENT]: ResponseFieldConfig;
+  [CommandAction.INPUT_TEXT]: ResponseFieldConfig;
+  [CommandAction.SAVE_VARIABLE]: ResponseFieldConfig;
+  [CommandAction.GET_DOM]: ResponseFieldConfig;
+  [CommandAction.GET_CONTENT]: ResponseFieldConfig;
+  [CommandAction.GET_SUBDOM]: ResponseFieldConfig;
+  [CommandAction.GET_TEXT]: ResponseFieldConfig;
+}
+
 export interface ScreenshotConfig {
   enabled: boolean;
   directory: string;
@@ -246,6 +264,10 @@ export interface ScreenshotConfig {
   nameTemplate: string;
   cleanup: ScreenshotCleanupConfig;
   actionConfig: ActionScreenshotConfig;
+}
+
+export interface ResponseConfig {
+  actionConfig: ActionResponseConfig;
 }
 
 export interface ScreenshotCleanupConfig {
@@ -305,6 +327,7 @@ export interface ExecutorConfig extends BaseModuleConfig {
     };
   };
   screenshots: ScreenshotConfig;
+  responses: ResponseConfig;
   networkIdle: NetworkIdleConfig;
 }
 
@@ -346,6 +369,51 @@ export const DEFAULT_EXECUTOR_CONFIG: ExecutorConfig = {
       [CommandAction.GET_CONTENT]: false,
       [CommandAction.GET_SUBDOM]: false,
       [CommandAction.GET_TEXT]: false
+    }
+  },
+
+  responses: {
+    actionConfig: {
+      [CommandAction.OPEN_PAGE]: {
+        includeDOM: false,
+        includeScreenshot: false,
+        includeMetadata: false
+      },
+      [CommandAction.CLICK_ELEMENT]: {
+        includeDOM: false,
+        includeScreenshot: false,
+        includeMetadata: false
+      },
+      [CommandAction.INPUT_TEXT]: {
+        includeDOM: true,
+        includeScreenshot: true,
+        includeMetadata: true
+      },
+      [CommandAction.SAVE_VARIABLE]: {
+        includeDOM: true,
+        includeScreenshot: true,
+        includeMetadata: true
+      },
+      [CommandAction.GET_DOM]: {
+        includeDOM: true,
+        includeScreenshot: true,
+        includeMetadata: true
+      },
+      [CommandAction.GET_CONTENT]: {
+        includeDOM: true,
+        includeScreenshot: true,
+        includeMetadata: true
+      },
+      [CommandAction.GET_SUBDOM]: {
+        includeDOM: true,
+        includeScreenshot: true,
+        includeMetadata: true
+      },
+      [CommandAction.GET_TEXT]: {
+        includeDOM: true,
+        includeScreenshot: true,
+        includeMetadata: true
+      }
     }
   },
   

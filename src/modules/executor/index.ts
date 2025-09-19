@@ -106,7 +106,8 @@ export class Executor implements IExecutor {
       this.logger,
       this.variableResolver,
       this.screenshotManager,
-      config.networkIdle
+      config.networkIdle,
+      config.responses
     );
 
     this.logger.info('Executor module initialized', undefined, { 
@@ -397,6 +398,16 @@ export class Executor implements IExecutor {
     this.sessionManager.updateConfig(config);
     this.screenshotManager.updateConfig(config.screenshots);
     this.logger.setLogLevel(config.logging.level);
+    
+    // Update command processor with new response configuration
+    this.commandProcessor = new CommandProcessor(
+      this.errorHandler,
+      this.logger,
+      this.variableResolver,
+      this.screenshotManager,
+      config.networkIdle,
+      config.responses
+    );
 
     this.logger.info('Executor configuration updated', undefined, { 
       moduleId: this.moduleId,
