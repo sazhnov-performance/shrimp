@@ -5,7 +5,7 @@
  * and providing context to other AI processing modules.
  */
 
-import { IAIContextManager, AIContextManagerConfig, ContextData, ScreenshotDescription } from './types';
+import { IAIContextManager, AIContextManagerConfig, ContextData, ScreenshotDescription, TaskLogEntry } from './types';
 
 export class AIContextManager implements IAIContextManager {
   private static instance: AIContextManager | null = null;
@@ -65,7 +65,7 @@ export class AIContextManager implements IAIContextManager {
     context.lastUpdated = new Date();
   }
 
-  logTask(contextId: string, stepId: number, task: any): void {
+  logTask(contextId: string, stepId: number, task: TaskLogEntry): void {
     const context = this.contexts.get(contextId);
     if (!context) {
       throw new Error(`Context with ID "${contextId}" does not exist`);
@@ -101,7 +101,7 @@ export class AIContextManager implements IAIContextManager {
     context.lastUpdated = new Date();
   }
 
-  getStepContext(contextId: string, stepId: number): any[] {
+  getStepContext(contextId: string, stepId: number): TaskLogEntry[] {
     const context = this.contexts.get(contextId);
     if (!context) {
       throw new Error(`Context with ID "${contextId}" does not exist`);

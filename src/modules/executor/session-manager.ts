@@ -15,7 +15,8 @@ import {
 import { 
   ExecutorSession, 
   IExecutorSessionManager, 
-  ExecutorConfig 
+  ExecutorConfig,
+  StandardError
 } from './types';
 import { ExecutorErrorHandler } from './error-handler';
 import { IExecutorLogger } from './types';
@@ -270,7 +271,7 @@ export class ExecutorSessionManager implements IExecutorSessionManager {
    * Performs health check
    */
   async healthCheck(): Promise<SessionManagerHealth> {
-    const errors: any[] = [];
+    const errors: StandardError[] = [];
     const totalSessions = this.sessions.size;
     let activeSessions = 0;
 

@@ -10,7 +10,8 @@ import {
   StepResult, 
   AIResponse, 
   TaskLoopError, 
-  TaskLoopErrorType 
+  TaskLoopErrorType,
+  ActionParameters
 } from './types';
 import { DEFAULT_CONFIG, validateConfig } from './config';
 import { validateAIResponse } from './validator';
@@ -197,7 +198,7 @@ export class TaskLoop implements ITaskLoop {
 
 
         // 4. Execute action if specified and flowControl is continue
-        let executionResult: {success: boolean, result?: any, error?: string} | undefined;
+        let executionResult: {success: boolean, result?: unknown, error?: string} | undefined;
         if (validatedResponse.flowControl === 'continue' && validatedResponse.action) {
           if (this.config.enableLogging) {
             //console.log(`[TaskLoop] Executing action for session ${sessionId}, step ${stepId}, iteration ${iterations}`, {
@@ -303,7 +304,7 @@ export class TaskLoop implements ITaskLoop {
   /**
    * Execute an action through the executor
    */
-  private async executeAction(sessionId: string, stepId: number, action: any, iteration?: number): Promise<{success: boolean, result?: any, error?: string}> {
+  private async executeAction(sessionId: string, stepId: number, action: {command: string, parameters: ActionParameters}, iteration?: number): Promise<{success: boolean, result?: unknown, error?: string}> {
     try {
       // Session should already be created by StepProcessor
       if (!this.executor.sessionExists(sessionId)) {
@@ -495,7 +496,7 @@ export class TaskLoop implements ITaskLoop {
       // Check if it's a StandardError with cause (original Playwright error)
       if (error && typeof error === 'object' && 'cause' in error && error.cause && 
           typeof error.cause === 'object' && error.cause !== null) {
-        const cause = error.cause as any;
+        const cause = error.cause as { details?: { originalMessage?: string }; message?: string };
         if (cause.details?.originalMessage) {
           errorMessage += ` (Original error: ${cause.details.originalMessage})`;
         } else if (cause.message) {
@@ -560,7 +561,7 @@ export class TaskLoop implements ITaskLoop {
     stepId: number,
     iterations: number,
     startTime: number,
-    error: any
+    error: unknown
   ): StepResult {
     const errorMessage = error instanceof Error ? error.message : String(error);
     
@@ -586,7 +587,7 @@ export class TaskLoop implements ITaskLoop {
     sessionId?: string,
     stepId?: number,
     iteration?: number,
-    details?: Record<string, any>
+    details?: Record<string, unknown>
   ): TaskLoopError {
     const error = new Error(message) as TaskLoopError;
     error.type = type;

@@ -11,7 +11,8 @@ import {
   ICommandProcessor,
   NetworkIdleConfig,
   ResponseConfig,
-  ResponseFieldConfig
+  ResponseFieldConfig,
+  StandardError
 } from './types';
 import { ExecutorErrorHandler } from './error-handler';
 import { IExecutorLogger } from './types';
@@ -280,7 +281,7 @@ export class CommandProcessor implements ICommandProcessor {
 
       // Preserve known standard errors, wrap unknown ones
       const standardError = (error && typeof error === 'object' && 'code' in error && 'moduleId' in error)
-        ? error as any
+        ? error as StandardError
         : this.errorHandler.createStandardError(
             'COMMAND_EXECUTION_FAILED',
             `Command execution failed: ${error instanceof Error ? error.message : String(error)}`,

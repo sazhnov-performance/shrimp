@@ -3,12 +3,11 @@
  * Provides detailed initialization status for development and debugging
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { isAppInitialized } from '../../../../lib/app-startup';
+import { NextResponse } from 'next/server';
 // AppInitializer will be imported lazily to avoid Node.js API loading
 import { ensureInitialized } from '../../../../lib/ensure-initialized';
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   // Only allow in development mode for security
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ 

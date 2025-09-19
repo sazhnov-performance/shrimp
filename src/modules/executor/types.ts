@@ -71,6 +71,19 @@ export const ERROR_CODES = {
   }
 };
 
+// Error details interface for better type safety
+export interface ErrorDetails {
+  originalError?: string;
+  stack?: string;
+  selector?: string;
+  timeout?: number;
+  url?: string;
+  sessionId?: string;
+  commandId?: string;
+  screenshot?: string;
+  [key: string]: unknown;
+}
+
 // Standard Error Interface
 export interface StandardError {
   id: string;
@@ -78,7 +91,7 @@ export interface StandardError {
   severity: ErrorSeverity;
   code: string;
   message: string;
-  details?: Record<string, any>;
+  details?: ErrorDetails;
   cause?: StandardError;
   timestamp: Date;
   moduleId: string;
@@ -98,6 +111,16 @@ export interface CommandParameters {
   maxDomSize?: number;
 }
 
+// Session metadata interface for better type safety
+export interface SessionMetadata {
+  browserType?: string;
+  viewport?: { width: number; height: number };
+  userAgent?: string;
+  url?: string;
+  title?: string;
+  customData?: Record<string, unknown>;
+}
+
 // Session Management Types
 export interface ModuleSessionInfo {
   moduleId: string;
@@ -106,20 +129,20 @@ export interface ModuleSessionInfo {
   status: SessionStatus;
   createdAt: Date;
   lastActivity: Date;
-  metadata?: Record<string, any>;
+  metadata?: SessionMetadata;
 }
 
 export interface ModuleSessionConfig {
   timeout?: number;
   retries?: number;
-  metadata?: Record<string, any>;
+  metadata?: SessionMetadata;
 }
 
 export interface SessionLifecycleCallbacks {
   onSessionCreated?: (moduleId: string, workflowSessionId: string, sessionId: string) => Promise<void>;
   onSessionDestroyed?: (moduleId: string, workflowSessionId: string) => Promise<void>;
   onSessionStatusChanged?: (moduleId: string, workflowSessionId: string, oldStatus: SessionStatus, newStatus: SessionStatus) => Promise<void>;
-  onSessionError?: (moduleId: string, workflowSessionId: string, error: any) => Promise<void>;
+  onSessionError?: (moduleId: string, workflowSessionId: string, error: StandardError) => Promise<void>;
 }
 
 export interface SessionManagerHealth {
@@ -127,7 +150,7 @@ export interface SessionManagerHealth {
   isHealthy: boolean;
   activeSessions: number;
   totalSessions: number;
-  errors: any[];
+  errors: StandardError[];
   lastHealthCheck: Date;
 }
 
@@ -215,6 +238,18 @@ export interface ExecutorCommand {
   timestamp: Date;
 }
 
+// Command response metadata interface
+export interface CommandResponseMetadata {
+  content?: string | string[]; // For GET_CONTENT results
+  subDom?: string[]; // For GET_SUBDOM results
+  variable?: { name: string; value: string }; // For SAVE_VARIABLE results
+  domSize?: number;
+  screenshotPath?: string;
+  networkRequests?: number;
+  pageLoadTime?: number;
+  [key: string]: unknown;
+}
+
 export interface CommandResponse {
   success: boolean;
   commandId: string;
@@ -222,7 +257,7 @@ export interface CommandResponse {
   screenshotId: string;
   duration: number;
   error?: StandardError;
-  metadata?: Record<string, any>;
+  metadata?: CommandResponseMetadata;
 }
 
 // Screenshot Configuration
@@ -277,6 +312,17 @@ export interface ScreenshotCleanupConfig {
   schedule: 'immediate' | 'daily' | 'weekly';
 }
 
+// Screenshot metadata interface
+export interface ScreenshotMetadata {
+  quality?: number; // For JPEG format
+  viewport?: { width: number; height: number };
+  fullPage?: boolean;
+  userAgent?: string;
+  url?: string;
+  pageTitle?: string;
+  [key: string]: unknown;
+}
+
 export interface ScreenshotInfo {
   id: string;
   sessionId: string;
@@ -290,7 +336,7 @@ export interface ScreenshotInfo {
     width: number;
     height: number;
   };
-  metadata?: Record<string, any>;
+  metadata?: ScreenshotMetadata;
   mediaManagerUuid?: string;
 }
 
@@ -447,18 +493,29 @@ export const DEFAULT_EXECUTOR_CONFIG: ExecutorConfig = {
   }
 };
 
+// Log context interface
+export interface LogContext {
+  action?: string;
+  selector?: string;
+  duration?: number;
+  error?: string;
+  url?: string;
+  screenshotId?: string;
+  [key: string]: unknown;
+}
+
 // Logging
 export interface LogEntry {
   level: LogLevel;
   message: string;
   sessionId?: string;
   timestamp: Date;
-  context?: Record<string, any>;
+  context?: LogContext;
 }
 
 // Interfaces
 export interface IScreenshotManager {
-  captureScreenshot(sessionId: string, actionType: CommandAction, page: any, metadata?: Record<string, any>): Promise<string>;
+  captureScreenshot(sessionId: string, actionType: CommandAction, page: Page, metadata?: ScreenshotMetadata): Promise<string>;
   getScreenshot(screenshotId: string): Promise<ScreenshotInfo | null>;
   getScreenshotPath(screenshotId: string): Promise<string | null>;
   listScreenshots(sessionId: string): Promise<ScreenshotInfo[]>;
@@ -478,15 +535,15 @@ export interface IVariableResolver {
 }
 
 export interface IExecutorLogger {
-  debug(message: string, sessionId?: string, context?: Record<string, any>): void;
-  info(message: string, sessionId?: string, context?: Record<string, any>): void;
-  warn(message: string, sessionId?: string, context?: Record<string, any>): void;
-  error(message: string, sessionId?: string, context?: Record<string, any>): void;
+  debug(message: string, sessionId?: string, context?: LogContext): void;
+  info(message: string, sessionId?: string, context?: LogContext): void;
+  warn(message: string, sessionId?: string, context?: LogContext): void;
+  error(message: string, sessionId?: string, context?: LogContext): void;
   getEntries(level?: LogLevel, sessionId?: string): LogEntry[];
-  logSessionEvent(sessionId: string, event: string, details?: Record<string, any>): void;
-  logCommandExecution(sessionId: string, action: string, duration: number, success: boolean, details?: Record<string, any>): void;
-  logVariableInterpolation(sessionId: string, original: string, resolved: string, context?: Record<string, any>): void;
-  logScreenshotCapture(sessionId: string, screenshotId: string, actionType: string, success: boolean, details?: Record<string, any>): void;
+  logSessionEvent(sessionId: string, event: string, details?: LogContext): void;
+  logCommandExecution(sessionId: string, action: string, duration: number, success: boolean, details?: LogContext): void;
+  logVariableInterpolation(sessionId: string, original: string, resolved: string, context?: LogContext): void;
+  logScreenshotCapture(sessionId: string, screenshotId: string, actionType: string, success: boolean, details?: LogContext): void;
   getLogStats(): { total: number; byLevel: Record<string, number>; bySessions: number; };
   setLogLevel(level: LogLevel): void;
 }

@@ -7,7 +7,9 @@ import {
   StandardError, 
   ErrorCategory, 
   ErrorSeverity, 
-  ERROR_CODES 
+  ERROR_CODES,
+  ErrorDetails,
+  ExecutorCommand
 } from './types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -15,7 +17,7 @@ export class ExecutorErrorHandler {
   createStandardError(
     code: string, 
     message: string, 
-    details?: Record<string, any>, 
+    details?: ErrorDetails, 
     cause?: Error
   ): StandardError {
     return {
@@ -168,7 +170,7 @@ export class ExecutorErrorHandler {
   /**
    * Creates error for invalid commands
    */
-  createInvalidCommandError(command: any, reason: string): StandardError {
+  createInvalidCommandError(command: ExecutorCommand, reason: string): StandardError {
     return this.createStandardError(
       'INVALID_COMMAND',
       `Invalid command: ${reason}`,

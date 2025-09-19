@@ -38,11 +38,23 @@ export interface StepResult {
 // Confidence Level Enum
 export type ConfidenceLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 
+// Action parameters interface for better type safety
+export interface ActionParameters {
+  url?: string;
+  selector?: string;
+  text?: string;
+  variableName?: string;
+  attribute?: string;
+  multiple?: boolean;
+  maxDomSize?: number;
+  [key: string]: unknown;
+}
+
 // AI Response Interface (from AI Schema Manager)
 export interface AIResponse {
   action?: {
     command: string;
-    parameters: Record<string, any>;
+    parameters: ActionParameters;
   };
   reasoning: string;
   confidence: ConfidenceLevel;
@@ -68,11 +80,22 @@ export enum TaskLoopErrorType {
   CONTEXT_ERROR = 'CONTEXT_ERROR'
 }
 
+// Task loop error details interface
+export interface TaskLoopErrorDetails {
+  originalError?: string;
+  stack?: string;
+  aiResponse?: AIResponse;
+  action?: { command: string; parameters: ActionParameters };
+  duration?: number;
+  timeout?: number;
+  [key: string]: unknown;
+}
+
 // Task Loop Error Interface
 export interface TaskLoopError extends Error {
   type: TaskLoopErrorType;
   sessionId?: string;
   stepId?: number;
   iteration?: number;
-  details?: Record<string, any>;
+  details?: TaskLoopErrorDetails;
 }

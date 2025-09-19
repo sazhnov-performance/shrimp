@@ -17,7 +17,8 @@ import {
   ExecutorConfig,
   DEFAULT_EXECUTOR_CONFIG,
   CleanupResult,
-  ScreenshotInfo
+  ScreenshotInfo,
+  CommandAction
 } from './types';
 import { ExecutorSessionManager } from './session-manager';
 import { CommandProcessor } from './command-processor';
@@ -210,7 +211,13 @@ export class Executor implements IExecutor {
 
     if (!url || url.trim() === '') {
       throw this.errorHandler.createInvalidCommandError(
-        { action: 'OPEN_PAGE' } as any,
+        { 
+          sessionId: workflowSessionId,
+          action: CommandAction.OPEN_PAGE, 
+          parameters: { url }, 
+          commandId: 'invalid', 
+          timestamp: new Date() 
+        },
         'URL parameter is required and cannot be empty'
       );
     }
@@ -277,7 +284,13 @@ export class Executor implements IExecutor {
 
     if (!selector || selector.trim() === '') {
       throw this.errorHandler.createInvalidCommandError(
-        { action: 'GET_CONTENT' } as any,
+        { 
+          sessionId: workflowSessionId,
+          action: CommandAction.GET_CONTENT, 
+          parameters: { selector }, 
+          commandId: 'invalid', 
+          timestamp: new Date() 
+        },
         'Selector parameter is required and cannot be empty'
       );
     }
@@ -296,7 +309,13 @@ export class Executor implements IExecutor {
 
     if (!selector || selector.trim() === '') {
       throw this.errorHandler.createInvalidCommandError(
-        { action: 'GET_SUBDOM' } as any,
+        { 
+          sessionId: workflowSessionId,
+          action: CommandAction.GET_SUBDOM, 
+          parameters: { selector, maxDomSize }, 
+          commandId: 'invalid', 
+          timestamp: new Date() 
+        },
         'Selector parameter is required and cannot be empty'
       );
     }
@@ -304,7 +323,13 @@ export class Executor implements IExecutor {
     // Validate maxDomSize if provided
     if (maxDomSize !== undefined && (maxDomSize <= 0 || !Number.isInteger(maxDomSize))) {
       throw this.errorHandler.createInvalidCommandError(
-        { action: 'GET_SUBDOM' } as any,
+        { 
+          sessionId: workflowSessionId,
+          action: CommandAction.GET_SUBDOM, 
+          parameters: { selector, maxDomSize }, 
+          commandId: 'invalid', 
+          timestamp: new Date() 
+        },
         'maxDomSize parameter must be a positive integer'
       );
     }
@@ -323,7 +348,13 @@ export class Executor implements IExecutor {
 
     if (!selector || selector.trim() === '') {
       throw this.errorHandler.createInvalidCommandError(
-        { action: 'GET_TEXT' } as any,
+        { 
+          sessionId: workflowSessionId,
+          action: CommandAction.GET_TEXT, 
+          parameters: { selector }, 
+          commandId: 'invalid', 
+          timestamp: new Date() 
+        },
         'Selector parameter is required and cannot be empty'
       );
     }

@@ -12,7 +12,8 @@ import {
   IScreenshotManager, 
   ScreenshotInfo, 
   ScreenshotConfig, 
-  CleanupResult 
+  CleanupResult,
+  ScreenshotMetadata
 } from './types';
 import { ExecutorErrorHandler } from './error-handler';
 import { IExecutorLogger } from './types';
@@ -56,7 +57,7 @@ export class ScreenshotManager implements IScreenshotManager {
     sessionId: string, 
     actionType: CommandAction, 
     page?: Page,
-    metadata?: Record<string, any>
+    metadata?: ScreenshotMetadata
   ): Promise<string> {
     if (!this.config.enabled) {
       return '';

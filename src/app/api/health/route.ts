@@ -3,11 +3,11 @@
  * Provides application initialization status and health information
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getInitializationStatus, isAppInitialized } from '../../../lib/app-startup';
 import { ensureInitialized } from '../../../lib/ensure-initialized';
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     // Ensure app is initialized before checking status
     await ensureInitialized();

@@ -14,7 +14,7 @@ import { AIResponse, TaskLoopError, TaskLoopErrorType } from './types';
  * @throws TaskLoopError if validation fails
  */
 export function validateAIResponse(
-  data: any, 
+  data: unknown, 
   sessionId: string, 
   stepId: number
 ): AIResponse {
@@ -65,7 +65,7 @@ export function validateAIResponse(
 /**
  * Validates that all required fields are present
  */
-function validateRequiredFields(data: any, sessionId: string, stepId: number): void {
+function validateRequiredFields(data: unknown, sessionId: string, stepId: number): void {
   const requiredFields = ['reasoning', 'confidence', 'flowControl'];
   const missingFields = requiredFields.filter(field => !(field in data));
   
@@ -82,7 +82,7 @@ function validateRequiredFields(data: any, sessionId: string, stepId: number): v
 /**
  * Validates the reasoning field
  */
-function validateReasoning(reasoning: any, sessionId: string, stepId: number): void {
+function validateReasoning(reasoning: unknown, sessionId: string, stepId: number): void {
   if (typeof reasoning !== 'string') {
     throw createValidationError(
       'Reasoning field must be a string',
@@ -115,7 +115,7 @@ function validateReasoning(reasoning: any, sessionId: string, stepId: number): v
 /**
  * Validates the confidence field
  */
-function validateConfidence(confidence: any, sessionId: string, stepId: number): string {
+function validateConfidence(confidence: unknown, sessionId: string, stepId: number): string {
   // Handle numeric confidence values from AI (convert to string enum)
   if (typeof confidence === 'number') {
     if (confidence >= 80) {
@@ -153,7 +153,7 @@ function validateConfidence(confidence: any, sessionId: string, stepId: number):
 /**
  * Validates the flowControl field
  */
-function validateFlowControl(flowControl: any, sessionId: string, stepId: number): void {
+function validateFlowControl(flowControl: unknown, sessionId: string, stepId: number): void {
   const validValues = ['continue', 'stop_success', 'stop_failure'];
   
   if (typeof flowControl !== 'string') {
@@ -178,7 +178,7 @@ function validateFlowControl(flowControl: any, sessionId: string, stepId: number
 /**
  * Validates the action field
  */
-function validateAction(action: any, sessionId: string, stepId: number): void {
+function validateAction(action: unknown, sessionId: string, stepId: number): void {
   if (!action || typeof action !== 'object') {
     throw createValidationError(
       'Action field must be an object',
@@ -238,7 +238,7 @@ function validateAction(action: any, sessionId: string, stepId: number): void {
  */
 function validateCommandParameters(
   command: string, 
-  parameters: Record<string, any>, 
+  parameters: Record<string, unknown>, 
   sessionId: string, 
   stepId: number
 ): void {
@@ -384,7 +384,7 @@ function createValidationError(
   message: string,
   sessionId: string,
   stepId: number,
-  details?: Record<string, any>
+  details?: Record<string, unknown>
 ): TaskLoopError {
   const error = new Error(message) as TaskLoopError;
   error.type = TaskLoopErrorType.VALIDATION_FAILED;

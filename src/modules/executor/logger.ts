@@ -3,8 +3,7 @@
  * Implements standardized logging with [Executor] prefix and session tracking
  */
 
-import { LogLevel } from './types';
-import { LogEntry, IExecutorLogger } from './types';
+import { LogLevel, LogEntry, IExecutorLogger, LogContext } from './types';
 import * as winston from 'winston';
 
 export class ExecutorLogger implements IExecutorLogger {
@@ -34,23 +33,23 @@ export class ExecutorLogger implements IExecutorLogger {
     });
   }
 
-  debug(message: string, sessionId?: string, context?: Record<string, any>): void {
+  debug(message: string, sessionId?: string, context?: LogContext): void {
     this.log(LogLevel.DEBUG, message, sessionId, context);
   }
 
-  info(message: string, sessionId?: string, context?: Record<string, any>): void {
+  info(message: string, sessionId?: string, context?: LogContext): void {
     this.log(LogLevel.INFO, message, sessionId, context);
   }
 
-  warn(message: string, sessionId?: string, context?: Record<string, any>): void {
+  warn(message: string, sessionId?: string, context?: LogContext): void {
     this.log(LogLevel.WARN, message, sessionId, context);
   }
 
-  error(message: string, sessionId?: string, context?: Record<string, any>): void {
+  error(message: string, sessionId?: string, context?: LogContext): void {
     this.log(LogLevel.ERROR, message, sessionId, context);
   }
 
-  private log(level: LogLevel, message: string, sessionId?: string, context?: Record<string, any>): void {
+  private log(level: LogLevel, message: string, sessionId?: string, context?: LogContext): void {
     const entry: LogEntry = {
       level,
       message,
@@ -167,7 +166,7 @@ export class ExecutorLogger implements IExecutorLogger {
     action: string, 
     duration: number, 
     success: boolean,
-    details?: Record<string, any>
+    details?: LogContext
   ): void {
     const message = `Command ${action} ${success ? 'completed' : 'failed'} in ${duration}ms`;
     const context = { action, duration, success, ...details };
@@ -198,7 +197,7 @@ export class ExecutorLogger implements IExecutorLogger {
   /**
    * Logs session lifecycle events
    */
-  logSessionEvent(sessionId: string, event: string, details?: Record<string, any>): void {
+  logSessionEvent(sessionId: string, event: string, details?: LogContext): void {
     this.info(`Session ${event}`, sessionId, details);
   }
 
@@ -210,7 +209,7 @@ export class ExecutorLogger implements IExecutorLogger {
     screenshotId: string, 
     actionType: string, 
     success: boolean,
-    details?: Record<string, any>
+    details?: LogContext
   ): void {
     const message = `Screenshot ${success ? 'captured' : 'failed'}: ${screenshotId} for action ${actionType}`;
     const context = { screenshotId, actionType, success, ...details };
